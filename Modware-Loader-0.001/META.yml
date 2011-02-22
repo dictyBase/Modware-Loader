@@ -1,0 +1,26 @@
+---
+abstract: 'Loading module and scripts for Chado relational database '
+author:
+  - 'Siddhartha Basu <biosidd@gmail.com>'
+build_requires:
+  Module::Build: 0.3601
+configure_requires:
+  Module::Build: 0.3601
+dynamic_config: 0
+generated_by: 'Dist::Zilla version 4.200004, CPAN::Meta::Converter version 2.101670'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Modware-Loader
+requires:
+  Email::Sender::Simple: 0.102370
+  Email::Simple: 2.10
+  Email::Valid: 0.184
+  File::Find::Rule: 0.32
+  Log::Log4perl: 1.30
+  Modware: 0.001
+  MooseX::App::Cmd: 0.06
+  MooseX::ConfigFromFile: 0.02
+  Spreadsheet::WriteExcel: 2.37
+version: 0.001
