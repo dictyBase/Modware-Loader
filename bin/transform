@@ -1,0 +1,5 @@
+use FindBin qw/$Bin/;
+use lib "$Bin/../lib";
+use Modware::Transform;
+
+Modware::Transform->run;
