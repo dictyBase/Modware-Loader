@@ -1,0 +1,4 @@
+input: gene_association_goa.gaf
+output: gene_association_mod.gaf
+location: gp2protein.mod
+
