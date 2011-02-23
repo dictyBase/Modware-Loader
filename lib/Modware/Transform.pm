@@ -9,6 +9,7 @@ extends qw/MooseX::App::Cmd/;
 # Module implementation
 #
 
+
 1;    # Magic true value required at end of module
 
 __END__

@@ -21,12 +21,6 @@ subtype 'DataFile' => as 'Str' => where { -f $_ };
 subtype 'FileObject' => as class_type('Path::Class::File');
 coerce 'FileObject' => from 'Str' => via { Path::Class::File->new($_) };
 
-has '+configfile' => (
-    cmd_aliases   => 'c',
-    documentation => 'yaml config file to specify all command line options',
-    traits        => [qw/Getopt/]
-);
-
 has 'data_dir' => (
     is          => 'rw',
     isa         => 'DataDir',
@@ -83,10 +77,6 @@ sub _build_data_dir {
     return rel2abs(cwd);
 }
 
-sub get_config_from_file {
-    my ( $self, $file ) = @_;
-    return LoadFile($file);
-}
 
 1;    # Magic true value required at end of module
 

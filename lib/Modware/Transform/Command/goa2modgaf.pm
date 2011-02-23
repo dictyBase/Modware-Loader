@@ -3,12 +3,14 @@ package Modware::Transform::Command::goa2modgaf;
 # Other modules:
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
-extends qw/Modware::Transform/;
+extends qw/Modware::Transform::Command/;
 with 'Modware::Role::Command::WithIO';
 with 'Modware::Role::Command::WithLogger';
 
 # Module implementation
 #
+
+has '+input' => (documentation => 'input GAF file from GOA project');
 
 has 'location' => (
     is        => 'rw',
@@ -78,7 +80,7 @@ LINE:
     $input->close;
     $output->close;
 
-    $log->info("total:$total converted:$converted not_converted:$not_converted");
+    $logger->info("total:$total converted:$converted not_converted:$not_converted");
 
 }
 
