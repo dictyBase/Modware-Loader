@@ -2,6 +2,7 @@ package Modware::Transform::Command::goa2modgaf;
 
 # Other modules:
 use namespace::autoclean;
+use Carp;
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
 extends qw/Modware::Transform::Command/;
@@ -11,7 +12,7 @@ with 'Modware::Role::Command::WithLogger';
 # Module implementation
 #
 
-has '+input' => (documentation => 'input GAF file from GOA project');
+has '+input' => ( documentation => 'input GAF file from GOA project' );
 
 has 'location' => (
     is        => 'rw',
@@ -45,22 +46,27 @@ sub load_converter {
     ensure_all_roles( $self, $conv_role );
     ensure_all_roles( $self, 'Modware::Role::Command::Convert::Identifier' );
     $self->meta->make_immutable;
+    croak
+        "converted resource haven't implemented the **init_resource** method\n"
+        if !$self->can('init_resource');
+    $self->init_resource;
 }
 
 sub execute {
     my ($self) = @_;
+    my $logger = $self->logger;
+
     $self->load_converter;
 
     my $converted     = 0;
     my $not_converted = 0;
-    my $total = 0;
+    my $total         = 0;
 
     my $input  = $self->input_handler;
     my $output = $self->output_handler;
-    my $logger = $self->logger;
 
 LINE:
-    while ( my $line = $input->nextline ) {
+    while ( my $line = $input->getline ) {
         if ( $line =~ /^\!/ ) {    ## -- skip header
             $output->print($line);
             next LINE;
@@ -81,7 +87,8 @@ LINE:
     $input->close;
     $output->close;
 
-    $logger->info("total:$total converted:$converted not_converted:$not_converted");
+    $logger->info(
+        "total:$total converted:$converted not_converted:$not_converted");
 
 }
 
