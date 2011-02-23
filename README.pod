@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-Modware::Loader - Loading module and scripts for Chado relational database 
+Modware::Loader - Data loading modules and scripts for Chado relational database 
 
 =head1 VERSION
 
