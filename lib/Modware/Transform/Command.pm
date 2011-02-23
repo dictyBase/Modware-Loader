@@ -2,6 +2,7 @@ package Modware::Transform::Command;
 
 
 # Other modules:
+use namespace::autoclean;
 use Moose;
 use YAML qw/LoadFile/;
 extends qw/MooseX::App::Cmd::Command/;
@@ -12,9 +13,11 @@ with 'MooseX::ConfigFromFile';
 
 has '+configfile' => (
     cmd_aliases   => 'c',
-    documentation => 'yaml config file to specify all command line options',
-    traits        => [qw/Getopt/]
+    traits        => [qw/Getopt/], 
+    documentation => 'yaml config file to specify all command line options'
 );
+
+__PACKAGE__->meta->make_immutable;
 
 
 sub get_config_from_file {

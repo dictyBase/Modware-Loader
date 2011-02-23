@@ -1,6 +1,7 @@
 package Modware::Transform::Command::goa2modgaf;
 
 # Other modules:
+use namespace::autoclean;
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
 extends qw/Modware::Transform::Command/;

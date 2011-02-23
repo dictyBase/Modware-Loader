@@ -12,7 +12,6 @@ use File::Basename;
 use Time::Piece;
 use YAML qw/LoadFile/;
 use Path::Class::File;
-with 'MooseX::ConfigFromFile';
 
 # Module implementation
 #
