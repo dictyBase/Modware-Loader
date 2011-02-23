@@ -4,6 +4,6 @@ package Modware::Loader;
 
 __END__
 
-# ABSTRACT: Loading module and scripts for Chado relational database 
+# ABSTRACT: Data loading modules and scripts for Chado relational database 
 
 
