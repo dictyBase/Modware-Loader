@@ -10,6 +10,9 @@ extends qw/MooseX::App::Cmd::Command/;
 # Module implementation
 #
 with 'MooseX::ConfigFromFile';
+with 'Modware::Role::Command::WithIO';
+with 'Modware::Role::Command::WithLogger';
+
 
 has '+configfile' => (
     cmd_aliases   => 'c',
