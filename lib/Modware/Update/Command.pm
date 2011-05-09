@@ -11,6 +11,8 @@ use File::Spec::Functions qw/catfile catdir rel2abs/;
 use File::Basename;
 use Time::Piece;
 use YAML qw/LoadFile/;
+use Modware::Types qw/Schema/;
+use Bio::Chado::Schema;
 extends qw/MooseX::App::Cmd::Command/;
 with 'MooseX::ConfigFromFile';
 
@@ -124,6 +126,17 @@ has 'exist_count' => (
     }
 );
 
+has 'schema' => (
+    is       => 'ro',
+    isa      => Schema,
+    traits   => [qw/NoGetopt/],
+    lazy     => 1,
+    defaults => sub {
+        my $self = shift;
+        return Bio::Chado::Schema->connect( $self->dsn, $self->user,
+            $self->password, $self->attribute );
+    }
+);
 
 sub _build_data_dir {
     return rel2abs(cwd);
