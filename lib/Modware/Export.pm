@@ -1,5 +1,5 @@
-package Modware::Update;
-
+package Modware::Export;
+use strict;
 
 # Other modules:
 use Moose;
@@ -9,11 +9,12 @@ extends qw/MooseX::App::Cmd/;
 # Module implementation
 #
 
-
 1;    # Magic true value required at end of module
 
 __END__
 
 =head1 NAME
 
-<Modware::Update> - [Base application class for writing update command classes]
+<Modware::Export> - [Base application class for writing export command classes]
+
+
