@@ -1,10 +1,11 @@
-package Modware::Loader::OntoManager;
+package Modware::Loader::Ontology::Manager;
 
 use namespace::autoclean;
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
 use Carp;
 use Encode;
+use Modware::Types qw/Row/;
 use utf8;
 
 with 'Modware::Role::Chado::Helper::BCS::WithDataStash' =>
@@ -13,11 +14,11 @@ with 'Modware::Role::Chado::Helper::BCS::WithDataStash' =>
 
 has 'helper' => (
     is      => 'rw',
-    isa     => 'Modware::Loader::OntoHelper',
+    isa     => 'Modware::Loader::Ontology::Helper',
     trigger => sub {
         my ( $self, $helper ) = @_;
         $self->meta->make_mutable;
-        my $engine = 'OntoEngine::'
+        my $engine = 'Modware::Loader::Role::Ontology::With'
             . ucfirst lc( $helper->chado->storage->sqlt_type );
         ensure_all_roles( $self, $engine );
         $self->meta->make_immutable;
@@ -37,14 +38,14 @@ has 'graph' => (
     isa => 'GOBO::Graph'
 );
 
-has 'cv_namespace' => (
+has 'cvrow' => (
     is  => 'rw',
-    isa => 'DBIx::Class::Row',
+    isa => Row,
 );
 
-has 'db_namespace' => (
+has 'dbrow' => (
     is  => 'rw',
-    isa => 'DBIx::Class::Row'
+    isa => Row
 );
 
 has 'other_cvs' => (

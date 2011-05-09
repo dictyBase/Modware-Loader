@@ -99,7 +99,7 @@ has 'update_count' => (
     default => 0,
     traits  => [qw/Counter NoGetopt/],
     handles => {
-        set_upate_count => 'set',
+        set_update_count => 'set',
         inc_update      => 'inc'
     }
 );
