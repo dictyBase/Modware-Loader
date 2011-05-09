@@ -1,2 +1,3 @@
 Modware-*
 .build/
+!modware-update

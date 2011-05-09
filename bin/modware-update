@@ -1,0 +1,14 @@
+#!/usr/bin/perl -w
+
+package update;
+
+use FindBin qw/$Bin/;
+use lib "$Bin/../lib";
+use Modware::Update;
+
+Modware::Update->run;
+
+
+=head1 NAME
+
+B<update> - [Runnable for update modules]
