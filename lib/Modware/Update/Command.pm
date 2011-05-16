@@ -126,7 +126,7 @@ has 'exist_count' => (
     }
 );
 
-has 'schema' => (
+has 'chado' => (
     is       => 'ro',
     isa      => Schema,
     traits   => [qw/NoGetopt/],

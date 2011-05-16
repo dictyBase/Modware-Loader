@@ -7,23 +7,26 @@ use Carp;
 use Encode;
 use Modware::Types qw/Row/;
 use utf8;
+use Modware::Loader::Response;
 
 with 'Modware::Role::Chado::Helper::BCS::WithDataStash' =>
     { create_stash_for =>
         [qw/cvterm_dbxrefs cvtermsynonyms cvtermprop_cvterms/] };
 
-has 'helper' => (
+has 'runner' => (
     is      => 'rw',
-    isa     => 'Modware::Loader::Ontology::Helper',
+    isa     => 'MooseX::App::Cmd::Command',
     trigger => sub {
-        my ( $self, $helper ) = @_;
+        my ( $self, $runner ) = @_;
+        my $helper = $runner->helper;
         $self->meta->make_mutable;
         my $engine = 'Modware::Loader::Role::Ontology::With'
             . ucfirst lc( $helper->chado->storage->sqlt_type );
         ensure_all_roles( $self, $engine );
         $self->meta->make_immutable;
         $self->setup;
-    }
+    },
+    handles => [qw/helper chado do_parse_id graph current_logger/]
 );
 
 has 'node' => (
@@ -31,11 +34,6 @@ has 'node' => (
     isa       => 'GOBO::Node|GOBO::LinkStatement',
     clearer   => 'clear_node',
     predicate => 'has_node'
-);
-
-has 'graph' => (
-    is  => 'rw',
-    isa => 'GOBO::Graph'
 );
 
 has 'cvrow' => (
@@ -56,11 +54,9 @@ has 'other_cvs' => (
         my ($self) = @_;
         my $names = [
             map { $_->name }
-                $self->helper->chado->resultset('Cv::Cv')->search(
-                {   name => {
-                        -not_in =>
-                            [ 'relationship', $self->cv_namespace->name ]
-                    }
+                $self->runner->chado->resultset('Cv::Cv')->search(
+                {   name =>
+                        { -not_in => [ 'relationship', $self->cvrow->name ] }
                 }
                 )
         ];
@@ -128,12 +124,6 @@ has 'term_cache' => (
     }
 );
 
-has 'skipped_message' => (
-    is      => 'rw',
-    isa     => 'Str',
-    clearer => 'clear_message'
-);
-
 before [ map { 'handle_' . $_ }
         qw/core alt_ids xrefs synonyms comment rel_prop/ ] => sub {
     my ($self) = @_;
@@ -157,63 +147,38 @@ sub handle_core {
     #    return;
     #}
 
-    my ( $dbxref_id, $db_id, $accession );
-    if ( $self->helper->has_idspace( $node->id ) ) {
-        my ( $db, $id ) = $self->helper->parse_id( $node->id );
-        $db_id     = $self->helper->find_or_create_db_id($db);
-        $dbxref_id = $self->helper->find_dbxref_id_by_cvterm(
-            dbxref => $id,
-            db     => $db,
-            cvterm => $node->label,
-            cv     => $node->namespace
-            ? $node->namespace
-            : $self->cv_namespace->name
-        );
-        $accession = $id;
-
+    my ( $db_id, $accession );
+    if (    $self->do_parse_id
+        and $self->helper->has_idspace( $node->id ) )
+    {
+        my ( $db, $accession ) = $self->helper->parse_id( $node->id );
+        $db_id = $self->helper->find_or_create_db_id($db);
     }
     else {
         my $namespace
             = $node->namespace
             ? $node->namespace
-            : $self->cv_namespace->name;
+            : $self->cvrow->name;
 
         $db_id     = $self->helper->find_or_create_db_id($namespace);
-        $dbxref_id = $self->helper->find_dbxref_id_by_cvterm(
-            dbxref => $node->id,
-            db     => $namespace,
-            cvterm => $node->label,
-            cv     => $namespace
-        );
         $accession = $node->id;
-    }
-
-    if ($dbxref_id) {    #-- node is already present
-        $self->skipped_message(
-            "Node is already present with $dbxref_id acc:$accession db: $db_id"
-        );
-        return;
     }
 
     $self->add_to_mapper(
         'dbxref' => { accession => $accession, db_id => $db_id } );
-    if ( $node->definition ) {
-        $self->add_to_mapper( 'definition',
-            encode( "UTF-8", $node->definition ) );
-    }
 
     #logic if node has its own namespace defined
     if ( $node->namespace
-        and ( $node->namespace ne $self->cv_namespace->name ) )
+        and ( $node->namespace ne $self->cvrow->name ) )
     {
         if ( $self->helper->exist_cvrow( $node->namespace ) ) {
             $self->add_to_mapper( 'cv_id',
                 $self->helper->get_cvrow( $node->namespace )->cv_id );
         }
         else {
-            my $row = $self->helper->chado->txn_do(
+            my $row = $self->chado->txn_do(
                 sub {
-                    $self->helper->chado->resultset('Cv::Cv')
+                    $self->chado->resultset('Cv::Cv')
                         ->create( { name => $node->namespace } );
                 }
             );
@@ -221,18 +186,15 @@ sub handle_core {
             $self->add_to_mapper( 'cv_id', $row->cv_id );
         }
     }
-    else {
-        $self->add_to_mapper( 'cv_id', $self->cv_namespace->cv_id );
+    else {    ## -- use the global namespace
+        $self->add_to_mapper( 'cv_id', $self->cvrow->cv_id );
     }
+
+    $self->add_to_mapper( 'definition', encode( "UTF-8", $node->definition ) )
+        if $node->defintion;
     $self->add_to_mapper( 'is_relationshiptype', 1 )
         if ref $node eq 'GOBO::RelationNode';
-
-    if ( $node->obsolete ) {
-        $self->add_to_mapper( 'is_obsolete', 1 );
-    }
-    else {
-        $self->add_to_mapper( 'is_obsolete', 0 );
-    }
+    $self->add_to_mapper( 'is_obsolete', 1 ) if $node->is_obsolete;
 
     if ( $node->isa('GOBO::TermNode') ) {
         if ( $self->is_term_in_cache( $node->label ) ) {
@@ -240,8 +202,10 @@ sub handle_core {
             if (    ( $term->[0] eq $self->get_map('cv_id') )
                 and ( $term->[1] eq $self->get_map('is_obsolete') ) )
             {
-                $self->skipped_message("Node is already processed");
-                return;
+                return Modware::Loader::Response->new(
+                    is_error => 1,
+                    message  => 'Node ' . $node->id . ' is already processed'
+                );
             }
         }
     }
@@ -251,7 +215,10 @@ sub handle_core {
         [ $self->get_map('cv_id'), $self->get_map('is_obsolete') ] )
         if $node->isa('GOBO::TermNode');
 
-    return 1;
+    return Modware::Loader::Response->new(
+        is_success => 1,
+        message    => 'Node ' . $node->id . ' is successfully processed'
+    );
 
 }
 
@@ -260,7 +227,7 @@ sub handle_alt_ids {
     my $node = $self->node;
     return if !$node->alt_ids;
     for my $alt_id ( @{ $node->alt_ids } ) {
-        if ( $self->helper->has_idspace($alt_id) ) {
+        if ( $self->do_parse_id and $self->helper->has_idspace($alt_id) ) {
             my ( $db, $id ) = $self->helper->parse_id($alt_id);
             $self->add_to_insert_cvterm_dbxrefs(
                 {   dbxref => {
@@ -275,21 +242,29 @@ sub handle_alt_ids {
             $self->add_to_insert_cvterm_dbxrefs(
                 {   dbxref => {
                         accession => $alt_id,
-                        db_id     => $self->db_namespace->db_id
+                        db_id     => $self->dbrow->db_id
                     }
                 }
             );
         }
     }
+    return Modware::Loader::Response->new(
+        is_success => 1,
+        message    => 'All alt_ids are processed for ' . $node->id
+    );
+
 }
 
 sub handle_xrefs {
     my ($self) = @_;
     my $xref_hash = $self->node->xref_h;
+
+XREF:
     for my $key ( keys %$xref_hash ) {
         my $xref = $xref_hash->{$key};
         my ( $dbxref_id, $db_id, $accession );
-        if (    $self->helper->has_idspace( $xref->id )
+        if (    $self->do_parse_id
+            and $self->helper->has_idspace( $xref->id )
             and $xref->id !~ /^http/ )
         {
             my ( $db, $id ) = $self->helper->parse_id( $xref->id );
@@ -297,7 +272,9 @@ sub handle_xrefs {
             if ( !$db or !$id ) {
 
                 #xref not getting parsed
-                next;
+                $self->current_logger->warn(
+                    "cannot parse xref $xref for " . $self->node->id );
+                next XREF;
             }
             $accession = $id;
             $dbxref_id = $self->helper->find_dbxref_id(
@@ -307,40 +284,35 @@ sub handle_xrefs {
 
         }
         else {
-
-            $db_id     = $self->db_namespace->db_id;
+            $db_id     = $self->dbrow->db_id;
             $accession = $xref->id;
             $dbxref_id = $self->helper->find_dbxref_id(
                 db     => $db_id,
                 dbxref => $accession
             );
         }
+        ## the dbxref lookup is done as multiple nodes can share them
 
-        if ($dbxref_id) {
+        if ($dbxref_id) {    ## -- shared dbxrefs present in database
             $self->add_to_insert_cvterm_dbxrefs(
                 { dbxref_id => $dbxref_id } );
         }
         elsif ( $self->xref_is_tracked($accession) ) {
+            ## -- shared dbxrefs in cache: not stored in the database yet
             $self->add_to_xref_cache( $accession,
                 [ $self->node->label, $db_id ] );
         }
-        else {
+        else {               ## -- new dbxref not either in cache or database
             my $insert_hash
                 = { dbxref => { accession => $accession, db_id => $db_id } };
-
-            #if ( $xref->label ) {
-            #$insert_hash->{dbxref}->{description} = $xref->label;
-            #}
             $self->add_to_insert_cvterm_dbxrefs($insert_hash);
             $self->add_to_xref_tracker( $accession, 1 );
         }
-
     }
-}
-
-sub handle_synonyms {
-    my ($self) = @_;
-    $self->_handle_synonyms;
+    return Modware::Loader::Response->new(
+        is_success => 1,
+        message    => 'All dbxrefs are processed for ' . $self->node->id
+    );
 }
 
 sub handle_comment {
@@ -356,6 +328,10 @@ sub handle_comment {
                 cv     => 'cvterm_property_type'
             )
         }
+    );
+	return Modware::Loader::Response->new(
+        is_success => 1,
+        message    => 'comments are processed for ' . $node->id
     );
 }
 
@@ -374,6 +350,10 @@ sub handle_rel_prop {
         }
     );
 
+	return Modware::Loader::Response->new(
+        is_success => 1,
+        message    => "relation property $prop processed for " . $node->id
+    );
 }
 
 sub keep_state_in_cache {

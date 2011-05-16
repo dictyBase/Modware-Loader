@@ -10,13 +10,16 @@ use Bio::Chado::Schema;
 use GOBO::Parsers::OBOParserDispatchHash;
 use Modware::Loader::OntoHelper;
 use List::MoreUtils qw/uniq/;
+use MooseX::Params::Validate;
 extends qw/Modware::Update::Command/;
 with 'Modware::Role::Command::WithLogger';
+with 'Modware::Role::Command::WithCounter' => { counter_for =>
+        [qw/relations_loaded relations_skip terms_loaded terms_skip/] };
 
 # Module implementation
 #
 
-has 'parse_id' => (
+has 'do_parse_id' => (
     default => 1,
     is      => 'rw',
     isa     => 'Bool',
@@ -112,8 +115,7 @@ sub execute {
         = $schema->resultset('General::Db')->find( { name => '_global' } );
 
     my $helper = Modware::Loader::Ontology::Helper->new( chado => $schema );
-    my $manager
-        = Modware::Loader::Ontology::Manager->new( helper => $helper );
+    my $manager = Modware::Loader::Ontology::Manager->new( runner => $self );
     $manager->cvrow($global_cv);
     $manager->dbrow($global_db);
     $manager->graph( $self->graph );
@@ -125,34 +127,52 @@ sub execute {
     $self->helper($helper);
     $self->loader($loader);
 
-    ## -- intersect relationship nodes
-    my ( $new_rel, $exist_rel ) = $self->intersect_terms('relation');
+    my ( %total, %new_count, %exist_count );
+    for my $type (qw/relations terms/) {
+        my ( $new_nodes, $exist_nodes ) = $self->intersect_nodes($type);
+        if ( defined $new_nodes ) {
+            $self->load_new_nodes( $type $new_nodes );
+            $new_count{$type} = scalar @$new_nodes;
+            $total{$type}     = $new_count{$type};
+        }
 
+        if ( defined $exist_nodes ) {
+            $self->update_nodes( $type, $exist_nodes );
+            $exist_count{$type} = scalar @$exist_nodes;
+            $total{$type}
+                = defined $total{$type}
+                ? $total{$type} + $exist_count{$type}
+                : $exist_count{$type};
+        }
+    }
+
+    ## -- relationships
+
+    ## -- probably use a stat flag
+    for my $type (qw/relations terms/) {
+        $log->info( "Total $type:$total{$type} Loaded:",
+            $self->relationships_loaded, " Skipped:",
+            $self->relationships_skipped );
+    }
 }
 
 sub intersect_terms {
-    my ( $self, $relation ) = @_;
+    my ( $self, $type ) = @_;
 
-    ## -- get all uniquename namespaces for terms
+    ## -- get all unique namespaces for terms
     my $namespaces = [
-        uniq (
-            $self->namespace,
-            map { $_->namespace } $relation
-            ? @{ $self->graph->relations }
-            : @{ $self->graph->terms }
-        )
-    ];
+        uniq( $self->namespace, map { $_->namespace } $self->graph->$type ) ];
 
     my $schema = $self->schema;
     my $rs     = $schema->resultset('Cv::Cvterm')->search(
         {   'cv.name'     => { -in => $namespaces },
             'is_obsolete' => 0,
-            'is_relationshiptype' => $relation ? 1 : 0,
+            'is_relationshiptype' => $type eq 'relations' ? 1 : 0,
         }
     );
 
     my %ids_from_db;
-    if ( $self->parse_ids ) {
+    if ( $self->do_parse_id ) {
         %ids_from_db
             = map { $_->{db}->{name} . ':' . $_->{accession} => 1 }
             $rs->search_related(
@@ -172,24 +192,95 @@ sub intersect_terms {
     }
 
     my $new_terms
-        = [ grep { not defined $ids_from_db{ $_->id } }
-            $relation
-        ? @{ $self->graph->relations }
-        : @{ $self->graph->terms } ];
+        = [ grep { not defined $ids_from_db{ $_->id } } $self->graph->$type ];
 
     my $exist_terms
-        = [ grep { defined $ids_from_db{ $_->id } }
-            $relation
-        ? @{ $self->graph->relations }
-        : @{ $self->graph->terms } ];
+        = [ grep { defined $ids_from_db{ $_->id } } $self->graph->$type ];
 
     return ( $new_terms, $exist_terms );
 }
 
-sub load_new_terms {
+sub load_new_nodes {
+    my ($self) = shift;
+    my ( $type, $terms ) = pos_validated_list(
+        \@_,
+        { isa => enum( [qw/terms relations/] ) },
+        { isa => 'ArrayRef[GOBO::Node|GOBO::LinkStatement]' }
+    );
+
+NODE:
+    for my $node (@$terms) {
+        $self->manager->node($node);
+        my $resp = $self->handle_core;
+        if ( $resp->is_error ) {
+            $self->current_logger->error( $resp->message );
+            $type eq 'relations'
+                ? $self->incr_relations_skip
+                : $self->incr_terms_skip;
+            next NODE;
+        }
+
+        for my $api ( map { 'handle_' . $_ }
+            qw/synonyms alt_ids xrefs comment/ )
+        {
+            my $resp = $self->manager->$api;
+            if ( $resp->is_error ) {
+                $self->current_logger->error( $resp->message );
+            }
+        }
+
+        if ( $type eq 'relations' ) {
+            $self->manager->handle_rel_prop($_)
+                for (qw/transitive reflexive cyclic anonymous/);
+            $self->manager->handle_rel_prop( $_, 'value' )
+                for (qw/domain range/);
+        }
+        $self->manager->keep_state_in_cache;
+        $self->manager->clear_current_state;
+
+        if ( $self->manager->entries_in_cache >= $self->commit_threshold ) {
+            my $entries = $self->manager->entries_in_cache;
+
+            $self->current_logger->info(
+                "going to load $entries relationships ....");
+            $self->loader->store_cache( $self->manager->cache );
+            $self->manager->clean_cache;
+
+            $self->current_logger->info(
+                "loaded $entries relationship nodes  ....");
+
+            $type eq 'relations'
+                ? $self->set_rel_loaded_count(
+                $self->relations_loaded + $entries )
+                : $self->set_terms_loaded( $self->terms_loaded + $entries );
+        }
+    }
+    if ( $self->manager->entries_in_cache ) {
+        my $entries = $self->manager->entries_in_cache;
+
+        $self->current_logger->info(
+            "going to load $entries relationships ....");
+        $self->loader->store_cache( $self->manager->cache );
+        $self->manager->clean_cache;
+
+        $self->current_logger->info(
+            "loaded $entries relationship nodes  ....");
+
+        $type eq 'relations'
+            ? $self->set_relations_loaded(
+            $self->relations_loaded + $entries )
+            : $self->set_terms_loaded( $self->terms_loaded + $entries );
+    }
 }
 
-sub update_terms {
+sub update_nodes {
+    my $self = shift;
+    my ( $type, $terms ) = pos_validated_list(
+        \@_,
+        { isa => enum( [qw/terms relations/] ) },
+        { isa => 'ArrayRef[GOBO::Node|GOBO::LinkStatement]' }
+    );
+
 }
 
 1;    # Magic true value required at end of module

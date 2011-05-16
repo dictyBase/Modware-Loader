@@ -3,11 +3,12 @@ package Modware::Loader::Role::Ontology::WithOracle;
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
+use Modware::Loader::Response;
 
 # Module implementation
 #
 
-sub _handle_synonyms {
+sub handle_synonyms {
     my ($self) = @_;
     my $node = $self->node;
     return if !$node->synonyms;
@@ -20,11 +21,14 @@ sub _handle_synonyms {
                     cv     => 'synonym_type',
                     dbxref => $uniq_syns{$label},
                     db     => 'internal'
-                    )
-
+                )
             }
         );
     }
+    return Modware::Loader::Response->new(
+    	is_success => 1, 
+    	message => 'Loaded all synonyms for '. $node->id
+    );
 }
 
 1;    # Magic true value required at end of module
