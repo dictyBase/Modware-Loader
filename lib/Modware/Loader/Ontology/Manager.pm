@@ -329,7 +329,7 @@ sub handle_comment {
             )
         }
     );
-	return Modware::Loader::Response->new(
+    return Modware::Loader::Response->new(
         is_success => 1,
         message    => 'comments are processed for ' . $node->id
     );
@@ -350,7 +350,7 @@ sub handle_rel_prop {
         }
     );
 
-	return Modware::Loader::Response->new(
+    return Modware::Loader::Response->new(
         is_success => 1,
         message    => "relation property $prop processed for " . $node->id
     );
@@ -376,25 +376,29 @@ sub handle_relation {
     my $object     = $node->target;
     my $subj_inst  = $graph->get_node($subject);
     my $obj_inst   = $graph->get_node($object);
-    my $default_cv = $self->cv_namespace->name;
 
     my $type_id = $self->helper->find_relation_term_id(
-        cv     => [ $default_cv, 'relationship', $self->other_cvs ],
+        cv     => [ $self->cvrow->name, 'relationship' ],
         cvterm => $type
     );
 
     if ( !$type_id ) {
-        $self->skipped_message("$type relation node not in storage");
-        return;
+        return Modware::Loader::Response->new(
+            message  => "$type relation node not in storage",
+            is_error => 1
+        );
     }
 
     my $subject_id = $self->helper->find_cvterm_id_by_term_id(
         term_id => $subject,
         cv      => $subj_inst->namespace
     );
+
     if ( !$subject_id ) {
-        $self->skipped_message("subject $subject not in storage");
-        return;
+        return Modware::Loader::Response->new(
+            message  => "subject $subject not in storage",
+            is_error => 1
+        );
     }
 
     my $object_id = $self->helper->find_cvterm_id_by_term_id(
@@ -403,8 +407,10 @@ sub handle_relation {
     );
 
     if ( !$object_id ) {
-        $self->skipped_message("object $object not in storage");
-        return;
+        return Modware::Loader::Response->new(
+            message  => "object $object not in storage",
+            is_error => 1
+        );
     }
 
     $self->add_to_mapper( 'type_id',    $type_id );

@@ -6,9 +6,10 @@ use MooseX::Params::Validate;
 use Modware::Types qw/Schema/;
 with 'Modware::Role::Chado::Helper::BCS::Cvterm';
 
-has 'chado' => (
-    is  => 'rw',
-    isa => Schema
+has 'runner' => (
+    is      => 'rw',
+    isa     => 'MooseX::App::Cmd::Command',
+    handles => [qw/chado do_parse_id/]
 );
 
 has 'dbrow' => (
@@ -66,37 +67,31 @@ sub find_dbxref_id_by_cvterm {
 sub find_relation_term_id {
     my ( $self, $cvterm, $cv ) = validated_list(
         \@_,
-        cvterm => { isa => 'Any' },
+        cvterm => { isa => 'Str' },
         cv     => { isa => 'ArrayRef' }
     );
 
     ## -- extremely redundant call have to cache later ontology
     my $rs = $self->chado->resultset('Cv::Cvterm')->search(
-        {   -and => [
-                -or => [
-                    'me.name'          => $cvterm,
-                    'dbxref.accession' => $cvterm
-                ],
-                'cv.name' => { -in => $cv }
-            ]
+        {   'me.name' => $cvterm,
+            'cv.name' => { -in => $cv }
         },
-        { join => [qw/cv dbxref/] }
+        { join => 'cv' }
     );
 
     if ( $rs->count ) {
         return $rs->first->cvterm_id;
     }
-
 }
 
 sub find_cvterm_id_by_term_id {
     my ( $self, $cvterm, $cv ) = validated_list(
         \@_,
-        term_id => { isa => 'Any' },
+        term_id => { isa => 'Str' },
         cv      => { isa => 'Str' },
     );
 
-    if ( $self->has_idspace($cvterm) ) {
+    if ( $self->do_parse_id and $self->has_idspace($cvterm) ) {
         my ( $db, $id ) = $self->parse_id($cvterm);
         my $rs = $self->chado->resultset('Cv::Cvterm')->search(
             {   'dbxref.accession' => $id,
@@ -113,8 +108,8 @@ sub find_cvterm_id_by_term_id {
 
     my $rs
         = $self->chado->resultset('Cv::Cvterm')
-        ->search( { 'me.name' => $cvterm, 'cv.name' => $cv },
-        { join => 'cv' } );
+        ->search( { 'dbxref.accession' => $cvterm, 'cv.name' => $cv },
+        { join => [qw/cv dbxref/] } );
 
     if ( $rs->count ) {
         return $rs->first->cvterm_id;

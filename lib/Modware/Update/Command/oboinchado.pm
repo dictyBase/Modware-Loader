@@ -92,7 +92,7 @@ has 'loader' => (
 sub execute {
     my $self   = shift;
     my $log    = $self->logger;
-    my $schema = $self->schema;
+    my $schema = $self->chado;
     my $engine = Modware::Factory::Chado::BCS->new(
         engine => $schema->storage->sqlt_type );
     $engine->transform($schema);
@@ -101,20 +101,26 @@ sub execute {
         = GOBO::Parsers::OBOParserDispatchHash->new( file => $self->input );
     $self->parser($parser);
 
-    ## -- the ontology should exist in the database
-    my $global_cv
-        = $schema->resultset('Cv::Cv')->find( { name => $self->namespace } );
-    if ( !$global_cv ) {
-        $log->error( "Given ontology "
-                . $self->namespace
-                . " do not exist in database" );
-        warn "could not ontology !!!! Check the log output\n";
-        $log->logdie("!!! Could not load a new one !!!!");
-    }
-    my $global_db
-        = $schema->resultset('General::Db')->find( { name => '_global' } );
+    # 1. Validation/Verification
+    ## -- currently there is no validation steps
+    ## -- will add here if something comes up
 
-    my $helper = Modware::Loader::Ontology::Helper->new( chado => $schema );
+    # 3. Setup before loading
+    ## -- the ontology and db namespace lookup
+    my $global_cv = $schema->txn_do(
+        sub {
+            return $schema->resultset('Cv::Cv')
+                ->find_or_create( { name => $self->namespace } );
+        }
+    );
+    my $global_db = $schema->txn_do(
+        sub {
+            return $schema->resultset('General::Db')
+                ->find_or_create( { name => '_global' } );
+        }
+    );
+
+    my $helper = Modware::Loader::Ontology::Helper->new( runner => $self );
     my $manager = Modware::Loader::Ontology::Manager->new( runner => $self );
     $manager->cvrow($global_cv);
     $manager->dbrow($global_db);
@@ -131,7 +137,7 @@ sub execute {
     for my $type (qw/relations terms/) {
         my ( $new_nodes, $exist_nodes ) = $self->intersect_nodes($type);
         if ( defined $new_nodes ) {
-            $self->load_new_nodes( $type $new_nodes );
+            $self->load_new_nodes( $type, $new_nodes );
             $new_count{$type} = scalar @$new_nodes;
             $total{$type}     = $new_count{$type};
         }
@@ -147,6 +153,10 @@ sub execute {
     }
 
     ## -- relationships
+    my $edges = $self->graph->statements;
+    $self->manager->clean_cache;
+    $self->loader->resultset('Cv::CvtermRelationship');
+    $self->load_relationships($edges);
 
     ## -- probably use a stat flag
     for my $type (qw/relations terms/) {
@@ -156,6 +166,10 @@ sub execute {
     }
 }
 
+sub load_relationships {
+    my ( $self, $edges ) = @_;
+}
+
 sub intersect_terms {
     my ( $self, $type ) = @_;
 
@@ -163,7 +177,7 @@ sub intersect_terms {
     my $namespaces = [
         uniq( $self->namespace, map { $_->namespace } $self->graph->$type ) ];
 
-    my $schema = $self->schema;
+    my $schema = $self->chado;
     my $rs     = $schema->resultset('Cv::Cvterm')->search(
         {   'cv.name'     => { -in => $namespaces },
             'is_obsolete' => 0,

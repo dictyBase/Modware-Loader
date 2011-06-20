@@ -100,7 +100,7 @@ has 'update_count' => (
     traits  => [qw/Counter NoGetopt/],
     handles => {
         set_update_count => 'set',
-        inc_update      => 'inc'
+        inc_update       => 'inc'
     }
 );
 
@@ -133,10 +133,42 @@ has 'chado' => (
     lazy     => 1,
     defaults => sub {
         my $self = shift;
-        return Bio::Chado::Schema->connect( $self->dsn, $self->user,
-            $self->password, $self->attribute );
+        return Bio::Chado::Schema->connect(
+            $self->dsn,
+            $self->user,
+            $self->password,
+            $self->attribute,
+            {   on_connect_do   => $self->_on_connect,
+                on_disonnect_do => $self->_on_disonnect
+            }
+        );
     }
 );
+
+has '_on_connect_do' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    traits  => [qw/Array/],
+    handles => {
+        add_on_connect   => 'push',
+        clear_on_connect => 'clear';
+    },
+    default => sub { [] },
+    lazy    => 1
+);
+
+has '_on_disconnect_do' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    traits  => [qw/Array/],
+    handles => {
+        add_on_disconnect   => 'push',
+        clear_on_disconnect => 'clear';
+    },
+    default => sub { [] },
+    lazy    => 1
+);
+
 
 sub _build_data_dir {
     return rel2abs(cwd);
