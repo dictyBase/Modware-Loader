@@ -13,6 +13,7 @@ use GOBO::Evidence;
 use GOBO::Gene;
 use GOBO::Graph;
 use Time::Piece;
+use Moose::Util qw/ensure_all_roles/;
 
 extends qw/Modware::Export::Command/;
 
@@ -125,6 +126,24 @@ has 'chunk_threshold' => (
         'Threshold for no of entries that will be flushed to file after processing'
 );
 
+has 'skip_file' => (
+    is      => 'rw',
+    isa     => 'Str',
+    trigger => sub {
+        my ( $self, $file ) = @_;
+        $self->meta->make_mutable;
+        ensure_all_roles( $self, 'Modware::Role::Command::Export::FilterId' );
+        $self->meta->make_immutable;
+        $self->init_resource($file);
+        $self->do_skip(1);
+    },
+    documentation =>
+        'Text file with list of ID(one per line) that will be skipped from dumping'
+);
+
+has 'do_skip' =>
+    ( is => 'rw', isa => 'Bool', default => 0, traits => [qw/NoGetopt/] );
+
 sub execute {
     my ($self) = @_;
     my $schema = $self->chado;
@@ -139,8 +158,8 @@ sub execute {
     $writer->add_to_header(' ');
 
     my $base_query = {
-    	'cvterm.is_obsolete' => 0, 
-        'cv.name' => {
+        'cvterm.is_obsolete' => 0,
+        'cv.name'            => {
             -in => [
                 qw/molecular_function biological_process
                     cellular_component/
@@ -150,8 +169,8 @@ sub execute {
 
     };
 
-    if ($self->include_obsolete) {
-    	delete $base_query->{'cvterm.is_obsolete'};
+    if ( $self->include_obsolete ) {
+        delete $base_query->{'cvterm.is_obsolete'};
     }
 
     my $assoc_rs = $schema->resultset('Sequence::FeatureCvterm')->search(
@@ -161,7 +180,6 @@ sub execute {
             cache    => 1,
         }
     );
-
 
     if ( $self->sample_run ) {
         $assoc_rs = $assoc_rs->search( {}, { rows => 2500 } );
@@ -176,6 +194,12 @@ sub execute {
 
         ## -- get the associated node(gene feature generally)
         my $feat = $assoc->feature;
+
+        ## -- skip checking
+        if ( $self->do_skip ) {
+            next if $self->has_skip_id( $feat->dbxref->accession );
+        }
+
         my $gene_feat;
         if ( $feat->type->name ne 'gene' ) {    ## for gaf2.0
             my $node = GOBO::TermNode->new;
