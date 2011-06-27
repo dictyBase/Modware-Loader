@@ -27,10 +27,12 @@ has '_update_stack' => (
         'all_publications' => 'elements', 
         'publications' => 'count'
     }, 
+    default => sub {[]}
 );
 
 after 'execute' => sub {
     my ($self) = @_;
+    return if !$self->publications;
     my $logger = $self->current_logger;
     my $output = Path::Class::File->new( $self->output_html )->openw;
     $output->print('<br/><h4>This week\'s new papers</h4>');
