@@ -4,6 +4,7 @@ package Modware::Role::Command::Export::FilterId;
 use namespace::autoclean;
 use Moose::Role;
 use Path::Class::File;
+use Carp;
 
 # Module implementation
 #
@@ -33,7 +34,7 @@ sub init_resource {
     while ( my $line = $handler->getline ) {
         next if $line !~ /\S+/;
         chomp $line;
-        $self->_add_skip_id($line);
+        $self->_add_skip_id($line,  1);
     }
     $handler->close;
 }
