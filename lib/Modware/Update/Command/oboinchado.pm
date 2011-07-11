@@ -12,12 +12,29 @@ use Modware::Loader::OntoHelper;
 use List::MoreUtils qw/uniq/;
 use MooseX::Params::Validate;
 extends qw/Modware::Update::Command/;
-with 'Modware::Role::Command::WithLogger';
+with 'Modware::Loader::Role::Temp::Obo';
+with 'Modware::Role::Command::WithReportLogger';
+with 'Modware::Role::Command::WithValidationLogger';
 with 'Modware::Role::Command::WithCounter' => { counter_for =>
         [qw/relations_loaded relations_skip terms_loaded terms_skip/] };
 
 # Module implementation
 #
+
+has 'term_cache' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash NoGetOpt/],
+    default => sub { {} },
+    handles => {
+        add_to_term_cache   => 'set',
+        clean_term_cache    => 'clear',
+        terms_in_cache      => 'count',
+        terms_from_cache    => 'keys',
+        is_term_in_cache    => 'defined',
+        get_term_from_cache => 'get'
+    }
+);
 
 has 'do_parse_id' => (
     default => 1,
@@ -101,9 +118,31 @@ sub execute {
         = GOBO::Parsers::OBOParserDispatchHash->new( file => $self->input );
     $self->parser($parser);
 
+    my $vlogger = $self->validation_logger;
+    $vlogger->log('start parsing log file');
+    $parser->parse;
+    $vlogger->log('finished parsing log file');
+
     # 1. Validation/Verification
-    ## -- currently there is no validation steps
-    ## -- will add here if something comes up
+    if ( !$parser->format_version >= 1.2 ) {
+        $vlogger->log("obo format should be 1.2 or above");
+        $vlogger->fatal( $parser->format_version, " not supported" );
+    }
+    $vlogger->info('generating graph for obo file');
+    my $graph = $parser->graph;
+    $vlogger->info('finish generating graph for obo file');
+
+    for my $t ( @{ $graph->type } ) {
+        my $status = $t->obsolete ? 'true' : 'false';
+        my $label = $t->label;
+        if ( $self->is_term_in_cache($label)
+            and ( $self->get_term_from_cache($label) eq $status ) )
+        {
+            $vlogger->log( "DUPLICATE TERM:$label ", $t->id );
+            next;
+        }
+        $self->add_to_term_cache( $t->label, $status );
+    }
 
     # 3. Setup before loading
     ## -- the ontology and db namespace lookup

@@ -17,34 +17,12 @@ has 'validation_logfile' => (
     documentation => 'Name of logfile,  default goes to STDIN'
 );
 
-
-sub validation_logger_for {
-	my ($self, $type) = @_;
-	my $method = "_validation_$type_logger";
-	return $self->$method;
-}
-
-has '_validation_info_logger' => (
-    is      => 'ro',
-    isa     => 'Log::Dispatchouli',
-    lazy    => 1,
-    traits  => [qw/NoGetopt/],
-    default => sub {
-    	my ($self) = @_;
-    	return $self->_build_validation_logger('info');
-    }
-);
-
-has '_validation_error_logger' => (
-    is      => 'ro',
-    isa     => 'Log::Dispatchouli',
-    lazy    => 1,
-    traits  => [qw/NoGetopt/],
-	default => sub {
-    	my ($self) = @_;
-    	return $self->_build_validation_logger('error');
-    }
-
+has 'validation_logger' => (
+	is => 'rw', 
+	isa => 'Log::Dispatchouli', 
+	predicate => 'has_validation_logger', 
+	traits => [qw/NoGetopt/], 
+	builder => '_build_valiation_logger'
 );
 
 sub _build_validation_logger {
