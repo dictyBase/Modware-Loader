@@ -8,10 +8,11 @@ use Carp;
 use Modware::Factory::Chado::BCS;
 use Bio::Chado::Schema;
 use GOBO::Parsers::OBOParserDispatchHash;
+use Digest::MD5 qw/md5/;
 use Modware::Loader::OntoHelper;
-use List::MoreUtils qw/uniq/;
 use MooseX::Params::Validate;
 extends qw/Modware::Update::Command/;
+with 'Modware::Loader::Role::Onotoloy::WithHelper';
 with 'Modware::Loader::Role::Temp::Obo';
 with 'Modware::Role::Command::WithReportLogger';
 with 'Modware::Role::Command::WithValidationLogger';
@@ -20,21 +21,6 @@ with 'Modware::Role::Command::WithCounter' => { counter_for =>
 
 # Module implementation
 #
-
-has 'term_cache' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => [qw/Hash NoGetOpt/],
-    default => sub { {} },
-    handles => {
-        add_to_term_cache   => 'set',
-        clean_term_cache    => 'clear',
-        terms_in_cache      => 'count',
-        terms_from_cache    => 'keys',
-        is_term_in_cache    => 'defined',
-        get_term_from_cache => 'get'
-    }
-);
 
 has 'do_parse_id' => (
     default => 1,
@@ -59,281 +45,383 @@ has 'commit_threshold' => (
         'No of entries that will be cached before it is commited to the database'
 );
 
-has 'parser' => (
-    is      => 'rw',
-    isa     => 'GOBO::Parsers',
-    traits  => [qw/NoGetopt/],
-    trigger => sub {
-        my ( $self, $parser ) = @_;
-        $parser->parse;
-    }
-);
-
-has 'graph' => (
-    is      => 'ro',
-    isa     => 'GOBO::Graph',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my $self = shift;
-        return $self->parser->graph;
-    }
-);
-
-has 'namespace' => (
-    is      => 'ro',
-    isa     => 'Str',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my $self = shift;
-        return $self->parser->default_namespace;
-    }
-);
-
-has 'manager' => (
-    is  => 'rw',
-    isa => 'Modware::Loader::Ontology::Manager',
-);
-
-has 'helper' => (
-    is  => 'rw',
-    isa => 'Modware::Loader::Ontology::Helper',
-);
-
-has 'loader' => (
-    is  => 'rw',
-    isa => 'Modware::Loader::Ontology::Loader',
-);
-
 sub execute {
-    my $self   = shift;
-    my $log    = $self->logger;
+    my $self = shift;
+
+    my $log     = $self->logger;
+    my $vlogger = $self->validation_logger;
+
     my $schema = $self->chado;
     my $engine = Modware::Factory::Chado::BCS->new(
         engine => $schema->storage->sqlt_type );
     $engine->transform($schema);
 
+    $vlogger->log('start parsing log file');
+
     my $parser
         = GOBO::Parsers::OBOParserDispatchHash->new( file => $self->input );
     $self->parser($parser);
-
-    my $vlogger = $self->validation_logger;
-    $vlogger->log('start parsing log file');
     $parser->parse;
+    $self->namespace( $parser->default_namespace );
     $vlogger->log('finished parsing log file');
 
     # 1. Validation/Verification
-    if ( !$parser->format_version >= 1.2 ) {
+    if ( !$$parser->format_version >= 1.2 ) {
         $vlogger->log("obo format should be 1.2 or above");
         $vlogger->fatal( $parser->format_version, " not supported" );
     }
+
     $vlogger->info('generating graph for obo file');
-    my $graph = $parser->graph;
+    $self->graph( $parser->graph );
     $vlogger->info('finish generating graph for obo file');
 
-    for my $t ( @{ $graph->type } ) {
-        my $status = $t->obsolete ? 'true' : 'false';
-        my $label = $t->label;
-        if ( $self->is_term_in_cache($label)
-            and ( $self->get_term_from_cache($label) eq $status ) )
-        {
-            $vlogger->log( "DUPLICATE TERM:$label ", $t->id );
-            next;
-        }
-        $self->add_to_term_cache( $t->label, $status );
-    }
+    $self->_set_various_namespace;
+    $self->_process_relations_to_memory;
+    $self->_prcoess_nodes_to_memory;
 
-    # 3. Setup before loading
-    ## -- the ontology and db namespace lookup
-    my $global_cv = $schema->txn_do(
-        sub {
-            return $schema->resultset('Cv::Cv')
-                ->find_or_create( { name => $self->namespace } );
-        }
-    );
-    my $global_db = $schema->txn_do(
-        sub {
-            return $schema->resultset('General::Db')
-                ->find_or_create( { name => '_global' } );
-        }
-    );
+}
 
-    my $helper = Modware::Loader::Ontology::Helper->new( runner => $self );
-    my $manager = Modware::Loader::Ontology::Manager->new( runner => $self );
-    $manager->cvrow($global_cv);
-    $manager->dbrow($global_db);
-    $manager->graph( $self->graph );
+sub _process_relations_to_memory {
+    my ($self) = @_;
+    my $graph = $self->graph;
+RELATION:
+    for my $edge ( @{ $graph->statements } ) {
+        my $subject  = $graph->get_node( $edge->node )->label;
+        my $object   = $graph->get_node( $edge->target )->label;
+        my $relation = $edge->relation;
 
-    my $loader = Modware::Loader::Ontology->new( manager => $manager );
-    $loader->resultset('Cv::Cvterm');
-
-    $self->manager($manager);
-    $self->helper($helper);
-    $self->loader($loader);
-
-    my ( %total, %new_count, %exist_count );
-    for my $type (qw/relations terms/) {
-        my ( $new_nodes, $exist_nodes ) = $self->intersect_nodes($type);
-        if ( defined $new_nodes ) {
-            $self->load_new_nodes( $type, $new_nodes );
-            $new_count{$type} = scalar @$new_nodes;
-            $total{$type}     = $new_count{$type};
-        }
-
-        if ( defined $exist_nodes ) {
-            $self->update_nodes( $type, $exist_nodes );
-            $exist_count{$type} = scalar @$exist_nodes;
-            $total{$type}
-                = defined $total{$type}
-                ? $total{$type} + $exist_count{$type}
-                : $exist_count{$type};
-        }
-    }
-
-    ## -- relationships
-    my $edges = $self->graph->statements;
-    $self->manager->clean_cache;
-    $self->loader->resultset('Cv::CvtermRelationship');
-    $self->load_relationships($edges);
-
-    ## -- probably use a stat flag
-    for my $type (qw/relations terms/) {
-        $log->info( "Total $type:$total{$type} Loaded:",
-            $self->relationships_loaded, " Skipped:",
-            $self->relationships_skipped );
+        ## -- memory consumption
+        my $md5 = md5( $subject . $object . $relation );
+        next RELATION if $self->has_relation($md5);
+        $self->add_relation( $md5, [ $subject, $object, $relation ] );
     }
 }
 
-sub load_relationships {
-    my ( $self, $edges ) = @_;
-}
-
-sub intersect_terms {
-    my ( $self, $type ) = @_;
-
-    ## -- get all unique namespaces for terms
-    my $namespaces = [
-        uniq( $self->namespace, map { $_->namespace } $self->graph->$type ) ];
-
+sub _set_various_namespace {
+    my ($self) = @_;
     my $schema = $self->chado;
-    my $rs     = $schema->resultset('Cv::Cvterm')->search(
-        {   'cv.name'     => { -in => $namespaces },
-            'is_obsolete' => 0,
-            'is_relationshiptype' => $type eq 'relations' ? 1 : 0,
-        }
+
+    ## -- basic cv and db namespaces
+    $self->cvrow(
+        $schema->txn_do(
+            sub {
+                $schema->resultset('Cv::Cv')
+                    ->find_or_create( { name => $self->namespace } );
+            }
+        )
+    );
+    $self->add_dbrow(
+        'internal',
+        $schema->txn_do(
+            sub {
+                $schema->resultset('General::Db')
+                    ->find_or_create( { name => 'internal' } );
+            }
+        )
     );
 
-    my %ids_from_db;
-    if ( $self->do_parse_id ) {
-        %ids_from_db
-            = map { $_->{db}->{name} . ':' . $_->{accession} => 1 }
-            $rs->search_related(
-            'dbxref',
-            {},
-            {   result_class => 'DBIx::Class::ResultClass::HashRefInflator',
-                prefetch     => 'db'
+    $self->add_cvrow(
+        'cvterm_property_type',
+        $schema->txn_do(
+            sub {
+                return $schema->resultset('Cv::Cv')
+                    ->find_or_create( { name => 'cvterm_property_type' } );
             }
-            );
-    }
-    else {
-        %ids_from_db = map { $_->{accession} => 1 } $rs->search_related(
-            'dbxref',
-            {},
-            { result_class => 'DBIx::Class::ResultClass::HashRefInflator', }
+        )
+    );
+
+## -- setup for synonyms
+    $self->add_cvrow(
+        'synonym_type',
+        $schema->txn_do(
+            sub {
+                return $schema->resultset('Cv::Cv')
+                    ->find_or_create( { name => 'synonym_type' } );
+            }
+        )
+    );
+
+    for my $sc ( $self->synonym_scopes ) {
+        $self->add_cvterm_row(
+            $sc,
+            $schema->txn_do(
+                sub {
+                    return $schema->resultset('Cv::Cvterm')->find_or_create(
+                        {   name  => $sc,
+                            cv_id => $self->get_cvrow('synonym_type')->cv_id,
+                            dbxref_id => $schema->resultset('General::Dbxref')
+                                ->find_or_create(
+                                {   accession => $sc,
+                                    db_id =>
+                                        $self->get_dbrow('internal')->db_id
+                                }
+                                )->dbxref_id
+                        }
+                    );
+                }
+            )
         );
     }
 
-    my $new_terms
-        = [ grep { not defined $ids_from_db{ $_->id } } $self->graph->$type ];
+    ## -- setup for comment
+    $self->add_cvterm_row(
+        'comment',
+        $schema->txn_do(
+            sub {
+                $schema->resultset('Cv::Cvterm')->find_or_create(
+                    {   cv_id =>
+                            $self->get_cvrow('cvterm_property_type')->cv_id,
+                        name      => 'comment',
+                        dbxref_id => $schema->resultset('General::Dbxref')
+                            ->find_or_create(
+                            {   accession => 'comment',
+                                db_id => $self->get_dbrow('internal')->db_id
+                            }
+                            )->dbxref_id
+                    }
+                );
+            }
+        )
+    );
 
-    my $exist_terms
-        = [ grep { defined $ids_from_db{ $_->id } } $self->graph->$type ];
+## -- setup for alt_id
+    $self->set_cvterm_row(
+        'alt_id',
+        $schema->txn_do(
+            sub {
+                return $schema->resultset('Cv::Cvterm')->find_or_create(
+                    {   cv_id =>
+                            $self->get_cvrow('cvterm_property_type')->cv_id,
+                        name      => 'alt_id',
+                        dbxref_id => $schema->resultset('General::Dbxref')
+                            ->find_or_create(
+                            {   accession => 'alt_id',
+                                db_id => $self->get_dbrow('internal')->db_id
+                            }
+                            )->dbxref_id
+                    }
+                );
+            }
+        )
+    );
 
-    return ( $new_terms, $exist_terms );
+## -- setup for xrefs
+    $self->get_cvterm_row(
+        'xref',
+        $schema->txn_do(
+            sub {
+                return $schema->resultset('Cv::Cvterm')->find_or_create(
+                    {   cv_id =>
+                            $self->get_cvrow('cvterm_property_type')->cv_id,
+                        name      => 'xref',
+                        dbxref_id => $schema->resultset('General::Dbxref')
+                            ->find_or_create(
+                            {   accession => 'xref',
+                                db_id => $self->get_dbrow('internal')->db_id
+                            }
+                            )->dbxref_id
+                    }
+                );
+            }
+        )
+    );
+
+## -- relation terms properties
+    for my $prop ( $self->relation_props ) {
+        $self->set_cvterm_row(
+            $prop,
+            $schema->txn_do(
+                sub {
+                    return $schema->resultset('Cv::Cvterm')->find_or_create(
+                        {   name  => $prop,
+                            cv_id => $self->get_cvrow('cvterm_property_type')
+                                ->cv_id,
+                            dbxref_id => $schema->resultset('General::Dbxref')
+                                ->find_or_create(
+                                {   accession => $prop,
+                                    db_id =>
+                                        $self->get_dbrow('internal')->db_id
+                                }
+                                )->dbxref_id
+                        }
+                    );
+                }
+            );
+        }
+    }
 }
 
-sub load_new_nodes {
-    my ($self) = shift;
-    my ( $type, $terms ) = pos_validated_list(
+sub _process_nodes_to_memory {
+    my ( $self, %params ) = validated_hash(
         \@_,
-        { isa => enum( [qw/terms relations/] ) },
-        { isa => 'ArrayRef[GOBO::Node|GOBO::LinkStatement]' }
+        graph  => { isa => 'GOBO::Graph',        optional => 1 },
+        schema => { isa => 'Bio::Chado::Schema', optional => 1 },
     );
+
+    my $graph  = $params{graph}  || $self->graph;
+    my $schema = $params{schema} || $self->schema;
+    my $vlogger = $self->validation_logger;
 
 NODE:
-    for my $node (@$terms) {
-        $self->manager->node($node);
-        my $resp = $self->handle_core;
-        if ( $resp->is_error ) {
-            $self->current_logger->error( $resp->message );
-            $type eq 'relations'
-                ? $self->incr_relations_skip
-                : $self->incr_terms_skip;
-            next NODE;
-        }
+    for my $type ( $self->term_types ) {
+        for my $node ( @{ $graph->$type } ) {
+            my $status = $node->obsolete ? 1 : 0;
+            my $label = $node->label;
+            $label = $node->id if $node->id eq 'is_a';
 
-        for my $api ( map { 'handle_' . $_ }
-            qw/synonyms alt_ids xrefs comment/ )
-        {
-            my $resp = $self->manager->$api;
-            if ( $resp->is_error ) {
-                $self->current_logger->error( $resp->message );
+            if ( $self->is_term_in_cache($label) ) {
+                my $estatus = $self->get_term_from_cache($label)->[0];
+                if ( $estatus == $status ) {
+                    $vlogger->log( "DUPLICATE TERM:$label ", $node->id );
+                    next NODE;
+                }
             }
+            $self->add_to_term_cache( $t->label, [ $status, $id ] );
+
+            if ( $type eq 'relations' ) {
+                for my $prop ( $self->relation_attributes ) {
+                    $self->add_rel_attr(
+                        [   $label, 1, $self->get_cvterm_row($prop)->cvterm_id
+                        ]
+                    ) if $node->$prop;
+                }
+                for my $prop ( $self->relation_properties ) {
+                    $self->add_rel_attr(
+                        [   $label, $t->$prop,
+                            $self->get_cvterm_row($prop)->cvterm_id
+                        ]
+                    ) if $node->$prop;
+                }
+            }
+
+            my $scope
+                = $node->namespace ? $node->namespace : $default_namespace;
+            my ( $db, $id );
+            if ( $node->id =~ /:/ ) {
+                ( $db, $id ) = split /:/, $node->id;
+            }
+            else {
+                $db = $scope;
+                $id = $node->id;
+            }
+
+            $self->add_dbrow(
+                $db,
+                $schema->txn_do(
+                    sub {
+                        = $schema->resultset('General::Db')
+                            ->find_or_create( { name => $db } );
+                    }
+                )
+            ) if !$self->has_dbrow($db);
+
+            $self->add_cvrow(
+                $scope,
+                $schema->txn_do(
+                    sub {
+                        $schema->resultset('Cv::Cv')
+                            ->find_or_create( { name => $scope } );
+                    }
+                )
+            ) if !$self->has_cvrow($scope);
+
+            $self->add_node(
+                [   $label,
+                    $self->get_dbrow($db)->db_id,
+                    $self->get_cvrow($scope)->cv_id,
+                    $id,
+                    $node->definition
+                    ? encode( "UTF-8", $node->definition )
+                    : undef,
+                    $status,
+                    $type eq 'relations' ? 1 : 0,
+                    $node->comment ? $node->comment : undef
+                ]
+            );
+
+            ## -- synonyms
+            $self->_process_synonyms_to_memory( $node, $label, $status );
+            ## -- alt ids
+            $self->_process_alt_ids_to_memory( $node, $label );
+            ## -- xref data
+            $self->process_xrefs_to_memory( $node, $label, $status );
         }
-
-        if ( $type eq 'relations' ) {
-            $self->manager->handle_rel_prop($_)
-                for (qw/transitive reflexive cyclic anonymous/);
-            $self->manager->handle_rel_prop( $_, 'value' )
-                for (qw/domain range/);
-        }
-        $self->manager->keep_state_in_cache;
-        $self->manager->clear_current_state;
-
-        if ( $self->manager->entries_in_cache >= $self->commit_threshold ) {
-            my $entries = $self->manager->entries_in_cache;
-
-            $self->current_logger->info(
-                "going to load $entries relationships ....");
-            $self->loader->store_cache( $self->manager->cache );
-            $self->manager->clean_cache;
-
-            $self->current_logger->info(
-                "loaded $entries relationship nodes  ....");
-
-            $type eq 'relations'
-                ? $self->set_rel_loaded_count(
-                $self->relations_loaded + $entries )
-                : $self->set_terms_loaded( $self->terms_loaded + $entries );
-        }
-    }
-    if ( $self->manager->entries_in_cache ) {
-        my $entries = $self->manager->entries_in_cache;
-
-        $self->current_logger->info(
-            "going to load $entries relationships ....");
-        $self->loader->store_cache( $self->manager->cache );
-        $self->manager->clean_cache;
-
-        $self->current_logger->info(
-            "loaded $entries relationship nodes  ....");
-
-        $type eq 'relations'
-            ? $self->set_relations_loaded(
-            $self->relations_loaded + $entries )
-            : $self->set_terms_loaded( $self->terms_loaded + $entries );
     }
 }
 
-sub update_nodes {
-    my $self = shift;
-    my ( $type, $terms ) = pos_validated_list(
-        \@_,
-        { isa => enum( [qw/terms relations/] ) },
-        { isa => 'ArrayRef[GOBO::Node|GOBO::LinkStatement]' }
-    );
+sub _process_synonyms_to_memory {
+    my ( $self, $node, $label, $status ) = @_;
+    if ( defined $node->synonyms ) {
+        my %uniq_sym = map { $_->scope => $_->label } @{ $node->synonyms };
+        $self->add_synonym(
+            [   $self->get_cvterm_row($_)->cvterm_id,
+                $label, $uniq_sym{$_}, $status
+            ]
+        ) for keys %uniq_sym;
+    }
+}
 
+sub _process_alt_ids_to_memory {
+    my ( $self, $node, $label ) = @_;
+    if ( defined $node->alt_ids ) {
+        for my $alt_id ( @{ $node->alt_ids } ) {
+            if ( $alt_id =~ /:/ ) {
+                my ( $db, $id ) = split /:/, $alt_id;
+                $self->add_dbrow(
+                    $db,
+                    $schema->txn_do(
+                        sub {
+                            = $schema->resultset('General::Db')
+                                ->find_or_create( { name => $db } );
+                        }
+                    )
+                ) if !$self->has_dbrow($db);
+                $self->add_alt_row(
+                    [ $alt_id, $label, $self->get_dbrow($db)->db_id ] );
+            }
+            else {
+                $self->vlogger->log("skipping $alt_id alternate ids");
+            }
+        }
+    }
+}
+
+sub _process_xrefs_to_memory {
+    my ( $self, $node, $label, $status ) = @_;
+
+    if ( defined $node->xref_h ) {
+    VAL:
+        for my $val ( values %{ $node->xref_h } ) {
+            my ( $db, $id );
+            if ( $val =~ /^http:http/ ) {
+                $db = 'http';
+                my ( $first, @rest ) = split /:/, $val;
+                $id = join( ':', @rest );
+            }
+            elsif ( $val =~ /^http/ ) {
+                $db = 'URL';
+                $id = $val;
+            }
+            else {
+                my @rest;
+                ( $db, @rest ) = split /:/, $val;
+                $id = join( ':', @rest );
+            }
+
+            $self->add_dbrow(
+                $db,
+                $schema->txn_do(
+                    sub {
+                        = $schema->resultset('General::Db')
+                            ->find_or_create( { name => $db } );
+                    }
+                )
+            ) if !$self->has_dbrow($db);
+
+            $self->add_xref_row(
+                [ $id, $label, $self->get_dbrow($db)->db_id, $status ] );
+        }
+    }
 }
 
 1;    # Magic true value required at end of module
