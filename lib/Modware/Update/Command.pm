@@ -138,37 +138,12 @@ has 'chado' => (
             $self->user,
             $self->password,
             $self->attribute,
-            {   on_connect_do   => $self->_on_connect,
-                on_disonnect_do => $self->_on_disonnect
+            {   on_connect_do   => sub { $self->on_connect_sql(@_) },
+                on_disonnect_do => sub { $self->on_disonnect_sql(@_) }
             }
         );
     }
 );
-
-has '_on_connect_do' => (
-    is      => 'rw',
-    isa     => 'ArrayRef',
-    traits  => [qw/Array/],
-    handles => {
-        add_on_connect   => 'push',
-        clear_on_connect => 'clear';
-    },
-    default => sub { [] },
-    lazy    => 1
-);
-
-has '_on_disconnect_do' => (
-    is      => 'rw',
-    isa     => 'ArrayRef',
-    traits  => [qw/Array/],
-    handles => {
-        add_on_disconnect   => 'push',
-        clear_on_disconnect => 'clear';
-    },
-    default => sub { [] },
-    lazy    => 1
-);
-
 
 sub _build_data_dir {
     return rel2abs(cwd);

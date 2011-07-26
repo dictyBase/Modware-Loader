@@ -16,8 +16,6 @@ with 'Modware::Loader::Role::Onotoloy::WithHelper';
 with 'Modware::Loader::Role::Temp::Obo';
 with 'Modware::Role::Command::WithReportLogger';
 with 'Modware::Role::Command::WithValidationLogger';
-with 'Modware::Role::Command::WithCounter' => { counter_for =>
-        [qw/relations_loaded relations_skip terms_loaded terms_skip/] };
 
 # Module implementation
 #
@@ -78,6 +76,12 @@ sub execute {
     $self->_set_various_namespace;
     $self->_process_relations_to_memory;
     $self->_prcoess_nodes_to_memory;
+
+    $self->load_all_in_tmp;
+
+    #$self->load_tmp2chado;
+
+    $schema->disconnect;
 
 }
 

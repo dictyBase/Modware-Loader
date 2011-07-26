@@ -1,3 +1,4 @@
 Modware-*
 .build/
 !modware-update
+locallib/

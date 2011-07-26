@@ -21,12 +21,6 @@ after 'dsn' => sub {
     $self->meta->make_mutable;
     ensure_all_roles( $self, 'Modware::Loader::Role::Temp::Obo::' . $driver );
     $self->meta->make_immutable;
-
-    $self->add_on_connect( $self->on_connect_sql )
-        for $self->has_on_connect_sql;
-    $self->add_on_disconnect( $self->on_disconnect_sql )
-        for $self->has_on_disconnect_sql;
-
     $self->inject_tmp_schema;
 };
 

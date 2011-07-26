@@ -7,15 +7,10 @@ use Moose::Role;
 # Module implementation
 #
 
-has 'on_connect_sql' => (
-    is      => 'rw',
-    isa     => 'ArrayRef',
-    predicate => 'has_on_connect_sql', 
-    lazy => 1, 
-    default => sub {
-        my $self = shift;
-        my $sql  = [
-            qq {
+sub on_connect_sql {
+    my $storage = shift;
+    my $sql     = [
+        qq {
 	CREATE TEMP TABLE tmp_cv (
 		name character varying(1024) not null, 
 		accession character varying(255) not null, 
@@ -27,7 +22,7 @@ has 'on_connect_sql' => (
 		cmmt text, 
 		UNIQUE(accession,name,is_obsolete)
 	)},
-            qq{CREATE TEMP TABLE tmp_cv_new(
+        qq{CREATE TEMP TABLE tmp_cv_new(
         name character varying(1024) not null,
         accession character varying(255) not null,
         db_id integer not null,
@@ -40,7 +35,7 @@ has 'on_connect_sql' => (
 		cmmt text, 
         UNIQUE( accession,name,is_obsolete )
         )},
-            qq {
+        qq {
 	CREATE TEMPORARY TABLE tmp_cv_exist (
 		accession character varying(255) not null, 
 		name character varying(1024) not null, 
@@ -53,7 +48,7 @@ has 'on_connect_sql' => (
 		is_relationshiptype integer not null default 0, 
 		UNIQUE(accession,name,is_obsolete)
 	)},
-            qq{
+        qq{
 		CREATE TEMP TABLE tmp_relation_attr (
 			cvterm_id integer, 
 			name character varying(255), 
@@ -61,7 +56,7 @@ has 'on_connect_sql' => (
 		    relation_value character varying(255)
 		)
 	},
-            qq {
+        qq {
 	CREATE TEMP TABLE tmp_relation (
 		subject character varying(255) not null, 
 		object character varying(255) not null, 
@@ -71,7 +66,7 @@ has 'on_connect_sql' => (
 		predicate_id integer, 
 		UNIQUE(subject, object,  predicate)
 	)},
-            qq{
+        qq{
     CREATE TEMP TABLE tmp_syn(
         type_id integer not null,
         name character varying(1024) not null,
@@ -79,7 +74,7 @@ has 'on_connect_sql' => (
         is_obsolete integer not null default 0,
         cvterm_id integer 
     )},
-            qq{
+        qq{
 	CREATE TEMP TABLE tmp_alt_ids(
         accession character varying(255) not null,
         db_id integer not null,
@@ -88,7 +83,7 @@ has 'on_connect_sql' => (
         UNIQUE( accession, name, db_id )
         )
     },
-            qq{
+        qq{
 	CREATE TEMP TABLE tmp_xref(
         accession character varying(1024) not null,
         db_id integer not null,
@@ -98,34 +93,27 @@ has 'on_connect_sql' => (
         UNIQUE( accession, name, db_id ,  is_obsolete)
         )
     },
-            qq { CREATE INDEX tmp_cvn_name_idx on tmp_cv_new(name)},
-            qq { CREATE INDEX tmp_cvn_cvtid_idx on tmp_cv_new(cvterm_id)},
-            qq { CREATE INDEX tmp_subject_idx on tmp_relation(subject_id)},
-            qq { CREATE INDEX tmp_object_idx on tmp_relation(object_id)},
-            qq { CREATE INDEX tmp_predicate_idx on tmp_relation(predicate_id)}
-        ];
-        return $sql;
-    }
-);
+        qq { CREATE INDEX tmp_cvn_name_idx on tmp_cv_new(name)},
+        qq { CREATE INDEX tmp_cvn_cvtid_idx on tmp_cv_new(cvterm_id)},
+        qq { CREATE INDEX tmp_subject_idx on tmp_relation(subject_id)},
+        qq { CREATE INDEX tmp_object_idx on tmp_relation(object_id)},
+        qq { CREATE INDEX tmp_predicate_idx on tmp_relation(predicate_id)}
+    ];
+    $storage->dbh->do($_) for @$sql;
+}
 
-has 'on_disconnect_sql' => (
-    is      => 'rw',
-    isa     => 'ArrayRef',
-    lazy => 1, 
-    predicate => 'has_on_disconnect_sql', 
-    default => sub {
-        my $self = shift;
-        my $sql  = [
-            qq{ANALYZE VERBOSE cvterm},
-            qq{ANALYZE VERBOSE dbxref},
-            qq{ANALYZE VERBOSE cvterm_dbxref},
-            qq{ANALYZE VERBOSE cvtermsynonym},
-            qq{ANALYZE VERBOSE cvtermprop},
-            qq{ANALYZE VERBOSE cvterm_relationship}
-        ];
-        return $sql;
-    }
-);
+sub on_disconnect_sql {
+    my $storage = @_;
+    my $sql     = [
+        qq{ANALYZE VERBOSE cvterm},
+        qq{ANALYZE VERBOSE dbxref},
+        qq{ANALYZE VERBOSE cvterm_dbxref},
+        qq{ANALYZE VERBOSE cvtermsynonym},
+        qq{ANALYZE VERBOSE cvtermprop},
+        qq{ANALYZE VERBOSE cvterm_relationship}
+    ];
+    $storage->dbh->do($_) for @$sql;
+}
 
 1;    # Magic true value required at end of module
 
