@@ -26,7 +26,7 @@ has 'validation_logger' => (
 );
 
 sub _build_validation_logger {
-    my ($self, $type) = @_;
+    my ($self) = @_;
     my $options;
     $options->{ident} = $self->meta->name;
     my $logfile
@@ -36,7 +36,7 @@ sub _build_validation_logger {
     if ($logfile) {
         my $t = Time::Piece->new;
         $options->{to_file}  = 1;
-        $options->{log_file} = $t->ymd . "-$type-validation-$logfile";
+        $options->{log_file} = $t->ymd . "_validation_$logfile";
     }
     else {
         $options->{to_stderr} = 1;

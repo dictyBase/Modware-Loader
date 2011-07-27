@@ -7,7 +7,6 @@ use Moose::Role;
 use Moose::Util qw/ensure_all_roles/;
 use Class::MOP;
 use DBI;
-use Modware::Loader::Schema::Result::Temp::Obo;
 
 # Module implementation
 #
@@ -26,7 +25,7 @@ after 'dsn' => sub {
 
 sub inject_tmp_schema {
     my $self = shift;
-    Class::MOP::load_class('Modware::Loader::Schema::Result::Temp::Obo');
+    Class::MOP::load_class('Modware::Loader::Schema::Result::Temp::Ont');
     $self->chado->register_class(
         'TempCvAll' => 'Modware::Loader::Schema::Result::Temp::Ont::Core' );
     $self->chado->register_class(
@@ -65,7 +64,7 @@ sub load_cvterm_in_tmp {
     my $logger = $self->logger;
     my $schema = $self->chado;
 
-    $logger->log( "going to load " $self->node_count,
+    $logger->log( "going to load ",  $self->node_count,
         " cvterms in temp table" );
     $self->add_node_header(
         [   qw/name db_id cv_id accession definition is_obsolete is_relationshiptype
@@ -84,7 +83,7 @@ sub load_relation_in_tmp {
     my $logger = $self->logger;
     my $schema = $self->chado;
 
-    $logger->log( "going to load " $self->relation_count,
+    $logger->log( "going to load ",  $self->relation_count,
         " relations in temp table" );
 
     my $relations = [ $self->all_relations ];
@@ -102,7 +101,7 @@ sub load_relation_attr_in_tmp {
     my $schema = $self->chado;
 
     $logger->log(
-        "going to load " $self->relation_attr_count,
+        "going to load ",  $self->relation_attr_count,
         " relation attributes in temp table"
     );
 
@@ -121,7 +120,7 @@ sub load_synonym_in_tmp {
     my $schema = $self->chado;
 
     $logger->log(
-        "going to load " $self->synonym_count,
+        "going to load ",  $self->synonym_count,
         " synonyms in temp table"
     );
 
@@ -140,7 +139,7 @@ sub load_alt_ids_in_tmp {
     my $schema = $self->chado;
 
     $logger->log(
-        "going to load " $self->alt_ids_count,
+        "going to load ",  $self->alt_ids_count,
         " alt ids in temp table"
     );
 
@@ -160,7 +159,7 @@ sub load_xref_in_tmp {
     my $schema = $self->chado;
 
     $logger->log(
-        "going to load " $self->xref_count,
+        "going to load ",  $self->xref_count,
         " xrefs in temp table"
     );
 

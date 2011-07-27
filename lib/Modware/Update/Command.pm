@@ -131,7 +131,7 @@ has 'chado' => (
     isa      => Schema,
     traits   => [qw/NoGetopt/],
     lazy     => 1,
-    defaults => sub {
+    default => sub {
         my $self = shift;
         return Bio::Chado::Schema->connect(
             $self->dsn,

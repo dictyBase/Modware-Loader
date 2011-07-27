@@ -24,7 +24,7 @@ has 'namespace' => (
 has '_term_cache' => (
     is      => 'rw',
     isa     => 'HashRef',
-    traits  => [qw/Hash NoGetOpt/],
+    traits  => [qw/Hash NoGetopt/],
     default => sub { {} },
     handles => {
         add_to_term_cache   => 'set',
@@ -135,7 +135,7 @@ has '_rel_attr_stack' => (
     }
 );
 
-has 'cvrow' => ( is => 'rw', isa => 'DBIx::Class::Row' );
+has 'cvrow' => ( is => 'rw', isa => 'DBIx::Class::Row',  traits => [qw/NoGetopt/] );
 
 has '_cvterm_row_stack' => (
     is      => 'rw',

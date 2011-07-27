@@ -9,10 +9,9 @@ use Modware::Factory::Chado::BCS;
 use Bio::Chado::Schema;
 use GOBO::Parsers::OBOParserDispatchHash;
 use Digest::MD5 qw/md5/;
-use Modware::Loader::OntoHelper;
 use MooseX::Params::Validate;
 extends qw/Modware::Update::Command/;
-with 'Modware::Loader::Role::Onotoloy::WithHelper';
+with 'Modware::Loader::Role::Ontology::WithHelper';
 with 'Modware::Loader::Role::Temp::Obo';
 with 'Modware::Role::Command::WithReportLogger';
 with 'Modware::Role::Command::WithValidationLogger';
@@ -250,8 +249,8 @@ sub _set_various_namespace {
                         }
                     );
                 }
-            );
-        }
+            )
+        );
     }
 }
 
@@ -280,7 +279,7 @@ NODE:
                     next NODE;
                 }
             }
-            $self->add_to_term_cache( $t->label, [ $status, $id ] );
+            $self->add_to_term_cache( $node->label, [ $status, $node->id ] );
 
             if ( $type eq 'relations' ) {
                 for my $prop ( $self->relation_attributes ) {
@@ -291,7 +290,7 @@ NODE:
                 }
                 for my $prop ( $self->relation_properties ) {
                     $self->add_rel_attr(
-                        [   $label, $t->$prop,
+                        [   $label, $node->$prop,
                             $self->get_cvterm_row($prop)->cvterm_id
                         ]
                     ) if $node->$prop;
@@ -299,7 +298,7 @@ NODE:
             }
 
             my $scope
-                = $node->namespace ? $node->namespace : $default_namespace;
+                = $node->namespace ? $node->namespace : $self->namespace;
             my ( $db, $id );
             if ( $node->id =~ /:/ ) {
                 ( $db, $id ) = split /:/, $node->id;
@@ -313,7 +312,7 @@ NODE:
                 $db,
                 $schema->txn_do(
                     sub {
-                        = $schema->resultset('General::Db')
+                        $schema->resultset('General::Db')
                             ->find_or_create( { name => $db } );
                     }
                 )
@@ -367,6 +366,7 @@ sub _process_synonyms_to_memory {
 
 sub _process_alt_ids_to_memory {
     my ( $self, $node, $label ) = @_;
+    my $schema = $self->chado;
     if ( defined $node->alt_ids ) {
         for my $alt_id ( @{ $node->alt_ids } ) {
             if ( $alt_id =~ /:/ ) {
@@ -375,7 +375,7 @@ sub _process_alt_ids_to_memory {
                     $db,
                     $schema->txn_do(
                         sub {
-                            = $schema->resultset('General::Db')
+                            return $schema->resultset('General::Db')
                                 ->find_or_create( { name => $db } );
                         }
                     )
@@ -392,6 +392,7 @@ sub _process_alt_ids_to_memory {
 
 sub _process_xrefs_to_memory {
     my ( $self, $node, $label, $status ) = @_;
+    my $schema = $self->chado;
 
     if ( defined $node->xref_h ) {
     VAL:
@@ -416,7 +417,7 @@ sub _process_xrefs_to_memory {
                 $db,
                 $schema->txn_do(
                     sub {
-                        = $schema->resultset('General::Db')
+                        return $schema->resultset('General::Db')
                             ->find_or_create( { name => $db } );
                     }
                 )
