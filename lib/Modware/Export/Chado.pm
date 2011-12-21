@@ -10,6 +10,7 @@ extends qw/MooseX::App::Cmd::Command/;
 with 'MooseX::ConfigFromFile';
 with 'Modware::Role::Command::WithInput';
 with 'Modware::Role::Command::WithBCS';
+with 'Modware::Role::Command::WithReportLogger';
 
 # Module implementation
 #
