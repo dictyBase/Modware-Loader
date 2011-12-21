@@ -25,7 +25,7 @@ has 'logger' => (
     builder => '_build_logger'
 );
 
-sub logger {
+sub _build_logger {
     my $self = shift;
     my $options;
     $options->{ident} = $self->meta->name;
