@@ -14,7 +14,7 @@ has 'logfile' => (
     predicate     => 'has_logfile',
     traits        => [qw/Getopt/],
     cmd_aliases   => 'l',
-    documentation => 'Name of logfile,  default goes to STDIN'
+    documentation => 'Name of logfile,  default goes to STDERR'
 );
 
 has 'logger' => (
