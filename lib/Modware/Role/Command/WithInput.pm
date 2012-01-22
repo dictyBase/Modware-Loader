@@ -33,7 +33,7 @@ has 'output_handler' => (
     lazy    => 1,
     default => sub {
         my ($self) = @_;
-        return $self->has_putput
+        return $self->has_output
             ? $self->output->openw
             : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
     }

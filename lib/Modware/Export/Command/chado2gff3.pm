@@ -4,7 +4,7 @@ use strict;
 # Other modules:
 use namespace::autoclean;
 use Moose;
-use Bio::GFF3::LowLevel;
+use Bio::GFF3::LowLevel qw/gff3_format_feature/;
 extends qw/Modware::Export::Chado/;
 
 # Module implementation
@@ -26,7 +26,7 @@ has 'reference_type' => (
     traits      => [qw/Getopt/],
     cmd_aliases => 'rt',
     documentation =>
-        'The SO type of reference feature,  default is supecontig',
+        'The SO type of reference feature,  default is supercontig',
     default => 'supercontig',
     lazy    => 1
 );
@@ -43,21 +43,28 @@ sub execute {
     my $logger = $self->logger;
     my $schema = $self->schema;
 
-    my $org_rs = $schema->resultset('Organism::Organism')
-        ->search( { 'common_name' => $self->organism } );
+    my $org_rs = $schema->resultset('Organism::Organism')->search(
+        { 'common_name' => $self->organism },
+        {   select => [
+                qw/species genus
+                    common_name organism_id/
+            ]
+        }
+    );
 
     my $dbrow = $org_rs->first;
     if ( !$dbrow ) {
         die "Could not find ", $self->organism, " in chado database\n";
     }
 
-    my $output = $self->output;
+    my $output = $self->output_handler;
     $output->print("##gff-version\t3\n");
 
-    my $reference_rs => $org_rs->search_related(
-        'features',
-        { 'type.name' => $self->reference_type },
-        { join        => 'type' }
+    my $reference_rs = $schema->resultset('Sequence::Feature')->search(
+        {   'type.name' => $self->reference_type,
+            organism_id => $dbrow->organism_id
+        },
+        { join => 'type' }
     );
 
 REFERENCE:
@@ -65,19 +72,19 @@ REFERENCE:
         my $seq_id = $self->_seq_id($ref_dbrow);
         my $start  = 1;
         if ( my $end = $ref_dbrow->seqlen ) {
-            $output->print("##sequence-region\t$seqid\t$start\t$end\n");
+            $output->print("##sequence-region\t$seq_id\t$start\t$end\n");
         }
         else {
             warn "$seq_id has no length defined:skipped from export\n";
             next REFERENCE;
         }
-        $output->print( "##species\t", $self->_species_uri($ref_dbrow),
-            "\n" );
+        $output->print( "##species\t", $self->_species_uri($dbrow), "\n" );
 
-        my $refhash = $self->_dbrow2gff3hash($ref_dbrow);
+        my $refhash = $self->_dbrow2gff3hash($ref_dbrow, $seq_id, '', 1);
+        $refhash->{seq_id} = $seq_id;
         $output->print( gff3_format_feature($refhash) );
 
-        my $gene_rs = $self->_children_dbrow( $ref_dbrow, 'part_of', 'gene' );
+        my $gene_rs = $self->_children_dbrows( $ref_dbrow, 'part_of', 'gene' );
         while ( my $grow = $gene_rs->next ) {
             ## returns array of hashrefs for gene and all of its children
             ## the hashref structure specified is identical to the one described here
@@ -105,7 +112,7 @@ sub _gene2gff3_parse_feature {
         my $thash = $self->_dbrow2gff3hash( $trow, $seq_id, $gene_id );
         push @$arrayref, $thash;
         my $trans_id = $self->_chado_feature_id($trow);
-        for my $erow ( $self->_children_dbrows( $erow, 'part_of', 'exon' ) ) {
+        for my $erow ( $self->_children_dbrows( $trow, 'part_of', 'exon' ) ) {
             my $exhash = $self->_dbrow2gff3hash( $erow, $seq_id, $trans_id );
             push @$arrayref, $exhash;
         }
@@ -114,23 +121,23 @@ sub _gene2gff3_parse_feature {
             # process for CDS here
         }
     }
+    return $arrayref;
 }
 
 sub _dbrow2gff3hash {
-    my ( $self, $dbrow, $seq_id, $parent_id ) = @_;
+    my ( $self, $dbrow, $seq_id, $parent_id,  $parent ) = @_;
     my $hashref;
 
     $hashref->{type}  = $dbrow->type->name;
     $hashref->{score} = undef;
-    if ($seq_id) {
-        $hashref->{seq_id} = $seq_id;
+    $hashref->{seq_id} = $seq_id;
+    if ( $parent ) {
         $hashref->{start}  = 1;
         $hashref->{end}    = $dbrow->seqlen;
         $hashref->{strand} = undef;
     }
     else {
-        $hashref->{seq_id} = undef;
-        $floc_row          = $dbrow->featureloc_features->first;
+        my $floc_row = $dbrow->featureloc_features->first;
         $hashref->{start}  = $floc_row->fmin + 1;
         $hashref->{end}    = $floc_row->fmax;
         $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
@@ -142,8 +149,12 @@ sub _dbrow2gff3hash {
         $hashref->{phase} = undef;
     }
 
-    my $dbxref_rs = $dbrow->search_related( 'feature_dbxrefs', {} )
-        ->search( 'dbxref', { 'db.name' => 'GFF_source' }, { join => 'db' } );
+    my $dbxref_rs
+        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
+        'dbxref',
+        { 'db.name' => 'GFF_source' },
+        { join      => 'db' }
+        );
     if ( my $row = $dbxref_rs->first ) {
         $hashref->{source} = $row->accession;
     }
@@ -157,8 +168,8 @@ sub _dbrow2gff3hash {
         return;
     }
 
-	## -- attributes
-    $hashref->{attributes}->{ID} = [ $self->_chado_feature_id ];
+    ## -- attributes
+    $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
     if ( my $name = $dbrow->name ) {
         $hashref->{attributes}->{Name} = [$name];
     }
@@ -169,7 +180,7 @@ sub _dbrow2gff3hash {
     {
         push @$dbxrefs, $xref_row->db->name . ':' . $xref_row->accession;
     }
-    $hashref->{attributes}->{Dbxref} = $dbxrefs;
+    $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
     return $hashref;
 }
 
@@ -179,8 +190,8 @@ sub _chado_feature_id {
         return $id;
     }
     else {
-        return $dbrow->uniquename `;
-	}
+        return $dbrow->uniquename;
+    }
 }
 
 sub _gene_rs {
@@ -197,8 +208,8 @@ sub _gene_rs {
 }
 
 sub _children_dbrows {
-    my ( $self, $parent_row, $relation,  $type ) = @_;
-    $type = {-like => $type} if $type =~ /^%/;
+    my ( $self, $parent_row, $relation, $type ) = @_;
+    $type = { -like => $type } if $type =~ /^%/;
     return $parent_row->search_related(
         'feature_relationship_objects',
         { 'type.name' => $relation },
@@ -219,8 +230,8 @@ sub _seq_id {
 sub _species_uri {
     my ( $self, $dbrow ) = @_;
     my $base = 'http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=';
-    return $self->taxon_id if $base . $self->has_taxon_id;
-    return uri_escape( $base . $dbrow->genus . ' ' . $dbrow->species );
+    return $base . $self->taxon_id if $self->has_taxon_id;
+    return $base . $dbrow->genus . ' ' . $dbrow->species;
 
 }
 

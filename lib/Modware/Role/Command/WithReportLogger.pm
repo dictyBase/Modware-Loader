@@ -41,7 +41,7 @@ sub _build_logger {
     else {
         $options->{to_stderr} = 1;
     }
-    return $logfile;
+    return Log::Dispatchouli->new($options);
 }
 
 
