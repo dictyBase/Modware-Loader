@@ -53,10 +53,18 @@ has 'schema' => (
     builder => '_build_schema',
 );
 
+has 'schema_debug' => (
+	is => 'rw', 
+	isa => 'Bool', 
+	default => 0, 
+	documentation => 'Output SQL statements that are executed,  default false'
+);
+
 sub _build_schema {
     my ($self) = @_;
     my $schema = Bio::Chado::Schema->connect( $self->dsn, $self->user,
         $self->password, $self->attribute );
+	$schema->storage->debug($self->schema_debug);
     return $schema;
 }
 
