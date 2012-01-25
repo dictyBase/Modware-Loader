@@ -5,6 +5,7 @@ use namespace::autoclean;
 use Moose::Role;
 use Log::Dispatchouli;
 use Time::Piece;
+use POSIX qw/strftime/;
 
 # Module implementation
 #
@@ -41,7 +42,14 @@ sub _build_logger {
     else {
         $options->{to_stderr} = 1;
     }
-    return Log::Dispatchouli->new($options);
+    
+    my $logger = Log::Dispatchouli->new($options);
+    $logger->set_prefix(sub {
+    	my ($msg) = @_;
+    	my $time = strftime "%m-%d-%Y %H:%M:%S",  localtime;
+    	return sprintf "[%s]:\t%s", $time, $msg;
+    });
+    return $logger;
 }
 
 
