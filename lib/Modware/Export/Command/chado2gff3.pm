@@ -34,18 +34,35 @@ has 'only_mitochondrial' => (
         'Output only mitochondrial genome if it is present,  default is false'
 );
 
-has 'include_feature' => (
+has 'include_aligned_feature' => (
     is      => 'rw',
     isa     => 'ArrayRef',
     traits  => [qw/Array/],
     default => sub { [] },
     lazy    => 1,
     handles => {
-        all_included_features  => 'elements',
-        add_feature_to_include => 'push'
+        all_aligned_features           => 'elements',
+        add_aligned_feature_to_include => 'push',
+        has_aligned_features           => 'count'
     },
     documentation =>
-        'Additional overlapping feature(s) to include in the output'
+        'Additional aligned feature(s) such as BLAST and EST to include in the output'
+);
+
+has 'extra_gene_model' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    traits  => [qw/Array/],
+    default => sub { [] },
+    lazy    => 1,
+    handles => {
+        'extra_gene_models'     => 'elements',
+        'add_extra_gene_model'  => 'push',
+        'has_extra_gene_models' => 'count'
+    },
+    documentation =>
+        'Source name of additional gene models/predictions/transcript models that are outside of canonical model'
+
 );
 
 has '_hook_stack' => (
@@ -73,7 +90,14 @@ has '_hook_stack' => (
             write_exon_feature => sub { $self->write_exon_feature(@_) },
             write_cds_feature  => sub { $self->write_cds_feature(@_) },
             write_reference_sequence =>
-                sub { $self->write_reference_sequence(@_) }
+                sub { $self->write_reference_sequence(@_) },
+            write_aligned_feature =>
+                sub { $self->write_overlapping_feture(@_) },
+            read_aligned_feature =>
+                sub { $self->read_overlapping_feture(@_) },
+            write_extra_gene_model =>
+                sub { $self->write_extra_gene_model(@_) },
+            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) }
         };
     },
     handles => {
@@ -145,6 +169,30 @@ REFERENCE:
             my $arrayref = $self->_gene2gff3_parse_feature( $grow, $seq_id );
             $output->print( gff3_format_feature($_) ) for @$arrayref;
         }
+
+        if ( $self->has_extra_gene_models ) {
+            for my $source ( $self->extra_gene_models ) {
+                my $rs = $self->get_coderef('read_extra_gene_model')
+                    ->( $ref_dbrow, $source );
+                while ( my $row = $rs->next ) {
+                    $self->get_coderef('write_extra_gene_model')
+                        ->( $row, $seq_id, $source, $output );
+                }
+            }
+        }
+
+        if ( $self->has_aligned_features ) {
+            for my $type ( $self->all_aligned_features ) {
+                my $rs = $self->get_coderef('read_aligned_feature')
+                    ->( $ref_dbrow, $type );
+            OVERLAPPING:
+                while ( my $row = $rs->next ) {
+                    $self->get_coderef('write_aligned_feature')
+                        ->( $row, $seq_id, $output );
+                }
+            }
+        }
+
         if ( $self->write_sequence ) {
             $self->read_coderef('write_sequence')
                 ->( $ref_dbrow, $seq_id, $output );
@@ -219,13 +267,7 @@ sub _dbrow2gff3hash {
         $hashref->{source} = $row->accession;
     }
     else {
-        $self->logger->warn(
-            $dbrow->type->name,
-            " feature ",
-            $dbrow->uniquename,
-            " do not have GFF3 source defined in the database: it is skipped from output"
-        );
-        return;
+        $hashref->{source} = undef;
     }
 
     ## -- attributes
@@ -461,6 +503,83 @@ sub read_mito_reference_feature {
         $dbrow->common_name, "\n"
         if !$rs->count;
     return $rs;
+}
+
+sub read_aligned_feature {
+    my ( $self, $dbrow, $type ) = @_;
+    return $dbrow->search_related( 'featureloc_srcfeatures', {} )
+        ->search_related(
+        'feature',
+        { 'type.name' => $type },
+        { join        => 'type' }
+        );
+}
+
+sub gff_source {
+    my ( $self, $dbrow ) = @_;
+    my $dbxref_rs
+        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
+        'dbxref',
+        { 'db.name' => 'GFF_source' },
+        { join      => 'db' }
+        );
+    if ( my $row = $dbxref_rs->first ) {
+        return $row->accession;
+    }
+}
+
+sub write_aligned_feature {
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
+    my $hash;
+    $hash->{seq_id} = $seq_id;
+    $hash->{source} = $self->gff_source($dbrow) || undef;
+
+    my $type = $dbrow->type->name;
+    $type = $type . '_match' if $name !~ /match/;
+    $hash->{type} = $type;
+
+    my $floc_rs = $dbrow->featureloc_features( { rank => 1 } );
+    my $floc_row;
+    if ( $floc_row = $floc_rs->first ) {
+        $hashref->{start}  = $floc_row->fmin + 1;
+        $hashref->{end}    = $floc_row->fmax;
+        $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
+    }
+    else {
+        warn
+            "No feature location relative to genome is found: Skipped from output\n";
+        return;
+    }
+    $hashref->{phase} = undef;
+
+    my $analysis_rs = $dbrow->search_related( 'analysisfeatures', {} );
+    if ( my $row = $analysis_rs->first ) {
+        $hashref->{score} = $row->significance;
+    }
+    else {
+        $hashref->{score} = undef;
+    }
+
+    my $id = $self->_chado_feature_id($dbrow);
+    $hashref->{attributes}->{ID} = [$id];
+    my $target = $id;
+    my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
+    if ( my $row = $floc2_rs->next ) {
+        $target .= "\t" . $row->fmin + 1. "\t" . $row->fmax;
+        if ( my $strand = $row->strand ) {
+            $strand = $strand == -1 ? '-' : '+';
+            $target .= "\t$strand";
+        }
+        $hashref->{attributes}->{Target} = [$target];
+    }
+    else {
+        warn
+            "No feature location relative to itself(query) is found: Skipped from output\n";
+        return;
+    }
+    if ( my $gap_str = $floc_row->residue_info ) {
+        $hashref->{attributes}->{Gap} = [$gap_str];
+    }
 }
 
 before 'execute' => sub {
