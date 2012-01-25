@@ -69,7 +69,6 @@ has 'organism' => (
     isa         => 'Str',
     is          => 'rw',
     traits      => [qw/Getopt/],
-    required    => 1,
     cmd_aliases => 'org',
     documentation =>
         'Common name of the organism whose genomic features will be exported'
@@ -86,11 +85,16 @@ has 'reference_type' => (
     lazy    => 1
 );
 
+has 'species' =>
+    ( is => 'rw', isa => 'Str', documentation => 'Name of species' );
+has 'genus' =>
+    ( is => 'rw', isa => 'Str', documentation => 'Name of the genus' );
+
 has 'taxon_id' => (
     isa           => 'Int',
     is            => 'rw',
     predicate     => 'has_taxon_id',
-    documentation => 'NCBI taxon id'
+    documentation => 'NCBI taxon id,  used for GFF3 header output,  optional'
 );
 
 sub execute {
@@ -98,8 +102,8 @@ sub execute {
     my $logger = $self->logger;
     my $schema = $self->schema;
 
-    my $dbrow
-        = $self->get_coderef('read_organism')->( $schema, $self->organism );
+    my $dbrow = $self->get_coderef('read_organism')
+        ->( $schema, $self->genus, $self->species, $self->organism );
 
     ## -- writing the header is a must,  so no coderef is necessary
     my $output = $self->output_handler;
@@ -265,9 +269,14 @@ sub _children_dbrows {
 }
 
 sub read_organism {
-    my ( $self, $schema, $organism ) = @_;
+    my ( $self, $schema, $genus, $species, $organism ) = @_;
+    my $query;
+    $query->{species} = $species if $species;
+    $query->{genus}   = $genus   if $genus;
+    $query->{common_name} = $organism if $organism;
+
     my $org_rs = $schema->resultset('Organism::Organism')->search(
-        { 'common_name' => $self->organism },
+        $query, 
         {   select => [
                 qw/species genus
                     common_name organism_id/
@@ -275,9 +284,19 @@ sub read_organism {
         }
     );
 
+    if ( $org_rs->count > 1 ) {
+        warn
+            "you have more than one organism being selected with the current query\n";
+        warn sprintf ("Genus:%s\tSpecies:%s\tCommon name:%s\n", $_->genus, $_->species, $_->common_name)
+            for $org_rs->all;
+        warn
+            "Restrict your query to one organism: perhaps provide only **genus** and **species** for uniqueness\n";
+        die;
+    }
+
     my $dbrow = $org_rs->first;
     if ( !$dbrow ) {
-        die "Could not find ", $self->organism, " in chado database\n";
+        die "Could not find given organism  in chado database\n";
     }
     return $dbrow;
 }
@@ -307,10 +326,11 @@ sub write_meta_header {
     my ( $self, $dbrow, $output, $taxon_id ) = @_;
     my $base = 'http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=';
     if ($taxon_id) {
-        $output->print( "##species\t$base" , $self->taxon_id, "\n" );
+        $output->print( "##species\t$base", $self->taxon_id, "\n" );
         return;
     }
-    $output->print( "##species\t$base", $dbrow->genus , ' ' , $dbrow->species, "\n" );
+    $output->print( "##species\t$base", $dbrow->genus, ' ', $dbrow->species,
+        "\n" );
 }
 
 sub write_reference_feature {
