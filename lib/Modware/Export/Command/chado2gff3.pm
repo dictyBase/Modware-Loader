@@ -148,7 +148,7 @@ REFERENCE:
         }
 
         if ( $self->write_sequence ) {
-            $self->get_coderef('write_sequence')
+            $self->get_coderef('write_reference_sequence')
                 ->( $ref_dbrow, $seq_id, $output );
         }
         $logger->info("Finished GFF3 output of $seq_id");
