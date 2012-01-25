@@ -65,48 +65,6 @@ has 'extra_gene_model' => (
 
 );
 
-has '_hook_stack' => (
-    is      => 'rw',
-    isa     => 'HashRef[CodeRef]',
-    traits  => [qw/Hash/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return {
-            read_organism => sub { $self->read_organism(@_) },
-            read_reference_feature =>
-                sub { $self->read_reference_feature(@_) },
-            read_seq_id       => sub { $self->read_seq_id(@_) },
-            write_meta_header => sub { $self->write_meta_header(@_) },
-            write_reference_feature =>
-                sub { $self->write_reference_feature(@_) },
-            read_gene_feature  => sub { $self->read_gene_feature(@_) },
-            write_gene_feature => sub { $self->write_gene_feature(@_) },
-            read_transcript_feature =>
-                sub { $self->read_transcript_feature(@_) },
-            write_transcript_feature =>
-                sub { $self->write_transcript_feature(@_) },
-            read_exon_feature  => sub { $self->read_exon_feature(@_) },
-            write_exon_feature => sub { $self->write_exon_feature(@_) },
-            write_cds_feature  => sub { $self->write_cds_feature(@_) },
-            write_reference_sequence =>
-                sub { $self->write_reference_sequence(@_) },
-            write_aligned_feature =>
-                sub { $self->write_overlapping_feture(@_) },
-            read_aligned_feature =>
-                sub { $self->read_overlapping_feture(@_) },
-            write_extra_gene_model =>
-                sub { $self->write_extra_gene_model(@_) },
-            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) }
-        };
-    },
-    handles => {
-        get_coderef      => 'get',
-        get_all_coderefs => 'keys',
-        register_handler => 'set'
-    }
-);
-
 has 'organism' => (
     isa         => 'Str',
     is          => 'rw',
@@ -190,7 +148,7 @@ REFERENCE:
         }
 
         if ( $self->write_sequence ) {
-            $self->read_coderef('write_sequence')
+            $self->get_coderef('write_sequence')
                 ->( $ref_dbrow, $seq_id, $output );
         }
         $logger->info("Finished GFF3 output of $seq_id");
@@ -224,6 +182,7 @@ sub _gene2gff3_feature {
             $self->get_coderef('write_exon_feature')
                 ->( $erow, $seq_id, $trans_id, $output );
             if ( $trow->type->name eq 'mRNA' ) {
+
                 # process for CDS here
                 $self->get_coderef('write_cds_feature')
                     ->( $erow, $seq_id, $output );
@@ -325,12 +284,13 @@ sub read_organism {
 
 sub read_reference_feature {
     my ( $self, $dbrow, $type ) = @_;
-    my $reference_rs
-        = $dbrow->search_related( 'feature', {} )->search_related(
+    my $reference_rs = $dbrow->search_related(
+        'features',
         { 'type.name' => $type },
-        { join        => 'type' },
-        { prefetch    => 'dbxref' }
-        );
+        {   join     => 'type',
+            prefetch => 'dbxref'
+        }
+    );
     die "no reference feature(s) found for organism ", $dbrow->common_name,
         "\n"
         if !$reference_rs->count;
@@ -347,14 +307,14 @@ sub write_meta_header {
     my ( $self, $dbrow, $output, $taxon_id ) = @_;
     my $base = 'http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=';
     if ($taxon_id) {
-        $output->print( $base . $self->taxon_id );
+        $output->print( "##species\t$base" , $self->taxon_id, "\n" );
         return;
     }
-    $output->print( $base . $dbrow->genus . ' ' . $dbrow->species );
+    $output->print( "##species\t$base", $dbrow->genus , ' ' , $dbrow->species, "\n" );
 }
 
 sub write_reference_feature {
-    my ( $self, $dbrow, $output, $seq_id ) = @_;
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
     my $start = 1;
     if ( my $end = $dbrow->seqlen ) {
         $output->print("##sequence-region\t$seq_id\t$start\t$end\n");
@@ -460,7 +420,7 @@ sub read_reference_feature_without_mito {
     );
 
     my $nuclear_rs;
-    if ( $rs->count ) {    ## -- mitochondrial genome is present
+    if ( $mito_rs->count ) {    ## -- mitochondrial genome is present
         $nuclear_rs = $dbrow->search_related(
             'features',
             {   'feature_id' => {
@@ -471,7 +431,7 @@ sub read_reference_feature_without_mito {
             { join => 'type' }
         );
     }
-    else {                 # no mito genome
+    else {                      # no mito genome
         $nuclear_rs = $dbrow->search_related(
             'features',
             { 'type.name' => $type },
@@ -525,13 +485,13 @@ sub gff_source {
 
 sub write_aligned_feature {
     my ( $self, $dbrow, $seq_id, $output ) = @_;
-    my $hash;
-    $hash->{seq_id} = $seq_id;
-    $hash->{source} = $self->gff_source($dbrow) || undef;
+    my $hashref;
+    $hashref->{seq_id} = $seq_id;
+    $hashref->{source} = $self->gff_source($dbrow) || undef;
 
     my $type = $dbrow->type->name;
-    $type = $type . '_match' if $name !~ /match/;
-    $hash->{type} = $type;
+    $type = $type . '_match' if $type !~ /match/;
+    $hashref->{type} = $type;
 
     my $floc_rs = $dbrow->featureloc_features( { rank => 1 } );
     my $floc_row;
@@ -560,7 +520,7 @@ sub write_aligned_feature {
     my $target = $id;
     my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
     if ( my $row = $floc2_rs->next ) {
-        $target .= "\t" . $row->fmin + 1. "\t" . $row->fmax;
+        $target .= "\t" . ( $row->fmin + 1 ) . "\t" . $row->fmax;
         if ( my $strand = $row->strand ) {
             $strand = $strand == -1 ? '-' : '+';
             $target .= "\t$strand";
@@ -579,16 +539,17 @@ sub write_aligned_feature {
 }
 
 sub read_extra_gene_model {
-    my ($self,  $dbrow, $source ) = @_;
+    my ( $self, $dbrow, $source ) = @_;
     return $dbrow->search_related( 'featureloc_srcfeatures', {} )
         ->search_related(
         'feature',
         { 'type.name' => { like => '%RNA' }, 'dbxref.accession' => $source },
-        { join => [ 'type', { 'feature_dbxrefs' => 'dbxref' } } ] );
+        { join => [ 'type', { 'feature_dbxrefs' => 'dbxref' } ] }
+        );
 }
 
 sub write_extra_gene_model {
-	my ($self, $dbrow, $seq_id,  $output) = @_;
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
     my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
     $output->print( gff3_format_feature($hash) );
 
@@ -596,11 +557,52 @@ sub write_extra_gene_model {
     return if !@exon_dbrows;
 
     my $trans_id = $self->_chado_feature_id($dbrow);
-    for my $erow(@exon_dbrows) {
-    	$self->write_exon_feature($erow, $seq_id, $trans_id, $output);
+    for my $erow (@exon_dbrows) {
+        $self->write_exon_feature( $erow, $seq_id, $trans_id, $output );
     }
 }
 
+has '_hook_stack' => (
+    is      => 'rw',
+    isa     => 'HashRef[CodeRef]',
+    traits  => [qw/Hash/],
+    lazy    => 1,
+    default => sub {
+        my ($self) = @_;
+        return {
+            read_organism => sub { $self->read_organism(@_) },
+            read_reference_feature =>
+                sub { $self->read_reference_feature(@_) },
+            read_seq_id       => sub { $self->read_seq_id(@_) },
+            write_meta_header => sub { $self->write_meta_header(@_) },
+            write_reference_feature =>
+                sub { $self->write_reference_feature(@_) },
+            read_gene_feature  => sub { $self->read_gene_feature(@_) },
+            write_gene_feature => sub { $self->write_gene_feature(@_) },
+            read_transcript_feature =>
+                sub { $self->read_transcript_feature(@_) },
+            write_transcript_feature =>
+                sub { $self->write_transcript_feature(@_) },
+            read_exon_feature  => sub { $self->read_exon_feature(@_) },
+            write_exon_feature => sub { $self->write_exon_feature(@_) },
+            write_cds_feature  => sub { $self->write_cds_feature(@_) },
+            write_reference_sequence =>
+                sub { $self->write_reference_sequence(@_) },
+            write_aligned_feature =>
+                sub { $self->write_overlapping_feture(@_) },
+            read_aligned_feature =>
+                sub { $self->read_overlapping_feture(@_) },
+            write_extra_gene_model =>
+                sub { $self->write_extra_gene_model(@_) },
+            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) }
+        };
+    },
+    handles => {
+        get_coderef      => 'get',
+        get_all_coderefs => 'keys',
+        register_handler => 'set'
+    }
+);
 
 before 'execute' => sub {
     my ($self) = @_;
