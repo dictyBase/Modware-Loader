@@ -163,11 +163,7 @@ REFERENCE:
                 ->( $ref_dbrow, $seq_id, $output );
         my $gene_rs = $self->read_gene_feature($ref_dbrow);
         while ( my $grow = $gene_rs->next ) {
-            ## returns array of hashrefs for gene and all of its children
-            ## the hashref structure specified is identical to the one described here
-            ## https://metacpan.org/module/Bio::GFF3::LowLevel#gff3_parse_feature-line-
-            my $arrayref = $self->_gene2gff3_parse_feature( $grow, $seq_id );
-            $output->print( gff3_format_feature($_) ) for @$arrayref;
+            $self->_gene2gff3_feature( $grow, $seq_id );
         }
 
         if ( $self->has_extra_gene_models ) {
@@ -176,7 +172,7 @@ REFERENCE:
                     ->( $ref_dbrow, $source );
                 while ( my $row = $rs->next ) {
                     $self->get_coderef('write_extra_gene_model')
-                        ->( $row, $seq_id, $source, $output );
+                        ->( $row, $seq_id, $output );
                 }
             }
         }
@@ -207,7 +203,7 @@ sub write_reference_sequence {
     $output->print( "###FASTA\n>$seq_id\n", $dbrow->residues, "\n" );
 }
 
-sub _gene2gff3_parse_feature {
+sub _gene2gff3_feature {
     my ( $self, $gene_dbrow, $seq_id ) = @_;
     my $output = $self->output_handler;
     return
@@ -228,7 +224,6 @@ sub _gene2gff3_parse_feature {
             $self->get_coderef('write_exon_feature')
                 ->( $erow, $seq_id, $trans_id, $output );
             if ( $trow->type->name eq 'mRNA' ) {
-
                 # process for CDS here
                 $self->get_coderef('write_cds_feature')
                     ->( $erow, $seq_id, $output );
@@ -580,7 +575,32 @@ sub write_aligned_feature {
     if ( my $gap_str = $floc_row->residue_info ) {
         $hashref->{attributes}->{Gap} = [$gap_str];
     }
+    $output->print( gff3_format_feature($hashref) );
 }
+
+sub read_extra_gene_model {
+    my ($self,  $dbrow, $source ) = @_;
+    return $dbrow->search_related( 'featureloc_srcfeatures', {} )
+        ->search_related(
+        'feature',
+        { 'type.name' => { like => '%RNA' }, 'dbxref.accession' => $source },
+        { join => [ 'type', { 'feature_dbxrefs' => 'dbxref' } } ] );
+}
+
+sub write_extra_gene_model {
+	my ($self, $dbrow, $seq_id,  $output) = @_;
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    $output->print( gff3_format_feature($hash) );
+
+    my @exon_dbrows = $self->read_exon_feature($dbrow);
+    return if !@exon_dbrows;
+
+    my $trans_id = $self->_chado_feature_id($dbrow);
+    for my $erow(@exon_dbrows) {
+    	$self->write_exon_feature($erow, $seq_id, $trans_id, $output);
+    }
+}
+
 
 before 'execute' => sub {
     my ($self) = @_;
