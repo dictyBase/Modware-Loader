@@ -123,6 +123,13 @@ REFERENCE:
         next
             if !$self->get_coderef('write_reference_feature')
                 ->( $ref_dbrow, $seq_id, $output );
+		
+		my $contig_rs = $self->get_coderef('read_contig')->($ref_dbrow);
+		while (my $row = $contig_rs->next) {
+			$self->get_coderef('write_contig')->($row, $seq_id, $output);
+		}
+        
+        ## -- gene
         my $gene_rs = $self->read_gene_feature($ref_dbrow);
         while ( my $grow = $gene_rs->next ) {
             $self->_gene2gff3_feature( $grow, $seq_id );
@@ -238,7 +245,9 @@ sub _dbrow2gff3hash {
     for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
         $dbrow->secondary_dbxrefs )
     {
-        push @$dbxrefs, $xref_row->db->name . ':' . $xref_row->accession;
+    	my $dbname = $xref_row->db->name;
+    	$dbname =~ s/^DB:// if $dbname =~ /^DB:/;
+        push @$dbxrefs, $dbname . ':' . $xref_row->accession;
     }
     $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
     return $hashref;
@@ -483,6 +492,11 @@ sub read_mito_reference_feature {
     return $rs;
 }
 
+sub read_contig_feature {
+	my ($self, $dbrow) = @_;
+	return $self->read_aligned_feature($dbrow, 'contig');
+}
+
 sub read_aligned_feature {
     my ( $self, $dbrow, $type ) = @_;
     return $dbrow->search_related( 'featureloc_srcfeatures', {} )
@@ -561,6 +575,12 @@ sub write_aligned_feature {
     $output->print( gff3_format_feature($hashref) );
 }
 
+sub write_contig_feature {
+	my ($self, $dbrow, $seq_id, $output) = @_;
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    $output->print( gff3_format_feature($hash) );
+}
+
 sub read_extra_gene_model {
     my ( $self, $dbrow, $source ) = @_;
     return $dbrow->search_related( 'featureloc_srcfeatures', {} )
@@ -617,7 +637,9 @@ has '_hook_stack' => (
                 sub { $self->read_overlapping_feture(@_) },
             write_extra_gene_model =>
                 sub { $self->write_extra_gene_model(@_) },
-            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) }
+            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) }, 
+            read_contig => sub {$self->read_contig(@_)}, 
+            write_contig => sub { $self->write_contig(@_)}
         };
     },
     handles => {
