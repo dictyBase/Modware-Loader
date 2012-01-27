@@ -246,8 +246,10 @@ sub _dbrow2gff3hash {
 
 sub _chado_feature_id {
     my ( $self, $dbrow ) = @_;
-    if ( my $id = $dbrow->dbxref->accession ) {
-        return $id;
+    if ( my $dbxref = $dbrow->dbxref ) {
+        if ( my $id = $dbxref->accession ) {
+            return $id;
+        }
     }
     else {
         return $dbrow->uniquename;
@@ -271,12 +273,12 @@ sub _children_dbrows {
 sub read_organism {
     my ( $self, $schema, $genus, $species, $organism ) = @_;
     my $query;
-    $query->{species} = $species if $species;
-    $query->{genus}   = $genus   if $genus;
+    $query->{species}     = $species  if $species;
+    $query->{genus}       = $genus    if $genus;
     $query->{common_name} = $organism if $organism;
 
     my $org_rs = $schema->resultset('Organism::Organism')->search(
-        $query, 
+        $query,
         {   select => [
                 qw/species genus
                     common_name organism_id/
@@ -287,7 +289,8 @@ sub read_organism {
     if ( $org_rs->count > 1 ) {
         warn
             "you have more than one organism being selected with the current query\n";
-        warn sprintf ("Genus:%s\tSpecies:%s\tCommon name:%s\n", $_->genus, $_->species, $_->common_name)
+        warn sprintf( "Genus:%s\tSpecies:%s\tCommon name:%s\n",
+            $_->genus, $_->species, $_->common_name )
             for $org_rs->all;
         warn
             "Restrict your query to one organism: perhaps provide only **genus** and **species** for uniqueness\n";
