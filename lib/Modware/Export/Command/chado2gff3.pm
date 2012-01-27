@@ -492,7 +492,7 @@ sub read_mito_reference_feature {
     return $rs;
 }
 
-sub read_contig_feature {
+sub read_contig {
 	my ($self, $dbrow) = @_;
 	return $self->read_aligned_feature($dbrow, 'contig');
 }
@@ -575,7 +575,7 @@ sub write_aligned_feature {
     $output->print( gff3_format_feature($hashref) );
 }
 
-sub write_contig_feature {
+sub write_contig {
 	my ($self, $dbrow, $seq_id, $output) = @_;
     my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
     $output->print( gff3_format_feature($hash) );
