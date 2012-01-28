@@ -305,19 +305,19 @@ sub read_organism {
     );
 
     if ( $org_rs->count > 1 ) {
-        warn
+        my $msg =
             "you have more than one organism being selected with the current query\n";
-        warn sprintf( "Genus:%s\tSpecies:%s\tCommon name:%s\n",
+        $msg .= sprintf( "Genus:%s\tSpecies:%s\tCommon name:%s\n",
             $_->genus, $_->species, $_->common_name )
             for $org_rs->all;
-        warn
-            "Restrict your query to one organism: perhaps provide only **genus** and **species** for uniqueness\n";
-        die;
+        $msg .=
+            "Restrict your query to one organism: perhaps provide only **genus** and **species** for uniqueness";
+        $self->logger->log_fatal($msg);
     }
 
     my $dbrow = $org_rs->first;
     if ( !$dbrow ) {
-        die "Could not find given organism  in chado database\n";
+        $self->logger->log_fatal("Could not find given organism  in chado database");
     }
     return $dbrow;
 }
@@ -361,7 +361,7 @@ sub write_reference_feature {
         $output->print("##sequence-region\t$seq_id\t$start\t$end\n");
     }
     else {
-        warn "$seq_id has no length defined:skipped from export\n";
+        $self->logger->log("$seq_id has no length defined:skipped from export");
         return;
     }
 
@@ -384,7 +384,7 @@ sub write_reference_feature {
         $hashref->{source} = $row->accession;
     }
     else {
-        $self->logger->warn(
+        $self->logger->log(
             $dbrow->type->name,
             " feature ",
             $dbrow->uniquename,
@@ -547,8 +547,8 @@ sub write_aligned_feature {
         $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
     }
     else {
-        warn
-            "No feature location relative to genome is found: Skipped from output\n";
+        $self->logger->log(
+            "No feature location relative to genome is found: Skipped from output");
         return;
     }
     $hashref->{phase} = undef;
@@ -578,9 +578,9 @@ sub write_aligned_feature {
         }
     }
     else {
-        warn "No feature location relative to itself(query) is found\n";
+        $self->logger->log ("No feature location relative to itself(query) is found");
         if ( !$self->tolerate_missing ) {
-            warn "Skipped from output\n";
+           $self->logger->log("Skipped from output");
             return;
         }
     }
