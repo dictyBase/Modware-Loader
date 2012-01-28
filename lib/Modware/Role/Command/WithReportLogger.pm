@@ -9,6 +9,14 @@ use POSIX qw/strftime/;
 
 # Module implementation
 #
+
+has 'verbose' => (
+	is => 'rw', 
+	isa => 'Bool', 
+	default => 0, 
+	documentation => 'Output logging message,default is false'
+);
+
 has 'logfile' => (
     is            => 'rw',
     isa           => 'Str',
@@ -41,6 +49,10 @@ sub _build_logger {
     }
     else {
         $options->{to_stderr} = 1;
+    }
+
+    if (!$self->verbose) {
+    	$options->{muted} = 1;
     }
     
     my $logger = Log::Dispatchouli->new($options);
