@@ -10,6 +10,15 @@ extends qw/Modware::Export::Chado/;
 # Module implementation
 #
 
+has 'tolerate_missing' => (
+    is            => 'rw',
+    isa           => 'Bool',
+    default       => 0,
+    documentation => 'Tolerate and output some missing GFF3 feature. 
+	                  Currently output Target attribute if start and end value are absent
+	                  Default is off'
+);
+
 has 'write_sequence' => (
     is      => 'rw',
     isa     => 'Bool',
@@ -123,12 +132,12 @@ REFERENCE:
         next
             if !$self->get_coderef('write_reference_feature')
                 ->( $ref_dbrow, $seq_id, $output );
-		
-		my $contig_rs = $self->get_coderef('read_contig')->($ref_dbrow);
-		while (my $row = $contig_rs->next) {
-			$self->get_coderef('write_contig')->($row, $seq_id, $output);
-		}
-        
+
+        my $contig_rs = $self->get_coderef('read_contig')->($ref_dbrow);
+        while ( my $row = $contig_rs->next ) {
+            $self->get_coderef('write_contig')->( $row, $seq_id, $output );
+        }
+
         ## -- gene
         my $gene_rs = $self->read_gene_feature($ref_dbrow);
         while ( my $grow = $gene_rs->next ) {
@@ -245,8 +254,8 @@ sub _dbrow2gff3hash {
     for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
         $dbrow->secondary_dbxrefs )
     {
-    	my $dbname = $xref_row->db->name;
-    	$dbname =~ s/^DB:// if $dbname =~ /^DB:/;
+        my $dbname = $xref_row->db->name;
+        $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
         push @$dbxrefs, $dbname . ':' . $xref_row->accession;
     }
     $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
@@ -493,8 +502,8 @@ sub read_mito_reference_feature {
 }
 
 sub read_contig {
-	my ($self, $dbrow) = @_;
-	return $self->read_aligned_feature($dbrow, 'contig');
+    my ( $self, $dbrow ) = @_;
+    return $self->read_aligned_feature( $dbrow, 'contig' );
 }
 
 sub read_aligned_feature {
@@ -530,7 +539,7 @@ sub write_aligned_feature {
     $type = $type . '_match' if $type !~ /match/;
     $hashref->{type} = $type;
 
-    my $floc_rs = $dbrow->featureloc_features( { rank => 1 } );
+    my $floc_rs = $dbrow->featureloc_features( { rank => 0 } );
     my $floc_row;
     if ( $floc_row = $floc_rs->first ) {
         $hashref->{start}  = $floc_row->fmin + 1;
@@ -554,6 +563,11 @@ sub write_aligned_feature {
 
     my $id = $self->_chado_feature_id($dbrow);
     $hashref->{attributes}->{ID} = [$id];
+	if (my $name = $dbrow->name) {
+		$hashref->{attributes}->{Name} = [$name];
+	}
+
+
     my $target = $id;
     my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
     if ( my $row = $floc2_rs->next ) {
@@ -562,13 +576,16 @@ sub write_aligned_feature {
             $strand = $strand == -1 ? '-' : '+';
             $target .= "\t$strand";
         }
-        $hashref->{attributes}->{Target} = [$target];
     }
     else {
-        warn
-            "No feature location relative to itself(query) is found: Skipped from output\n";
-        return;
+        warn "No feature location relative to itself(query) is found\n";
+        if ( !$self->tolerate_missing ) {
+            warn "Skipped from output\n";
+            return;
+        }
     }
+    $hashref->{attributes}->{Target} = [$target];
+
     if ( my $gap_str = $floc_row->residue_info ) {
         $hashref->{attributes}->{Gap} = [$gap_str];
     }
@@ -576,7 +593,7 @@ sub write_aligned_feature {
 }
 
 sub write_contig {
-	my ($self, $dbrow, $seq_id, $output) = @_;
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
     my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
     $output->print( gff3_format_feature($hash) );
 }
@@ -631,15 +648,13 @@ has '_hook_stack' => (
             write_cds_feature  => sub { $self->write_cds_feature(@_) },
             write_reference_sequence =>
                 sub { $self->write_reference_sequence(@_) },
-            write_aligned_feature =>
-                sub { $self->write_overlapping_feture(@_) },
-            read_aligned_feature =>
-                sub { $self->read_overlapping_feture(@_) },
+            write_aligned_feature => sub { $self->write_aligned_feature(@_) },
+            read_aligned_feature  => sub { $self->read_aligned_feature(@_) },
             write_extra_gene_model =>
                 sub { $self->write_extra_gene_model(@_) },
-            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) }, 
-            read_contig => sub {$self->read_contig(@_)}, 
-            write_contig => sub { $self->write_contig(@_)}
+            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) },
+            read_contig           => sub { $self->read_contig(@_) },
+            write_contig          => sub { $self->write_contig(@_) }
         };
     },
     handles => {
