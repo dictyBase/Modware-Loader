@@ -105,9 +105,9 @@ sub dump_sequence {
     my ( $self, $rs, $output ) = @_;
     my $logger = $self->logger;
     while ( my $dbrow = $rs->next ) {
-        if ( $seq = $dbrow->residues ) {
+        my $id = $self->_chado_feature_id($dbrow);
+        if ( my $seq = $dbrow->residues ) {
             $seq =~ s/(\S{1,60})/$1\n/g;
-            my $id = $self->_chado_feature_id($dbrow);
             $output->print( ">$id\n", $seq );
         }
         else {
@@ -158,13 +158,13 @@ sub dump_cds_sequence {
             { 'type_2.name' => 'exon' },
             {   join       => [qw/type featureloc_features/],
                 prefetch   => 'dbxref',
-                'order_by' => { -asc => 'featureloc_features.fmin' };
+                'order_by' => { -asc => 'featureloc_features.fmin' }
             }
             );
 
-		my $seq;
+        my $seq;
         for my $erow ( $exon_rs->all ) {
-			my $floc   = $erow->featureloc_features->first;
+            my $floc   = $erow->featureloc_features->first;
             my $start  = $floc->fmin + 1;
             my $end    = $floc->fmax;
             my $seqlen = $end - $start + 1;
@@ -177,12 +177,12 @@ sub dump_cds_sequence {
                 }
             )->first->get_column('fseq');
         }
-        if ($dbrow->featureloc_features->first->strand == -1){
-                $seq = join( '', reverse( split '', $seq ) );
-                $seq =~ tr/ATGC/TACG/;
+        if ( $dbrow->featureloc_features->first->strand == -1 ) {
+            $seq = join( '', reverse( split '', $seq ) );
+            $seq =~ tr/ATGC/TACG/;
         }
         $seq =~ s/(\S{1,60})/$1\n/g;
-        my $id  = $self->_chado_feature_id($dbrow);
+        my $id = $self->_chado_feature_id($dbrow);
         $output->print( ">$id\n", $seq );
     }
 }
