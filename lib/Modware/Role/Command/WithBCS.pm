@@ -6,6 +6,7 @@ use strict;
 use namespace::autoclean;
 use Moose::Role;
 use Bio::Chado::Schema;
+use Tie::Cache;
 
 # Module implementation
 #
@@ -44,7 +45,6 @@ has 'attribute' => (
     }
 );
 
-
 has 'schema' => (
     is      => 'rw',
     isa     => 'DBIx::Class::Schema',
@@ -54,17 +54,25 @@ has 'schema' => (
 );
 
 has 'schema_debug' => (
-	is => 'rw', 
-	isa => 'Bool', 
-	default => 0, 
-	documentation => 'Output SQL statements that are executed,  default false'
+    is            => 'rw',
+    isa           => 'Bool',
+    default       => 0,
+    documentation => 'Output SQL statements that are executed,  default false'
 );
 
 sub _build_schema {
     my ($self) = @_;
-    my $schema = Bio::Chado::Schema->connect( $self->dsn, $self->user,
-        $self->password, $self->attribute );
-	$schema->storage->debug($self->schema_debug);
+    my $schema = Bio::Chado::Schema->connect(
+        $self->dsn,
+        $self->user,
+        $self->password,
+        $self->attribute,
+        {   on_connect_do => sub {
+                tie %{ shift->_dbh->{CachedKids} }, 'Tie::Cache', 100;
+                }
+        }
+    );
+    $schema->storage->debug( $self->schema_debug );
     return $schema;
 }
 

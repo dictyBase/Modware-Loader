@@ -92,10 +92,22 @@ has 'taxon_id' => (
     documentation => 'NCBI taxon id,  used for GFF3 header output,  optional'
 );
 
-sub execute {
+augment  'execute' => sub {
     my ($self) = @_;
     my $logger = $self->logger;
     my $schema = $self->schema;
+
+	if ( $self->exclude_mitochondrial ) {
+        $self->register_handler( 'read_reference_feature' =>
+                sub { $self->read_reference_feature_without_mito(@_) } );
+    }
+    if ( $self->only_mitochondrial ) {
+        $self->register_handler(
+            'read_reference_feature' => sub {
+                $self->read_mito_reference_feature(@_);
+            }
+        );
+    }
 
     my $dbrow = $self->_organism_result;
 
@@ -159,7 +171,7 @@ REFERENCE:
         $logger->info("Finished GFF3 output of $seq_id");
     }
     $output->close;
-}
+};
 
 sub write_reference_sequence {
     my ( $self, $dbrow, $seq_id, $output ) = @_;
@@ -575,20 +587,6 @@ has '_hook_stack' => (
     }
 );
 
-before 'execute' => sub {
-    my ($self) = @_;
-    if ( $self->exclude_mitochondrial ) {
-        $self->register_handler( 'read_reference_feature' =>
-                sub { $self->read_reference_feature_without_mito(@_) } );
-    }
-    if ( $self->only_mitochondrial ) {
-        $self->register_handler(
-            'read_reference_feature' => sub {
-                $self->read_mito_reference_feature(@_);
-            }
-        );
-    }
-};
 
 __PACKAGE__->meta->make_immutable;
 
