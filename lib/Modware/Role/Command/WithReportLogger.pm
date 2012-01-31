@@ -51,9 +51,6 @@ sub _build_logger {
         $options->{to_stderr} = 1;
     }
 
-    if (!$self->verbose) {
-    	$options->{muted} = 1;
-    }
     
     my $logger = Log::Dispatchouli->new($options);
     $logger->set_prefix(sub {
@@ -61,6 +58,9 @@ sub _build_logger {
     	my $time = strftime "%m-%d-%Y %H:%M:%S",  localtime;
     	return sprintf "[%s]:\t%s", $time, $msg;
     });
+    if (!$self->verbose) {
+    	$logger->set_muted(1);
+    }
     return $logger;
 }
 
