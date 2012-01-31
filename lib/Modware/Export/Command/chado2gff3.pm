@@ -11,10 +11,11 @@ extends qw/Modware::Export::Chado/;
 #
 
 has 'tolerate_missing' => (
-    is            => 'rw',
-    isa           => 'Bool',
-    default       => 0,
-    documentation => 'Tolerate and output GFF3 features even if specs are not fulfilled. 
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'Tolerate and output GFF3 features even if specs are not fulfilled. 
 	                  Currently output Target attribute if start and end values are absent
 	                  Default is off'
 );
@@ -92,12 +93,12 @@ has 'taxon_id' => (
     documentation => 'NCBI taxon id,  used for GFF3 header output,  optional'
 );
 
-augment  'execute' => sub {
+augment 'execute' => sub {
     my ($self) = @_;
     my $logger = $self->logger;
     my $schema = $self->schema;
 
-	if ( $self->exclude_mitochondrial ) {
+    if ( $self->exclude_mitochondrial ) {
         $self->register_handler( 'read_reference_feature' =>
                 sub { $self->read_reference_feature_without_mito(@_) } );
     }
@@ -125,7 +126,7 @@ REFERENCE:
 
         my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
 
-        $logger->info("Starting GFF3 output of $seq_id");
+        $logger->log("Starting GFF3 output of $seq_id");
         next
             if !$self->get_coderef('write_reference_feature')
                 ->( $ref_dbrow, $seq_id, $output );
@@ -168,7 +169,7 @@ REFERENCE:
             $self->get_coderef('write_reference_sequence')
                 ->( $ref_dbrow, $seq_id, $output );
         }
-        $logger->info("Finished GFF3 output of $seq_id");
+        $logger->log("Finished GFF3 output of $seq_id");
     }
     $output->close;
 };
@@ -216,9 +217,14 @@ sub _dbrow2gff3hash {
     $hashref->{seq_id} = $seq_id;
 
     my $floc_row = $dbrow->featureloc_features->first;
-    $hashref->{start}  = $floc_row->fmin + 1;
-    $hashref->{end}    = $floc_row->fmax;
-    $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
+    $hashref->{start} = $floc_row->fmin + 1;
+    $hashref->{end}   = $floc_row->fmax;
+    if ( my $strand = $floc_row->strand ) {
+        $hashref->{strand} = $strand == -1 ? '-' : '+';
+    }
+    else {
+        $hashref->{strand} = undef;
+    }
 
     if ( $hashref->{type} eq 'CDS' ) {
         ## -- phase for CDS
@@ -298,7 +304,8 @@ sub write_reference_feature {
         $output->print("##sequence-region\t$seq_id\t$start\t$end\n");
     }
     else {
-        $self->logger->log("$seq_id has no length defined:skipped from export");
+        $self->logger->log(
+            "$seq_id has no length defined:skipped from export");
         return;
     }
 
@@ -472,7 +479,8 @@ sub write_aligned_feature {
     }
     else {
         $self->logger->log(
-            "No feature location relative to genome is found: Skipped from output");
+            "No feature location relative to genome is found: Skipped from output"
+        );
         return;
     }
     $hashref->{phase} = undef;
@@ -487,10 +495,9 @@ sub write_aligned_feature {
 
     my $id = $self->_chado_feature_id($dbrow);
     $hashref->{attributes}->{ID} = [$id];
-	if (my $name = $dbrow->name) {
-		$hashref->{attributes}->{Name} = [$name];
-	}
-
+    if ( my $name = $dbrow->name ) {
+        $hashref->{attributes}->{Name} = [$name];
+    }
 
     my $target = $id;
     my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
@@ -502,9 +509,10 @@ sub write_aligned_feature {
         }
     }
     else {
-        $self->logger->log ("No feature location relative to itself(query) is found");
+        $self->logger->log(
+            "No feature location relative to itself(query) is found");
         if ( !$self->tolerate_missing ) {
-           $self->logger->log("Skipped from output");
+            $self->logger->log("Skipped from output");
             return;
         }
     }
@@ -586,7 +594,6 @@ has '_hook_stack' => (
         register_handler => 'set'
     }
 );
-
 
 __PACKAGE__->meta->make_immutable;
 
