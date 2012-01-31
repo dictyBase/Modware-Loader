@@ -11,7 +11,7 @@ extends qw/Modware::Export::Chado/;
 
 has '_type2retrieve' => (
     is      => 'rw',
-    isa     => 'HashRef[Coderef]',
+    isa     => 'HashRef',
     traits  => [qw/Hash/],
     handles => {
         'all_type2features'             => 'keys',
@@ -37,9 +37,10 @@ has '_dump_sequence' => (
     traits  => [qw/Hash/],
     lazy    => 1,
     handles => {
-        'all_typesof_sequence' => 'keys',
-        'add_typefor_sequence' => 'get',
-        'has_typefor_sequence' => 'defined'
+        'all_typesof_sequence'    => 'keys',
+        'add_typefor_sequence'    => 'set',
+        'get_codereffor_sequence' => 'get',
+        'has_typefor_sequence'    => 'defined'
     },
     default => sub {
         my ($self) = @_;
@@ -69,6 +70,23 @@ has 'gff_source' => (
         'GFF source(column 2) to which the feature belong to,  optional'
 );
 
+augment 'execute' => sub {
+    my ($self) = @_;
+    my $dbrow  = $self->_organism_result;
+    my $type   = $self->type;
+    if ( $self->has_type2feature_handler( $self->type ) ) {
+        my $rs = $self->get_type2feature_coderef( $self->type )
+            ->( $dbrow, $self->type, $self->gff_source );
+        $self->get_codereffor_sequence( $self->type )
+            ->( $rs, $self->output_handler );
+    }
+    else {
+        $self->logger->log_fatal(
+            "feature $type is not supported for dumping sequence");
+    }
+    $self->output_handler->close;
+};
+
 sub get_type2feature {
     my ( $self, $dbrow, $type, $source ) = @_;
     my $rs;
@@ -80,7 +98,8 @@ sub get_type2feature {
                 'db.name'          => 'GFF_source'
             },
             {   join =>
-                    [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ]
+                    [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ],
+                prefetch => 'dbxref'
             }
         );
     }
@@ -88,7 +107,9 @@ sub get_type2feature {
         $rs = $dbrow->search_related(
             'features',
             { 'type.name' => $type },
-            { join        => 'type' }
+            {   join     => 'type',
+                prefetch => 'dbxref'
+            }
         );
     }
     $self->logger->log_fatal("no feature $type found in the database")
@@ -97,7 +118,7 @@ sub get_type2feature {
 }
 
 sub get_cds {
-    my ( $self, $dbrow, $source ) = @_;
+    my ( $self, $dbrow, $type, $source ) = @_;
     return $self->get_type2feature( $dbrow, 'mRNA', $source );
 }
 
@@ -156,24 +177,21 @@ sub dump_cds_sequence {
             )->search_related(
             'subject',
             { 'type_2.name' => 'exon' },
-            {   join       => [qw/type featureloc_features/],
-                prefetch   => 'dbxref',
-                'order_by' => { -asc => 'featureloc_features.fmin' }
-            }
-            );
+            { join          => 'type' }
+            )
+            ->search_related( 'featureloc_features', {},
+            { 'order_by' => { -asc => 'fmin' } } );
 
         my $seq;
         for my $erow ( $exon_rs->all ) {
-            my $floc   = $erow->featureloc_features->first;
-            my $start  = $floc->fmin + 1;
-            my $end    = $floc->fmax;
+            my $start  = $erow->fmin + 1;
+            my $end    = $erow->fmax;
             my $seqlen = $end - $start + 1;
-            $seq .= $floc->search_related(
+            $seq .= $erow->search_related(
                 'srcfeature',
                 {},
-                {   select =>
-                        [ \"SUBSTR(srcfeature.residues,  $start, $seqlen)" ],
-                    as => 'fseq'
+                {   select => [ \"SUBSTR(me.residues,  $start, $seqlen)" ],
+                    as     => 'fseq'
                 }
             )->first->get_column('fseq');
         }
@@ -195,5 +213,5 @@ __END__
 
 =head1 NAME
 
-Export GFF3 file from chado database
+Export fasta sequence file from chado database
 
