@@ -9,9 +9,8 @@ use Moose::Util::TypeConstraints;
 use Cwd;
 use File::Spec::Functions qw/catfile catdir rel2abs/;
 use File::Basename;
-use Time::Piece;
-use YAML qw/LoadFile/;
 use Path::Class::File;
+use IO::Handle;
 
 # Module implementation
 #
@@ -57,7 +56,10 @@ has 'output_handler' => (
     lazy    => 1,
     default => sub {
         my ($self) = @_;
-        return $self->output->openw;
+	return $self->has_output
+            ? $self->output->openw
+            : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
+
     }
 );
 
