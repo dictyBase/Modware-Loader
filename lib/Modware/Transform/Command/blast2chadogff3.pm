@@ -21,10 +21,11 @@ has 'source' => (
     traits      => [qw/Getopt/],
     cmd_aliases => 's',
     lazy        => 1,
-    default     => {
+    default     => sub {
         my ($self) = @_;
-            return $self->_result_object->algorithm;
-        } documentation =>
+        return $self->_result_object->algorithm;
+    },
+    documentation =>
         'the source field of GFF output,  default will the algorithm name'
 );
 
@@ -34,9 +35,9 @@ has 'primary_tag' => (
     lazy    => 1,
     default => sub {
         my ($self) = @_;
-        my $algoritm = lc $self->_result_object->algorithm;
+        my $algorithm = lc $self->_result_object->algorithm;
         my $tag;
-        if ( $algoritm eq 'blastn' ) {
+        if ( $algorithm eq 'blastn' ) {
             $tag = 'nucleotide_match';
         }
         elsif ( $algorithm eq 'blastp' ) {
@@ -47,7 +48,7 @@ has 'primary_tag' => (
         }
         return $tag;
     },
-    documenation =>
+    documentation =>
         'The type of feature(column3) that will be used for grouping, by default it will be guessed from the blast algorithm',
 
 );
@@ -70,29 +71,24 @@ has 'target' => (
 has 'cutoff' => (
     is            => 'rw',
     isa           => 'Str',
-    traits        => [qw/Getopt/],
     documentation => 'an evalue cutoff',
-    cmd_aliases   => 'c',
     predicate     => 'has_cutoff'
 );
 
 has 'hit_counter' => (
-	is => 'rw', 
-	isa => 'Num', 
-	traits => [qw/Counter NoGetopt/], 
-	default => 0, 
-	handles => {
-		inc_hit => 'inc', 
-	}
+    is      => 'rw',
+    isa     => 'Num',
+    traits  => [qw/Counter NoGetopt/],
+    default => 0,
+    handles => { inc_hit => 'inc', }
 );
 
 sub execute {
     my ($self) = @_;
     my $parser
-        = Bio::SearchIO->new( format => 'blast', file => $self->input );
-    my $output = Bio::Tools::GFF->new( -file => $self->output_handler );
+        = Bio::SearchIO->new( -format => 'blast', -file => $self->input );
+    my $out = Bio::Tools::GFF->new( -file => ">".$self->output,  -gff_version => 3 );
 
-    my $other = $self->type eq 'query' ? 'hit' : 'query';
 
 RESULT:
     while ( my $result = $parser->next_result ) {
@@ -110,13 +106,7 @@ RESULT:
             my $gff_name = $name . $self->hit_counter;
             my @hsps;
             if ( $self->group ) {
-                $hit->sort_hsps(
-                    sub {
-                        Bio::Search::Hit::HitI::a->start('hit')
-                            <=> Bio::Search::Hit::HitI::b->start('hit');
-                    }
-                );
-                @hsps = $hit->hsps;
+                @hsps = sort {$a->start('hit') <=> $b->start('hit') }$hit->hsps;
                 $out->write_feature(
                     Bio::SeqFeature::Generic->new(
                         -start       => $hsps[0]->start('hit'),
@@ -131,7 +121,7 @@ RESULT:
             }
 
             my $counter = 01;
-            for my $hsp (@hsps) )
+            for my $hsp (@hsps )
                 {
                     my $feature = Bio::SeqFeature::Generic->new;
                     $feature->seq_id($name);
@@ -172,8 +162,7 @@ __END__
 
 =head1 NAME
 
-Modware::Transform::Command::blast2gff3 - Convert blast output to gff3 file for loading in
-chado database
+Modware::Transform::Command::blast2chadogff3 - Convert blast output to gff3 file for loading in chado database
 
 
 

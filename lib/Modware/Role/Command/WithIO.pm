@@ -46,6 +46,7 @@ has 'output' => (
     cmd_aliases   => 'o',
     required      => 1,
     coerce        => 1,
+    predicate     => 'has_output',
     documentation => 'Name of the output file'
 );
 
@@ -56,7 +57,7 @@ has 'output_handler' => (
     lazy    => 1,
     default => sub {
         my ($self) = @_;
-	return $self->has_output
+        return $self->has_output
             ? $self->output->openw
             : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
 
@@ -77,7 +78,6 @@ has 'input_handler' => (
 sub _build_data_dir {
     return rel2abs(cwd);
 }
-
 
 1;    # Magic true value required at end of module
 
