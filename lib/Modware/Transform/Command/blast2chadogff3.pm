@@ -78,14 +78,6 @@ has 'cutoff' => (
     predicate     => 'has_cutoff'
 );
 
-has 'hit_counter' => (
-    is      => 'rw',
-    isa     => 'Num',
-    traits  => [qw/Counter NoGetopt/],
-    default => 0,
-    handles => { inc_hit => 'inc', }
-);
-
 has 'hit_id_parser' => (
     is  => 'rw',
     isa => 'Str',
