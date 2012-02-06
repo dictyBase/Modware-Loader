@@ -12,7 +12,7 @@ has 'group' => (
     is            => 'rw',
     isa           => 'Bool',
     default       => 1,
-    documentation => 'To group the HSP(s) to single feature,  default is on'
+    documentation => 'Generate a GFF3 line to group the HSP(s)'
 );
 has '+input' => ( documentation => 'blast result file' );
 has 'source' => (
