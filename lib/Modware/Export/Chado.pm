@@ -67,6 +67,13 @@ sub _chado_feature_id {
     }
 }
 
+sub _chado_name {
+    my ( $self, $dbrow ) = @_;
+    if ( my $name = $dbrow->name ) {
+        return $name;
+    }
+}
+
 sub gff_source {
     my ( $self, $dbrow ) = @_;
     my $dbxref_rs

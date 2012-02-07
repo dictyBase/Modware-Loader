@@ -9,6 +9,15 @@ extends qw/Modware::Export::Chado/;
 # Module implementation
 #
 
+has 'feature_name' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'Output feature name instead of sequence id in the fasta header,  default is off.'
+);
+
 has '_type2retrieve' => (
     is      => 'rw',
     isa     => 'HashRef',
@@ -125,8 +134,13 @@ sub get_cds {
 sub dump_sequence {
     my ( $self, $rs, $output ) = @_;
     my $logger = $self->logger;
+    my $method = $self->feature_name ? '_chado_name' : '_chado_feature_id';
     while ( my $dbrow = $rs->next ) {
-        my $id = $self->_chado_feature_id($dbrow);
+        my $id = $self->$method($dbrow);
+        if ( !$id ) {
+            $logger->log( "Unable to fetch name for feature: ", $dbrow->uniquename );
+            return;
+        }
         if ( my $seq = $dbrow->residues ) {
             $seq =~ s/(\S{1,60})/$1\n/g;
             $output->print( ">$id\n", $seq );
@@ -139,8 +153,13 @@ sub dump_sequence {
 
 sub infer_and_dump_sequence {
     my ( $self, $rs, $output ) = @_;
+    my $method = $self->feature_name ? '_chado_name' : '_chado_feature_id';
     while ( my $dbrow = $rs->next ) {
-        my $id  = $self->_chado_feature_id($dbrow);
+        my $id = $self->$method($dbrow);
+        if ( !$id ) {
+            $self->logger->log( "Unable to fetch name for feature: ", $dbrow->uniquename );
+            return;
+        }
         my $seq = $dbrow->residues;
         if ( !$seq ) {
             my $floc   = $dbrow->featureloc_features->first;
@@ -213,5 +232,5 @@ __END__
 
 =head1 NAME
 
-Export fasta sequence file from chado database
+Modware::Export::Command::chado2fasta - Export fasta sequence file from chado database
 
