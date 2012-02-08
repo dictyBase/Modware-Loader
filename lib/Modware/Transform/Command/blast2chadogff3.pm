@@ -223,49 +223,70 @@ RESULT:
                 : $hit->name;
             my $hacc = $hit->accession ? $hit->accession : $hname;
 
-            if ( $self->group ) {
-                $out->write_feature(
-                    Bio::SeqFeature::Generic->new(
-                        -start       => $hit->start('hit'),
-                        -end         => $hit->end('hit'),
-                        -seq_id      => $hname,
-                        -source_tag  => $self->source,
-                        -primary_tag => $self->primary_tag,
-                        -score       => sprintf( "%.3g", $hit->significance ),
-                        -tag         => {
-                            'ID'   => $qname,
-                            'Note' => $qdesc,
-                            'Name' => $qacc
-                        }
-                    )
-                );
+#additional grouping of hsp's by the hit strand as in case of tblastn hsp
+#belonging to separate strand of query could be grouped into the same hit,  however
+#they denotes separate matches and should be separated.
+            my $hsp_group;
+            while ( my $hsp = $hit->next_hsp ) {
+                my $strand = $hsp->strand('hit') == 1 ? 'plus' : 'minus';
+                push @{ $hsp_group->{$strand} }, $hsp;
             }
 
-            while ( my $hsp = $hit->next_hsp ) {
-                my $feature = Bio::SeqFeature::Generic->new();
-                $feature->seq_id($hname);
-                $feature->primary_tag('match_part');
-                $feature->score( sprintf( "%.3g", $hsp->significance ) );
-                $feature->start( $hsp->start('subject') );
-                $feature->end( $hsp->end('subject') );
-                $feature->strand( $hsp->strand('hit') );
-                $feature->source_tag( $self->source );
+            # sort by hit start
+            push @{ $hsp_group->{ 'strand' . $_ } },
+                sort { $b->start('hit') <=> $a->start('hit') }
+                @{ $hsp_group{$_} }
+                for qw/plus minus/;
 
+            for my $strand (qw/strandplus strandminus/) {
                 if ( $self->group ) {
-                    $feature->add_tag_value( 'Parent', $qname );
+                    $out->write_feature(
+                        Bio::SeqFeature::Generic->new(
+                            -start =>
+                                $hsp_group->{$strand}->[0]->start('hit'),
+                            -end => $hsp_group->{$strand}->[-1]->end('hit'),
+                            -seq_id      => $hname,
+                            -source_tag  => $self->source,
+                            -primary_tag => $self->primary_tag,
+                            -score => sprintf( "%.3g", $hit->significance ),
+                            -tag   => {
+                                'ID'   => $qname,
+                                'Note' => $qdesc,
+                                'Name' => $qacc
+                            }
+                        )
+                    );
                 }
 
-                if ( $self->add_target ) {
-                    $feature->add_tag_value( 'Target', $qname );
-                    $feature->add_tag_value( 'Target', $hsp->start );
-                    $feature->add_tag_value( 'Target', $hsp->end );
-                    $feature->add_tag_value( 'Target', $hsp->strand );
+                for my $hsp ( @{ $hsp_group->{$strand} } ) {
+                    my $feature = Bio::SeqFeature::Generic->new();
+                    $feature->seq_id($hname);
+                    $feature->primary_tag('match_part');
+                    $feature->start( $hsp->start('subject') );
+                    $feature->end( $hsp->end('subject') );
+                    $feature->strand( $hsp->strand('hit') );
+                    $feature->source_tag( $self->source );
 
-                    my @str = $hsp->cigar_string =~ /\d{1,2}[A-Z]?/g;
-                    $feature->add_tag_value( 'Gap', join( ' ', @str ) );
+                    if ( $self->group ) {
+                        $feature->add_tag_value( 'Parent', $qname );
+                    }
+                    else {
+                        $feature->score(
+                            sprintf( "%.3g", $hsp->significance ) );
+                    }
+
+                    if ( $self->add_target ) {
+                        $feature->add_tag_value( 'Target', $qname );
+                        $feature->add_tag_value( 'Target', $hsp->start );
+                        $feature->add_tag_value( 'Target', $hsp->end );
+                        $feature->add_tag_value( 'Target', $hsp->strand );
+
+                        my @str = $hsp->cigar_string =~ /\d{1,2}[A-Z]?/g;
+                        $feature->add_tag_value( 'Gap', join( ' ', @str ) );
+                    }
+
+                    $out->write_feature($feature);
                 }
-
-                $out->write_feature($feature);
             }
         }
     }
