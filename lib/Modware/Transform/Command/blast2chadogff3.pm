@@ -8,6 +8,15 @@ use Bio::Tools::GFF;
 use Bio::SeqFeature::Generic;
 extends qw/Modware::Transform::Command/;
 
+has 'format' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'blast',
+    lazy    => 1,
+    documentation =>
+        'Type of blast output,  either blast(text) or blastxml. For blastxml format the query name is parsed from query description'
+);
+
 has 'group' => (
     is            => 'rw',
     isa           => 'Bool',
@@ -82,14 +91,14 @@ has 'hit_id_parser' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'hit id parser for the header line,  default is to use none ncbi,regular parsers are available'
+        'hit id parser for the header line,  default is to use none. ncbi_gi, regular and general parsers are available'
 );
 
 has 'query_id_parser' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'query id parser for the header line,  default is to use none. ncbi,regular parsers are available'
+        'query id parser for the header line,  default is to use none. ncbi_gi , regular and general parsers are available'
 );
 
 has 'desc_parser' => (
@@ -125,14 +134,15 @@ has '_parser_stack' => (
     default => sub {
         my ($self) = @_;
         return {
-            'ncbi'    => sub { $self->ncbi_parser(@_) },
-            'regular' => sub { $self->regular_parser(@_) }
+            'ncbi'    => sub { $self->ncbi_gi_parser(@_) },
+            'regular' => sub { $self->regular_parser(@_) },
+            'general' => sub { $self->general_parser(@_) }
         };
     },
     lazy => 1
 );
 
-sub ncbi_parser {
+sub ncbi_gi_parser {
     my ( $self, $string ) = @_;
     return $string if $string !~ /\|/;
     return ( ( split /\|/, $string ) )[1];
@@ -144,10 +154,16 @@ sub regular_parser {
     return ( ( split /\|/, $string ) )[0];
 }
 
+sub general_parser {
+    my ( $self, $string ) = @_;
+    return $string if $string !~ /\|/;
+    return ( ( split /\|/, $string ) )[2];
+}
+
 sub ncbi_desc_parser {
     my ( $self, $string ) = @_;
     return $string if $string !~ /\|/;
-    my @values = ( split /\|/, $string ) ;
+    my @values = ( split /\|/, $string );
     my $desc = $values[-1];
     $desc =~ s/^\s*//g;
     $desc =~ s/\s*$//g;
@@ -156,8 +172,10 @@ sub ncbi_desc_parser {
 
 sub execute {
     my ($self) = @_;
-    my $parser
-        = Bio::SearchIO->new( -format => 'blast', -file => $self->input );
+    my $parser = Bio::SearchIO->new(
+        -format => $self->format,
+        -file   => $self->input
+    );
     my $out = Bio::Tools::GFF->new(
         -file        => ">" . $self->output,
         -gff_version => 3
@@ -165,14 +183,26 @@ sub execute {
 
 RESULT:
     while ( my $result = $parser->next_result ) {
-
-        my $qname
-            = $self->query_id_parser
-            ? $self->get_parser( $self->query_id_parser )
-            ->( $result->query_name )
-            : $result->query_name;
-        my $qacc
-            = $result->query_accession ? $result->query_accession : $qname;
+        my ( $qname, $qacc );
+        if ( $self->format eq 'blastxml' ) {
+            $qname
+                = $self->query_id_parser
+                ? $self->get_parser( $self->query_id_parser )
+                ->( $result->query_description )
+                : $result->query_description;
+            $qacc = $qname;
+        }
+        else {
+            my $qname
+                = $self->query_id_parser
+                ? $self->get_parser( $self->query_id_parser )
+                ->( $result->query_name )
+                : $result->query_name;
+            $qacc
+                = $result->query_accession
+                ? $result->query_accession
+                : $qname;
+        }
 
         my $qdesc
             = $self->desc_parser
@@ -201,8 +231,12 @@ RESULT:
                         -seq_id      => $hname,
                         -source_tag  => $self->source,
                         -primary_tag => $self->primary_tag,
-                        -score       => $hit->significance,
-                        -tag => { 'ID' => $qname, 'Description' => $qdesc }
+                        -score       => sprintf( "%.3g", $hit->significance ),
+                        -tag         => {
+                            'ID'   => $qname,
+                            'Note' => $qdesc,
+                            'Name' => $qacc
+                        }
                     )
                 );
             }
@@ -211,7 +245,7 @@ RESULT:
                 my $feature = Bio::SeqFeature::Generic->new();
                 $feature->seq_id($hname);
                 $feature->primary_tag('match_part');
-                $feature->score( $hsp->significance );
+                $feature->score( sprintf( "%.3g", $hsp->significance ) );
                 $feature->start( $hsp->start('subject') );
                 $feature->end( $hsp->end('subject') );
                 $feature->strand( $hsp->strand('hit') );
@@ -227,7 +261,7 @@ RESULT:
                     $feature->add_tag_value( 'Target', $hsp->end );
                     $feature->add_tag_value( 'Target', $hsp->strand );
 
-                    my @str = unpack "(A2)*", $hsp->cigar_string;
+                    my @str = $hsp->cigar_string =~ /\d{1,2}[A-Z]?/g;
                     $feature->add_tag_value( 'Gap', join( ' ', @str ) );
                 }
 
@@ -236,6 +270,7 @@ RESULT:
         }
     }
 }
+
 __PACKAGE__->meta->make_immutable;
 
 1;    # Magic true value required at end of module
