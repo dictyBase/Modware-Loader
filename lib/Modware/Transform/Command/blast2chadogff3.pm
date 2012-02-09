@@ -6,6 +6,7 @@ use Moose;
 use Bio::SearchIO;
 use Bio::Tools::GFF;
 use Bio::SeqFeature::Generic;
+use Modware::Iterator::Array;
 extends qw/Modware::Transform::Command/;
 
 has 'format' => (
@@ -226,31 +227,51 @@ RESULT:
 #additional grouping of hsp's by the hit strand as in case of tblastn hsp
 #belonging to separate strand of query could be grouped into the same hit,  however
 #they denotes separate matches and should be separated.
-            my $hsp_group;
-            while ( my $hsp = $hit->next_hsp ) {
-                my $strand = $hsp->strand('hit') == 1 ? 'plus' : 'minus';
-                push @{ $hsp_group->{$strand} }, $hsp;
+            my $top_group;
+            if ( lc $self->_result_object->algorithm eq 'tblastn' ) {
+                my $hsp_group;
+                while ( my $hsp = $hit->next_hsp ) {
+                    my $strand = $hsp->strand('hit') == 1 ? 'plus' : 'minus';
+                    push @{ $hsp_group->{$strand} }, $hsp;
+                }
+
+                # now try to group non overlapping hsps(ignoring the frames)
+                $top_group = $self->non_overlapping($hsp_group);
+
+            }
+            else {
+                $top_group = Modware::Iterator::Array->new;
+                my $inner_group = Modware::Iterator::Array->new;
+                $inner_group->add($_) for $hit->hsps;
+                $top_group->add($inner_group);
             }
 
-            # sort by hit start
-            push @{ $hsp_group->{ 'strand' . $_ } },
-                sort { $b->start('hit') <=> $a->start('hit') }
-                @{ $hsp_group{$_} }
-                for qw/plus minus/;
-
-            for my $strand (qw/strandplus strandminus/) {
+            my $end = $top_group->member_count - 1;
+        GROUP:
+            for my $i ( 0 .. $end ) {
+                my $gff_acc;
+                my $inner = $top_group->get_by_index($i);
                 if ( $self->group ) {
+                    $gff_acc = $qname . '.match' . $i;
+
+                    my $gend;
+                    if ( $inner->member_count == 1 ) {
+                        $gend = $inner->get_by_index(0)->end('hit');
+                    }
+                    else {
+                        $gend = $inner->get_by_index(-1)->end('hit');
+                    }
+
                     $out->write_feature(
                         Bio::SeqFeature::Generic->new(
-                            -start =>
-                                $hsp_group->{$strand}->[0]->start('hit'),
-                            -end => $hsp_group->{$strand}->[-1]->end('hit'),
-                            -seq_id      => $hname,
+                            -start  => $inner->get_by_index(0)->start('hit'),
+                            -end    => $gend,
+                            -seq_id => $hname,
                             -source_tag  => $self->source,
                             -primary_tag => $self->primary_tag,
                             -score => sprintf( "%.3g", $hit->significance ),
                             -tag   => {
-                                'ID'   => $qname,
+                                'ID'   => $gff_acc,
                                 'Note' => $qdesc,
                                 'Name' => $qacc
                             }
@@ -258,7 +279,7 @@ RESULT:
                     );
                 }
 
-                for my $hsp ( @{ $hsp_group->{$strand} } ) {
+                for my $hsp ( $inner->members ) {
                     my $feature = Bio::SeqFeature::Generic->new();
                     $feature->seq_id($hname);
                     $feature->primary_tag('match_part');
@@ -268,7 +289,7 @@ RESULT:
                     $feature->source_tag( $self->source );
 
                     if ( $self->group ) {
-                        $feature->add_tag_value( 'Parent', $qname );
+                        $feature->add_tag_value( 'Parent', $gff_acc );
                     }
                     else {
                         $feature->score(
@@ -290,6 +311,75 @@ RESULT:
             }
         }
     }
+}
+
+sub non_overlapping {
+    my ( $self, $hsp_group ) = @_;
+
+    my $super_container = Modware::Iterator::Array->new;
+
+    for my $k ( keys %$hsp_group ) {
+        my $hsp_array = $hsp_group->{$k};
+        if ( @$hsp_array == 1 ) {
+            my $c = Modware::Iterator::Array->new;
+            $c->add( $hsp_array->[0] );
+            $super_container->add($c);
+        }
+
+        elsif ( @$hsp_array == 2 ) {
+            my $sorted = [ sort { $a->start('hit') <=> $b->start('hit') }
+                    @$hsp_array ];
+            if ( $sorted->[0]->end('hit') < $sorted->[1]->start('hit') ) {
+                my $c = Modware::Iterator::Array->new;
+                $c->add($_) for @$sorted;
+                $super_container->add($c);
+            }
+            else {
+                my $c = Modware::Iterator::Array->new;
+                $c->add( $sorted->[0] );
+                my $c2 = Modware::Iterator::Array->new;
+                $c2->add( $sorted->[1] );
+                $super_container->add($c);
+                $super_container->add($c2);
+            }
+        }
+
+        else {
+            my $sorted = [ sort { $a->start('hit') <=> $b->start('hit') }
+                    @$hsp_array ];
+            my $end = $#$hsp_array - 1;
+            my $non_overlap_idx;
+        OUTER:
+            for my $i ( 0 .. $end ) {
+                next OUTER if defined $non_overlap_idx->{$i};
+            INNER:
+                for my $y ( $i + 1 .. $end + 1 ) {
+                    next INNER if defined $non_overlap_idx->{$y};
+                    if ( $sorted->[$i]->end('hit')
+                        < $sorted->[$y]->start('hit') )
+                    {    ## -- non overlapping
+                        $non_overlap_idx->{$y} = 'overlap';
+                        $non_overlap_idx->{$i} = 'overlap';
+                    }
+                }
+            }
+
+            my $container = Modware::Iterator::Array->new;
+            $container->add( $sorted->[$_] ) for keys %$non_overlap_idx;
+            if ( $container->has_member ) {
+                $super_container->add($container);
+            }
+
+            for my $z ( 0 .. $#$sorted ) {
+                if ( not defined $non_overlap_idx->{$z} ) {
+                    my $c = Modware::Iterator::Array->new;
+                    $c->add( $sorted->[$z] );
+                    $super_container->add($c);
+                }
+            }
+        }
+    }
+    return $super_container;
 }
 
 __PACKAGE__->meta->make_immutable;
