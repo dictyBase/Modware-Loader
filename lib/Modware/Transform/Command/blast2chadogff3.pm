@@ -11,6 +11,19 @@ use Modware::Iterator::Array;
 use Data::Dump qw/pp/;
 extends qw/Modware::Transform::Command/;
 
+has '_id_match_stack' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    lazy    => 1,
+    default => sub { {} },
+    handles => {
+        'get_id_count' => 'get',
+        'set_id_count' => 'set',
+        'has_id'       => 'defined'
+    }
+);
+
 has 'format' => (
     is      => 'rw',
     isa     => 'Str',
@@ -206,6 +219,7 @@ RESULT:
                 ? $result->query_accession
                 : $qname;
         }
+        $self->add_id_count( $qname, 1 ) if !$self->has_id($qname);
 
         my $qdesc
             = $self->desc_parser
@@ -254,7 +268,9 @@ RESULT:
                 my $gff_acc;
                 my $inner = $top_group->get_by_index($i);
                 if ( $self->group ) {
-                    $gff_acc = $qname . '.match' . $i;
+                    $gff_acc
+                        = $qname . '.match' . $self->get_id_count($qname);
+                    $self->set_id_count( $qname, $self->get_id_count + 1 );
 
                     my $gend;
                     if ( $inner->member_count == 1 ) {
@@ -269,6 +285,7 @@ RESULT:
                             -start  => $inner->get_by_index(0)->start('hit'),
                             -end    => $gend,
                             -seq_id => $hname,
+                            -strand => $inner->get_by_index(0)->strand('hit'),
                             -source_tag  => $self->source,
                             -primary_tag => $self->primary_tag,
                             -score => sprintf( "%.3g", $hit->significance ),
@@ -304,7 +321,7 @@ RESULT:
                         $feature->add_tag_value( 'Target', $hsp->end );
                         $feature->add_tag_value( 'Target', $hsp->strand );
 
-                        my @str = $hsp->cigar_string =~ /\d{1,2}[A-Z]?/g;
+                        my @str = $hsp->cigar_string =~ /\d{1,3}[A-Z]?/g;
                         $feature->add_tag_value( 'Gap', join( ' ', @str ) );
                     }
 
