@@ -219,7 +219,7 @@ RESULT:
                 ? $result->query_accession
                 : $qname;
         }
-        $self->add_id_count( $qname, 1 ) if !$self->has_id($qname);
+        $self->set_id_count( $qname, 1 ) if !$self->has_id($qname);
 
         my $qdesc
             = $self->desc_parser
@@ -270,7 +270,7 @@ RESULT:
                 if ( $self->group ) {
                     $gff_acc
                         = $qname . '.match' . $self->get_id_count($qname);
-                    $self->set_id_count( $qname, $self->get_id_count + 1 );
+                    $self->set_id_count( $qname, $self->get_id_count($qname) + 1 );
 
                     my $gend;
                     if ( $inner->member_count == 1 ) {
