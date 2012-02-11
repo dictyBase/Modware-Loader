@@ -8,6 +8,7 @@ use Bio::Tools::GFF;
 use Bio::SeqFeature::Generic;
 use List::MoreUtils qw/uniq/;
 use Modware::Iterator::Array;
+use Data::Dump qw/pp/;
 extends qw/Modware::Transform::Command/;
 
 has 'format' => (
@@ -350,52 +351,31 @@ sub non_overlapping {
                     @$hsp_array ];
             my $end = $#$hsp_array - 1;
             my $overlap_idx;
+            my $non_overlap_idx;
         OUTER:
             for my $i ( 0 .. $end ) {
             INNER:
                 for my $y ( $i + 1 .. $end + 1 ) {
                     if ( $sorted->[$i]->end('hit')
-                        < $sorted->[$y]->start('hit') )
-                    {  ## for each location build up list of other overlapping
-                        ## locations
-                        push @{ $overlap_idx->{$i} }, $y;
-                    }
-                }
-                if ( defined @{ $overlap_idx->{$i} } ) {
-                    push @{ $overlap_idx->{$i} }, $i;
-                }
-            }
-
-            my ( $checked, $non_overlap_idx );
-
-            # For each overlapping list check if any one of the location is
-            # non-overlapping with other location in the rest of the list
-            for my $z ( 0 .. $end ) {
-                for my $idx ( @{ $ovarlap_idx->{$z} } ) {
-                CINNER:
-                    for my $inner (
-                        $self->_get_uniq_others( $overlap_idx, $z ) )
+                        > $sorted->[$y]->start('hit') )
                     {
-                        next CINNER
-                            if defined $checked->{$idx}
-                                and defined $checked->{$inner};
-                        ## -- check if the do not overlap
-                        if ((   $sorted->[$z]->end('hit')
-                                < $sorted->[$inner]->start('hit')
-                            )
-                            or ( $sorted->[$z]->start('hit')
-                                > $sorted->[$inner]->end('hit') )
-                            )
-                        {
-                            $non_overlap_idx->{$z}     = 'none';
-                            $non_overlap_idx->{$inner} = 'none';
-
-                        }
+                        $overlap_idx->{$y} = 1;
                     }
                 }
+                my $temp = {
+                    map { $_ => 1 }
+                        grep { not defined $overlap_idx->{$_} }
+                        $i + 1 .. $#$sorted
+                };
+                if ( keys %$temp > 0 ) {
+                    $non_overlap_idx->{$_} = 1 for keys %$temp;
+                    $non_overlap_idx->{$i} = 1;
+                }
+
+                # get rid of overlaps that got picked up
+                delete $non_overlap_idx->{$_} for keys %$overlap_idx;
             }
 
-            ## overlapping in a group
             my $container = Modware::Iterator::Array->new;
             for my $k ( keys %$non_overlap_idx ) {
                 $container->add( $sorted->[$k] );
@@ -411,12 +391,10 @@ sub non_overlapping {
 
             ## get the initial list of overalpping and check if they are absent in
             ## non-overlapping
-            for my $z ( uniq map {$@} @$overlap_idx{ keys %$overlap_idx } ) {
-                if ( not defined $non_overlap_idx->{$z} ) {
-                    my $c = Modware::Iterator::Array->new;
-                    $c->add( $sorted->[$z] );
-                    $super_container->add($c);
-                }
+            for my $z ( keys %$overlap_idx ) {
+                my $c = Modware::Iterator::Array->new;
+                $c->add( $sorted->[$z] );
+                $super_container->add($c);
             }
         }
     }
@@ -425,7 +403,7 @@ sub non_overlapping {
 
 sub _get_uniq_others {
     my ( $self, $hofarray, $skip_idx ) = @_;
-    my @keys     = grep     { ne $skip_idx } keys %$hofarray;
+    my @keys = grep { $_ ne $skip_idx } keys %$hofarray;
     my @restofit = uniq map {@$_} @$hofarray{@keys};
     return @restofit;
 }
