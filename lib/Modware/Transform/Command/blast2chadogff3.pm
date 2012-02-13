@@ -363,6 +363,20 @@ sub non_overlapping {
             }
         }
 
+		# sort all hsp(with intervals) by their start
+		# pairwise comparison of each hsp
+		# for each comparison generate a hash of overlap by the index position of hsp in
+		# the array
+		# Then generate non-overlap which are absent in overlap
+		# Lastly,  prune all non-overlap entries which are overlap hash. This might happen
+		# because earlier comparison might pick up non-overlap which might overlap in
+		# later comparison. 
+		# Caveats (might need to solve later on)
+		# * It finds one group of non-overlapping entries. The rest are overlapping and
+		#   treated as individual entities.
+		# * All entries are split into individual entity if it finds more than one
+		#   non-overlapping groups. It might happend because a single group will be
+		#   overlapping.
         else {
             my $sorted = [ sort { $a->start('hit') <=> $b->start('hit') }
                     @$hsp_array ];
@@ -389,11 +403,12 @@ sub non_overlapping {
                     $non_overlap_idx->{$i} = 1;
                 }
 
-                # get rid of overlaps that got picked up
+                # get rid of overlaps that got picked up later
                 delete $non_overlap_idx->{$_} for keys %$overlap_idx;
             }
 
             my $container = Modware::Iterator::Array->new;
+            # ovarlapping
             for my $k ( keys %$non_overlap_idx ) {
                 $container->add( $sorted->[$k] );
             }
@@ -406,8 +421,7 @@ sub non_overlapping {
                 $super_container->add($container);
             }
 
-            ## get the initial list of overalpping and check if they are absent in
-            ## non-overlapping
+            ## overlapping
             for my $z ( keys %$overlap_idx ) {
                 my $c = Modware::Iterator::Array->new;
                 $c->add( $sorted->[$z] );
