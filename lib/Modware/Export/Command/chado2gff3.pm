@@ -603,5 +603,5 @@ __END__
 
 =head1 NAME
 
-Export GFF3 file from chado database
+Modware::Export::Command::chado2gff3 -  Export GFF3 file from chado database
 
