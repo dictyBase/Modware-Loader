@@ -1,5 +1,3 @@
-package Modware::Transform::Command::blast2chadogff3;
-
 # Other modules:
 use namespace::autoclean;
 use Moose;
@@ -37,7 +35,9 @@ has 'group' => (
     is            => 'rw',
     isa           => 'Bool',
     default       => 1,
-    documentation => 'Generate a GFF3 line to group the HSP(s)'
+    documentation => 'Generate a GFF3 line to group the HSP(s),default is true. For
+                      tblastn hsps are grouped separately if they align to different
+                      strand and/or if they are overlapping'
 );
 has '+input' => ( documentation => 'blast result file' );
 has 'source' => (
