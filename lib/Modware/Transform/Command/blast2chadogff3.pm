@@ -1,3 +1,5 @@
+package Modware::Transform::Command::blast2chadogff3;
+
 # Other modules:
 use namespace::autoclean;
 use Moose;
