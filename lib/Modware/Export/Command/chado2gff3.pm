@@ -59,6 +59,15 @@ has 'include_aligned_feature' => (
         'Additional aligned feature(s) such as BLAST and EST to include in the output'
 );
 
+has 'include_align_parts' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    lazy    => 1,
+    default => 0,
+    documentation =>
+        'Group the aligned feature with one or more match_part feature'
+);
+
 has 'extra_gene_model' => (
     is      => 'rw',
     isa     => 'ArrayRef',
@@ -159,8 +168,16 @@ REFERENCE:
                     ->( $ref_dbrow, $type );
             OVERLAPPING:
                 while ( my $row = $rs->next ) {
-                    $self->get_coderef('write_aligned_feature')
-                        ->( $row, $seq_id, $output );
+                    $self->get_coderef('write_aligned_feature')->(
+                        $row, $seq_id, $output, $self->include_align_parts
+                    );
+                    if ( $self->include_align_parts ) {
+                        my $subrs
+                            = $self->get_coderef('read_aligned_subfeature')
+                            ->($row);
+                        $self->get_coderef('write_aligned_subfeature')
+                            ->( $subrs, $row, $seq_id, $output );
+                    }
                 }
             }
         }
@@ -460,8 +477,74 @@ sub read_aligned_feature {
         );
 }
 
+sub read_aligned_subfeature {
+    my ( $self, $dbrow ) = @_;
+    return $dbrow->search_related(
+        'feature_relationship_objects',
+        { 'type.name' => 'part_of' },
+        { join        => 'type' }
+    )->search_related('feature_relationship_subjects');
+}
+
+sub write_aligned_subfeature {
+    my ( $self, $rs, $parent, $seq_id, $output ) = @_;
+    my $source    = $self->gff_source($parent) || undef;
+    my $type      = 'match_part';
+    my $parent_id = $self->_chado_feature_id($parent);
+
+    while ( my $dbrow = $rs->next ) {
+        my $hashref;
+        $hashref->{seq_id} = $seq_id;
+        $hashref->{type}   = $type;
+        $hashref->{source} = $source;
+
+        my $floc_rs = $dbrow->featureloc_features( { rank => 0 } );
+        my $floc_row;
+        if ( $floc_row = $floc_rs->first ) {
+            $hashref->{start}  = $floc_row->fmin + 1;
+            $hashref->{end}    = $floc_row->fmax;
+            $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
+        }
+        else {
+            $self->logger->log(
+                "No feature location relative to genome is found: Skipped from output"
+            );
+            next;
+        }
+        $hashref->{phase} = undef;
+
+        $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
+        $hashref->{attributes}->{Parent} = [$parent_id];
+
+        my $target = $parent_id;
+        my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
+        if ( my $row = $floc2_rs->next ) {
+            $target .= "\t" . ( $row->fmin + 1 ) . "\t" . $row->fmax;
+            if ( my $strand = $row->strand ) {
+                $strand = $strand == -1 ? '-' : '+';
+                $target .= "\t$strand";
+            }
+        }
+        else {
+            $self->logger->log(
+                "No feature location relative to itself(query) is found");
+            if ( !$self->tolerate_missing ) {
+                $self->logger->log("Skipped target attribute from output");
+                $output->print( gff3_format_feature($hashref) );
+                return;
+            }
+        }
+        $hashref->{attributes}->{Target} = [$target];
+
+        if ( my $gap_str = $floc_row->residue_info ) {
+            $hashref->{attributes}->{Gap} = [$gap_str];
+        }
+        $output->print( gff3_format_feature($hashref) );
+    }
+}
+
 sub write_aligned_feature {
-    my ( $self, $dbrow, $seq_id, $output ) = @_;
+    my ( $self, $dbrow, $seq_id, $output, $align_parts ) = @_;
     my $hashref;
     $hashref->{seq_id} = $seq_id;
     $hashref->{source} = $self->gff_source($dbrow) || undef;
@@ -499,6 +582,12 @@ sub write_aligned_feature {
         $hashref->{attributes}->{Name} = [$name];
     }
 
+    if ( !$align_parts )
+    {    ## -- target attribute will be added in the feature parts
+        $output->print( gff3_format_feature($hashref) );
+        return;
+    }
+
     my $target = $id;
     my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
     if ( my $row = $floc2_rs->next ) {
@@ -512,7 +601,8 @@ sub write_aligned_feature {
         $self->logger->log(
             "No feature location relative to itself(query) is found");
         if ( !$self->tolerate_missing ) {
-            $self->logger->log("Skipped from output");
+            $self->logger->log("Skipped target attribute from output");
+            $output->print( gff3_format_feature($hashref) );
             return;
         }
     }
