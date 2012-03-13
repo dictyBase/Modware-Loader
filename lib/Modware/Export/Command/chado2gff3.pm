@@ -162,6 +162,7 @@ REFERENCE:
             }
         }
 
+        ##  --read and write alignments
         if ( $self->has_aligned_features ) {
             for my $type ( $self->all_aligned_features ) {
                 my $rs = $self->get_coderef('read_aligned_feature')
@@ -670,6 +671,8 @@ has '_hook_stack' => (
                 sub { $self->write_reference_sequence(@_) },
             write_aligned_feature => sub { $self->write_aligned_feature(@_) },
             read_aligned_feature  => sub { $self->read_aligned_feature(@_) },
+            write_aligned_subfeature => sub { $self->write_aligned_subfeature(@_) },
+            read_aligned_subfeature  => sub { $self->read_aligned_subfeature(@_) },
             write_extra_gene_model =>
                 sub { $self->write_extra_gene_model(@_) },
             read_extra_gene_model => sub { $self->read_extra_gene_model(@_) },
