@@ -484,7 +484,7 @@ sub read_aligned_subfeature {
         'feature_relationship_objects',
         { 'type.name' => 'part_of' },
         { join        => 'type' }
-    )->search_related('feature_relationship_subjects');
+    )->search_related('subjects');
 }
 
 sub write_aligned_subfeature {
