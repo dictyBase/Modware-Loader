@@ -512,8 +512,6 @@ sub write_aligned_subfeature {
             next;
         }
         $hashref->{phase} = undef;
-<<<<<<< HEAD
-
         $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
         $hashref->{attributes}->{Parent} = [$parent_id];
 
