@@ -499,7 +499,8 @@ sub write_aligned_subfeature {
         $hashref->{type}   = $type;
         $hashref->{source} = $source;
 
-        my $floc_rs = $dbrow->featureloc_features( { rank => 0 } );
+        my $floc_rs = $dbrow->featureloc_features( { rank => 0 },
+            { order_by => { -asc => 'fmin' } } );
         my $floc_row;
         if ( $floc_row = $floc_rs->first ) {
             $hashref->{start}  = $floc_row->fmin + 1;
@@ -582,7 +583,7 @@ sub write_aligned_feature {
         $hashref->{attributes}->{Name} = [$name];
     }
 
-    if ( !$align_parts )
+    if ( $align_parts )
     {    ## -- target attribute will be added in the feature parts
         $output->print( gff3_format_feature($hashref) );
         return;
@@ -671,8 +672,10 @@ has '_hook_stack' => (
                 sub { $self->write_reference_sequence(@_) },
             write_aligned_feature => sub { $self->write_aligned_feature(@_) },
             read_aligned_feature  => sub { $self->read_aligned_feature(@_) },
-            write_aligned_subfeature => sub { $self->write_aligned_subfeature(@_) },
-            read_aligned_subfeature  => sub { $self->read_aligned_subfeature(@_) },
+            write_aligned_subfeature =>
+                sub { $self->write_aligned_subfeature(@_) },
+            read_aligned_subfeature =>
+                sub { $self->read_aligned_subfeature(@_) },
             write_extra_gene_model =>
                 sub { $self->write_extra_gene_model(@_) },
             read_extra_gene_model => sub { $self->read_extra_gene_model(@_) },
