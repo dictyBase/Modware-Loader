@@ -12,8 +12,7 @@ has 'prefix' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'id prefixe to use for generating feature identifiers,  default is
-         the first letter of genus and first two letters of species name'
+        'id prefix to use for generating feature identifiers,  default is the first letter of genus and first two letters of species name'
 );
 
 has 'source' => (
@@ -64,9 +63,7 @@ has 'feat2link' => (
     isa        => 'ArrayRef',
     auto_deref => 1,
     documentation =>
-        'List of space separated features for linking to literature only if
-	     publication id is provided. By default,  all available features are
-         linked'
+        'List of space separated features for linking to literature only if publication id  is provided. By default,  all available features are linked'
 );
 
 sub execute {
@@ -83,7 +80,7 @@ sub execute {
     $loader->schema($self->schema);
     $loader->transform_schema;
 
-    $loader->id_prefix($id_prefix) if $self->id_prefix;
+    $loader->id_prefix($self->id_prefix) if $self->id_prefix;
     $loader->reference_type($self->reference_type);
     $loader->input( $input );
 
