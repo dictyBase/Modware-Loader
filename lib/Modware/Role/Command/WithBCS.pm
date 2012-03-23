@@ -13,7 +13,7 @@ use Tie::Cache;
 
 has 'dsn' => (
     is            => 'rw',
-    isa           => 'Str',
+    isa           => 'Dsn',
     documentation => 'database DSN',
     required      => 1
 );

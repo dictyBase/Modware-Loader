@@ -7,6 +7,7 @@ use Log::Log4perl;
 use Log::Log4perl::Appender;
 use Log::Log4perl::Appender::String;
 use Log::Log4perl::Level;
+use Moose::Util::TypeConstraints;
 
 # Module implementation
 #
