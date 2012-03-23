@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+
+package load;
+use Modware::Load;
+
+Modware::Load->run;
+
+
+=head1 NAME
+
+B<load> - [Runnable for loader modules]
