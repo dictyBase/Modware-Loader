@@ -4,7 +4,6 @@ use namespace::autoclean;
 use Moose;
 use File::Spec::Functions;
 use File::Basename;
-use Try::Tiny;
 use Bio::Chado::Schema;
 use Modware::Loader::Genome::GenBank;
 extends qw/Modware::Load::Chado/;
@@ -114,6 +113,8 @@ sub execute {
     }
     $guard->commit;
 }
+
+1;
 
 =head1 NAME
 
