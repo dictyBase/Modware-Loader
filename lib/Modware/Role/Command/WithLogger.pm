@@ -41,11 +41,11 @@ has 'msg_appender' => (
 );
 
 has 'log_level' => (
-	is => 'rw', 
-	isa => enum(qw/debug error fatal info warn/), 
-	lazy => 1, 
-	default => 'error', 
-	documentation => 'Log level of the logger,  default is error'
+    is            => 'rw',
+    isa           => enum(qw/debug error fatal info warn/),
+    lazy          => 1,
+    default       => 'error',
+    documentation => 'Log level of the logger,  default is error'
 );
 
 sub dual_logger {
@@ -93,14 +93,20 @@ sub fetch_dual_logger {
     $log;
 }
 
-sub logger {
-    my $self = shift;
-    my $logger
-        = $self->has_logfile
-        ? $self->fetch_logger( $self->logfile )
-        : $self->fetch_logger;
-    $logger;
-}
+has 'logger' => (
+    is      => 'rw',
+    isa     => 'Log::Log4perl::Logger',
+    traits  => [qw/NoGetopt/],
+    lazy    => 1,
+    default => sub {
+        my $self = shift;
+        my $logger
+            = $self->has_logfile
+            ? $self->fetch_logger( $self->logfile )
+            : $self->fetch_logger;
+        return $logger;
+    }
+);
 
 sub fetch_logger {
     my ( $self, $file ) = @_;
@@ -117,8 +123,7 @@ sub fetch_logger {
         $appender
             = Log::Log4perl::Appender->new(
             'Log::Log4perl::Appender::ScreenColoredLevels',
-            'stderr' => 1
-            );
+            'stderr' => 1 );
     }
 
     my $layout = Log::Log4perl::Layout::PatternLayout->new(
@@ -127,7 +132,7 @@ sub fetch_logger {
     my $log = Log::Log4perl->get_logger();
     $appender->layout($layout);
     $log->add_appender($appender);
-    $log->level($DEBUG);
+    $log->level( '$' . uc $self->log_level );
     $log;
 }
 
