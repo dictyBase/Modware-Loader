@@ -40,6 +40,14 @@ has 'msg_appender' => (
     predicate => 'has_msg_appender'
 );
 
+has 'log_level' => (
+	is => 'rw', 
+	isa => enum(qw/debug error fatal info warn/), 
+	lazy => 1, 
+	default => 'error', 
+	documentation => 'Log level of the logger,  default is error'
+);
+
 sub dual_logger {
     my $self = shift;
     my $logger
