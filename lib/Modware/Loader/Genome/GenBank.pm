@@ -1,5 +1,5 @@
-
 package Modware::Loader::Genome::GenBank;
+use namespace::autoclean;
 use Moose;
 use Moose::Util::TypeConstraints;
 use Bio::SeqIO;
