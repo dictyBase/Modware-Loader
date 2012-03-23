@@ -16,7 +16,7 @@ has 'logfile' => (
     predicate     => 'has_logfile',
     traits        => [qw/Getopt/],
     cmd_aliases   => 'l',
-    documentation => 'Name of logfile,  default goes to STDIN'
+    documentation => 'Name of logfile,  default goes to STDERR'
 );
 
 has 'current_logger' => (
@@ -109,6 +109,7 @@ sub fetch_logger {
         $appender
             = Log::Log4perl::Appender->new(
             'Log::Log4perl::Appender::ScreenColoredLevels',
+            'stderr' => 1
             );
     }
 
