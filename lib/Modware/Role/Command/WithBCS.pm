@@ -7,9 +7,11 @@ use namespace::autoclean;
 use Moose::Role;
 use Bio::Chado::Schema;
 use Tie::Cache;
+use Moose::Util::TypeConstraints;
 
 # Module implementation
 #
+subtype 'Dsn' => as 'Str' => where { /^dbi:(\w+).+$/ };
 
 has 'dsn' => (
     is            => 'rw',
