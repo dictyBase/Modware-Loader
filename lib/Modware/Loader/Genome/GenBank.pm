@@ -7,6 +7,8 @@ use Digest::MD5 qw/md5_hex/;
 use Storable qw/dclone/;
 use Bio::SeqFeature::Gene::Exon;
 use Bio::SeqFeature::Gene::Transcript;
+use Modware::Collection::FeatureStack;
+use Modware::MOD::Registry;
 
 has 'pubid' => (
     is  => 'rw',
@@ -171,10 +173,10 @@ has '_feature_collection' => (
 
 has 'mod_registry' => (
     is      => 'rw',
-    isa     => 'MyModRegistry',
+    isa     => 'Modware::MOD::Registry',
     lazy    => 1,
     default => sub {
-        return MyModRegistry->new;
+        return Modware::MOD::Registry->new;
     }
 );
 
@@ -443,7 +445,7 @@ sub dispatch_to_feature_loader {
 
 sub load_canonical_features {
     my ( $self, $seq, $row ) = @_;
-    my $feat_stack = MyFeatureStack->new;
+    my $feat_stack = Modware::Collection::FeatureStack->new;
     $feat_stack->src_row($row);
 
 FEAT:
