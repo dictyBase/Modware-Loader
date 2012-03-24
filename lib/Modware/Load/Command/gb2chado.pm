@@ -11,6 +11,7 @@ extends qw/Modware::Load::Chado/;
 has 'prefix' => (
     is  => 'rw',
     isa => 'Str',
+    predicate => 'has_prefix', 
     documentation =>
         'id prefix to use for generating feature identifiers,  default is the first letter of genus and first two letters of species name'
 );
@@ -80,7 +81,7 @@ sub execute {
     $loader->schema($self->schema);
     $loader->transform_schema;
 
-    $loader->id_prefix($self->id_prefix) if $self->id_prefix;
+    $loader->id_prefix($self->prefix) if $self->has_prefix;
     $loader->reference_type($self->reference_type);
     $loader->input( $self->input_handler );
 
@@ -115,7 +116,7 @@ sub execute {
 
 =head1 NAME
 
-B<Modware::Load::Command::gb2chado> -  Populate oracle chado database from genbank file
+Modware::Load::Command::gb2chado -  Populate oracle chado database from genbank file
     
 =head1 SYNOPSIS
 
