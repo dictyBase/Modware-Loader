@@ -96,7 +96,7 @@ sub execute {
 
 =head1 NAME
 
-B<Modware::Load::Command::gbassembly2chado> -  Load genome assembly from genbank to chado database
+Modware::Load::Command::gbassembly2chado -  Load genome assembly from genbank to oracle chado database
     
 =head1 SYNOPSIS
 
