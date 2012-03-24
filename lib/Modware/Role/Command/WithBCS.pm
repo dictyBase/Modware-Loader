@@ -40,6 +40,7 @@ has 'attribute' => (
     traits        => [qw/Getopt/],
     cmd_aliases   => 'attr',
     documentation => 'Additional database attribute',
+    lazy => 1, 
     default       => sub {
         { 'LongReadLen' => 2**25, AutoCommit => 1 };
     }
@@ -57,7 +58,7 @@ has 'schema_debug' => (
     is            => 'rw',
     isa           => 'Bool',
     default       => 0,
-    documentation => 'Output SQL statements that are executed,  default false'
+    documentation => 'Output SQL statements that are executed,  default to false'
 );
 
 sub _build_schema {
