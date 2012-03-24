@@ -53,7 +53,7 @@ has 'genome_tag' => (
 has 'link_publication' => (
     is        => 'rw',
     isa       => 'Str',
-    predicate => 'has_link_publication', 
+    predicate => 'link_to_publication', 
     documentation =>
         'Link literature reference to the features,  needs a publication id'
 );
@@ -67,12 +67,12 @@ has 'feat2link' => (
 );
 
 sub execute {
-    my ($self,  $input) = @_;
+    my ($self) = @_;
 
 ## -- setting log
     my $logger
         = $self->logger;
-    $logger->logdie("no input genbank file is given") if !$input;
+    $logger->logdie("no input genbank file is given") if !$self->input_handler->opened;
 
 ## -- genome loader
     my $loader = Modware::Loader::Genome::GenBank->new;
@@ -82,7 +82,7 @@ sub execute {
 
     $loader->id_prefix($self->id_prefix) if $self->id_prefix;
     $loader->reference_type($self->reference_type);
-    $loader->input( $input );
+    $loader->input( $self->input_handler );
 
 ## -- loading in database inside one transaction
     my $guard = $self->schema->txn_scope_guard;
@@ -104,7 +104,7 @@ sub execute {
     $loader->load_scaffold;
 
 ## -- link literature to feature if any
-    if ($self->has_link_publication) {
+    if ($self->link_to_publication) {
         $loader->add_feat2link($_) for $self->feat2link;
         $loader->linkfeat2pub($self->link_publication);
     }
