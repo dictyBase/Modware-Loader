@@ -33,9 +33,10 @@ has 'data_dir' => (
 
 has 'input' => (
     is            => 'rw',
-    isa           => 'DataFile',
+    isa           => 'FileObject',
     traits        => [qw/Getopt/],
     cmd_aliases   => 'i',
+    predicate => 'has_input', 
     documentation => 'Name of the input file'
 );
 
@@ -71,7 +72,9 @@ has 'input_handler' => (
     lazy    => 1,
     default => sub {
         my ($self) = @_;
-        return Path::Class::File->new( $self->input )->openr;
+        return $self->has_input
+            ? $self->input->openr
+            : IO::Handle->new_from_fd( fileno(STDIN), 'r' );
     }
 );
 
