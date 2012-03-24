@@ -37,7 +37,7 @@ has 'input' => (
     traits        => [qw/Getopt/],
     cmd_aliases   => 'i',
     predicate => 'has_input', 
-    documentation => 'Name of the input file'
+    documentation => 'Name of the input file, if absent reads from STDIN'
 );
 
 has 'output' => (
@@ -48,7 +48,7 @@ has 'output' => (
     required      => 1,
     coerce        => 1,
     predicate     => 'has_output',
-    documentation => 'Name of the output file'
+    documentation => 'Name of the output file,  if absent writes to STDOUT'
 );
 
 has 'output_handler' => (
