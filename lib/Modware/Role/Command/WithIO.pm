@@ -16,7 +16,7 @@ use Modware::Load::Types qw/DataDir DataFile FileObject/;
 
 has 'data_dir' => (
     is          => 'rw',
-    isa         => 'DataDir',
+    isa         => DataDir,
     traits      => [qw/Getopt/],
     cmd_flag    => 'dir',
     cmd_aliases => 'd',
@@ -28,7 +28,7 @@ has 'data_dir' => (
 
 has 'input' => (
     is            => 'rw',
-    isa           => 'FileObject',
+    isa           => FileObject,
     traits        => [qw/Getopt/],
     cmd_aliases   => 'i',
     predicate => 'has_input', 
@@ -37,7 +37,7 @@ has 'input' => (
 
 has 'output' => (
     is            => 'rw',
-    isa           => 'FileObject',
+    isa           => FileObject,
     traits        => [qw/Getopt/],
     cmd_aliases   => 'o',
     required      => 1,
