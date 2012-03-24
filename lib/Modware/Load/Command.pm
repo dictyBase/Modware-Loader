@@ -5,20 +5,17 @@ use strict;
 # Other modules:
 use Moose;
 use namespace::autoclean;
-use Moose::Util::TypeConstraints;
 use Cwd;
 use File::Spec::Functions qw/catfile catdir rel2abs/;
 use File::Basename;
 use Time::Piece;
 use YAML qw/LoadFile/;
+use Modware::Load::Types qw/DataDir DataFile FileObject Dsn/;
 extends qw/MooseX::App::Cmd::Command/;
 with 'MooseX::ConfigFromFile';
 
 # Module implementation
 #
-subtype 'DataDir'  => as 'Str' => where { -d $_ };
-subtype 'DataFile' => as 'Str' => where { -f $_ };
-subtype 'Dsn' => as 'Str' => where { /^dbi:(\w+).+$/ };
 
 
 has '+configfile' => (
@@ -29,7 +26,7 @@ has '+configfile' => (
 
 has 'data_dir' => (
     is          => 'rw',
-    isa         => 'DataDir',
+    isa         => DataDir,
     traits      => [qw/Getopt/],
     cmd_flag    => 'dir',
     cmd_aliases => 'd',
@@ -41,7 +38,7 @@ has 'data_dir' => (
 
 has 'input' => (
     is            => 'rw',
-    isa           => 'DataFile',
+    isa           => DataFile,
     traits        => [qw/Getopt/],
     cmd_aliases   => 'i',
     documentation => 'Name of the input file'
@@ -49,7 +46,7 @@ has 'input' => (
 
 has 'dsn' => (
 	is => 'rw', 
-	isa => 'Dsn', 
+	isa => Dsn, 
 	documentation => 'database DSN', 
 	required => 1
 );
