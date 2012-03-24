@@ -8,12 +8,15 @@ use Moose;
 use YAML qw/LoadFile/;
 extends qw/MooseX::App::Cmd::Command/;
 with 'MooseX::ConfigFromFile';
+with 'Modware::Role::Command::WithIO';
 with 'Modware::Role::Command::WithBCS';
 with 'Modware::Role::Command::WithLogger';
 
 # Module implementation
 #
 
+has '+output' => (traits => [qw/NoGetopt/]);
+has '+output_handler' => (traits => [qw/NoGetopt/]);
 
 has '+configfile' => (
     cmd_aliases   => 'c',
