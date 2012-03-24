@@ -5,19 +5,14 @@ use strict;
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
-use Moose::Util::TypeConstraints;
 use Cwd;
 use File::Spec::Functions qw/catfile catdir rel2abs/;
 use File::Basename;
-use Path::Class::File;
 use IO::Handle;
+use Modware::Load::Types qw/DataDir DataFile FileObject/;
 
 # Module implementation
 #
-subtype 'DataDir'  => as 'Str' => where { -d $_ };
-subtype 'DataFile' => as 'Str' => where { -f $_ };
-subtype 'FileObject' => as class_type('Path::Class::File');
-coerce 'FileObject' => from 'Str' => via { Path::Class::File->new($_) };
 
 has 'data_dir' => (
     is          => 'rw',
