@@ -15,8 +15,8 @@ with 'Modware::Role::Command::WithLogger';
 # Module implementation
 #
 
-has '+output' => (traits => [qw/NoGetopt/]);
-has '+output_handler' => (traits => [qw/NoGetopt/]);
+has '+output'         => ( traits => [qw/NoGetopt/] );
+has '+output_handler' => ( traits => [qw/NoGetopt/] );
 
 has '+configfile' => (
     cmd_aliases   => 'c',
