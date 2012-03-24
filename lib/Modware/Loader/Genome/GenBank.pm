@@ -12,7 +12,7 @@ use Modware::MOD::Registry;
 
 has 'pubid' => (
     is  => 'rw',
-    isa => 'Str', 
+    isa => 'Str',
 );
 
 has '_feat2linkstack' => (
@@ -36,8 +36,18 @@ has '_feat2linkstack' => (
 has 'reference_type' => ( is => 'rw', isa => 'Str' );
 
 has 'input' => (
+    is      => 'rw',
+    isa     => 'IO::Handle',
+    trigger => sub {
+        my ( $self, $handler ) = @_;
+        $self->seqio(
+            Bio::SeqIO->new( -fh => $handler, -format => 'genbank' ) );
+    }
+);
+
+has 'seqio' => (
     is  => 'rw',
-    isa => 'Str',
+    isa => 'Bio::SeqIO'
 );
 
 has 'schema' =>
@@ -375,8 +385,7 @@ sub _get_genome_tag_cvterm {
 sub load_scaffold {
     my ($self) = @_;
     my $schema = $self->schema;
-    my $seqio
-        = Bio::SeqIO->new( -file => $self->input, -format => 'genbank' );
+    my $seqio = $self->seqio;
 
 SCAFFOLD:
     while ( my $seq = $seqio->next_seq ) {
@@ -954,14 +963,14 @@ sub linkfeat2pub {
         { 'join'      => 'type' }
         );
 
-    $self->_link_feat2pub_rs($rs, $row);
-    $self->_link_feat2pub_rs($rs2, $row);
+    $self->_link_feat2pub_rs( $rs,  $row );
+    $self->_link_feat2pub_rs( $rs2, $row );
 }
 
 sub _link_feat2pub_rs {
-	my ($self,  $rs, $row) = @_;
-	my $id = $row->pub_id;
-	my $pubid = $row->uniquename;
+    my ( $self, $rs, $row ) = @_;
+    my $id    = $row->pub_id;
+    my $pubid = $row->uniquename;
 
     my $feat2publinks;
     my $schema = $self->schema;
@@ -987,7 +996,6 @@ sub _link_feat2pub_rs {
         );
     }
 }
-
 
 __PACKAGE__->meta->make_immutable;
 
