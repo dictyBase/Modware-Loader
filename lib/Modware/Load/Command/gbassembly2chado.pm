@@ -56,6 +56,7 @@ sub execute {
 
 ## -- setting log
     my $logger = $self->logger;
+    my $schema = $self->schema;
 
     $logger->logdie("no contig file given\n") if !$input;
 
