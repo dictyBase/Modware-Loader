@@ -14,18 +14,6 @@ use Modware::Load::Types qw/DataDir DataFile FileObject/;
 # Module implementation
 #
 
-has 'data_dir' => (
-    is          => 'rw',
-    isa         => DataDir,
-    traits      => [qw/Getopt/],
-    cmd_flag    => 'dir',
-    cmd_aliases => 'd',
-    documentation =>
-        'Folder under which input and output files can be configured to be written',
-    builder => '_build_data_dir',
-    lazy    => 1
-);
-
 has 'input' => (
     is            => 'rw',
     isa           => FileObject,
@@ -41,7 +29,6 @@ has 'output' => (
     isa           => FileObject,
     traits        => [qw/Getopt/],
     cmd_aliases   => 'o',
-    required      => 1,
     coerce        => 1,
     predicate     => 'has_output',
     documentation => 'Name of the output file,  if absent writes to STDOUT'
