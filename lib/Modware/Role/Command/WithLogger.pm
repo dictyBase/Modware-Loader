@@ -133,7 +133,8 @@ sub fetch_logger {
     my $log = Log::Log4perl->get_logger();
     $appender->layout($layout);
     $log->add_appender($appender);
-    $log->level( '$' . uc $self->log_level );
+    my $numval = Log::Log4perl::Level::to_priority( uc $self->log_level );
+    $log->level($numval);
     $log;
 }
 
