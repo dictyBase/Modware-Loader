@@ -79,9 +79,6 @@ sub execute {
     # - sets the Genbank source as dbxref accession with GFF_source as db.
     $loader->chado_dbxref;
 
-## -- load organism
-    $loader->find_or_create_organism;
-
 ## -- assembly datasource with contig information
     $loader->load_assembly;
 
