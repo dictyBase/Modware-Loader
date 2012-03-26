@@ -58,7 +58,7 @@ sub execute {
     my $logger = $self->logger;
     my $schema = $self->schema;
 
-    $logger->logdie("no contig file given\n") if !$input;
+    $logger->logdie("no contig file given\n") if !$self->input_handler;
 
 ## -- genome loader
     my $loader = Modware::Loader::Genome::GenBank::Assembly->new;
@@ -67,7 +67,7 @@ sub execute {
     $loader->transform_schema;
     $loader->id_prefix( $self->prefix ) if $self->has_id_prefix;
     $loader->reference_type( $self->reference_type );
-    $loader->input($input);
+    $loader->input($self->input_handler);
 
 ## -- loading in database inside one transaction
     my $guard = $schema->txn_scope_guard;
