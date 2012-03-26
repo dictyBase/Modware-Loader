@@ -95,14 +95,11 @@ sub execute {
     # - sets the Genbank source as dbxref accession with GFF_source as db.
     $loader->chado_dbxref;
 
-## -- load organism
-    $loader->find_or_create_organism;
+## -- load scaffolds and associated features
+    $loader->load_scaffold;
 
 ## -- tag the genome being loaded
     $loader->add_genome_tag if $self->genome_tag;
-
-## -- load scaffolds and associated features
-    $loader->load_scaffold;
 
 ## -- link literature to feature if any
     if ($self->link_to_publication) {

@@ -72,8 +72,9 @@ has 'logger' => (
 );
 
 has 'organism_row' => (
-    is  => 'rw',
-    isa => 'DBIx::Class::Row',
+    is        => 'rw',
+    isa       => 'DBIx::Class::Row',
+    predicate => 'has_organism_row'
 );
 
 has 'genome_source' => (
@@ -272,9 +273,7 @@ sub transform_schema {
 }
 
 sub find_or_create_organism {
-    my ($self) = @_;
-    my $seq = Bio::SeqIO->new( -file => $self->input, -format => 'genbank' )
-        ->next_seq;
+    my ( $self, $seq ) = @_;
     my $schema = $self->schema;
     my $logger = $self->logger;
 
@@ -385,10 +384,14 @@ sub _get_genome_tag_cvterm {
 sub load_scaffold {
     my ($self) = @_;
     my $schema = $self->schema;
-    my $seqio = $self->seqio;
+    my $seqio  = $self->seqio;
 
 SCAFFOLD:
     while ( my $seq = $seqio->next_seq ) {
+        if ( !$self->has_organism_row ) {
+            $self->find_or_create_organism($seq);
+        }
+
         if ( $self->has_scaffold_cache( $seq->display_id ) ) {
             $self->logger->warn( $seq->display_id,
                 ' already present skipped loading of any feature annotations'
