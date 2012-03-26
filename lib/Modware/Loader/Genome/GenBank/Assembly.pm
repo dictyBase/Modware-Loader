@@ -43,8 +43,9 @@ has 'logger' => (
 );
 
 has 'organism_row' => (
-    is  => 'rw',
-    isa => 'DBIx::Class::Row',
+    is        => 'rw',
+    isa       => 'DBIx::Class::Row',
+    predicate => 'has_organism_row'
 );
 
 has 'genome_source' => (
@@ -218,11 +219,7 @@ sub transform_schema {
 }
 
 sub find_or_create_organism {
-    my ($self) = @_;
-    my $seq = Bio::SeqIO->new(
-        -file   => $self->input,
-        -format => 'genbank'
-    )->next_seq;
+    my ( $self, $seq ) = @_;
     my $schema = $self->schema;
     my $logger = $self->logger;
 
@@ -295,11 +292,14 @@ sub add_dbxrefs {
 sub load_assembly {
     my ($self) = @_;
 
-    my $seqio = $self->seqio;
+    my $seqio  = $self->seqio;
     my $schema = $self->schema;
 
 ASSEMBLY:
     while ( my $seq = $seqio->next_seq ) {
+        if ( !$self->has_organism_row ) {
+            $self->find_or_create_organism($seq);
+        }
         my $running_start = 0;
         my $running_end   = 0;
         my $length        = 0;
