@@ -7,13 +7,14 @@ use namespace::autoclean;
 use Moose::Role;
 use Bio::Chado::Schema;
 use Tie::Cache;
+use Modware::Load::Types qw/Dsn/;
 
 # Module implementation
 #
 
 has 'dsn' => (
     is            => 'rw',
-    isa           => 'Dsn',
+    isa           => Dsn,
     documentation => 'database DSN',
     required      => 1
 );
@@ -40,7 +41,7 @@ has 'attribute' => (
     traits        => [qw/Getopt/],
     cmd_aliases   => 'attr',
     documentation => 'Additional database attribute',
-    lazy => 1, 
+    lazy          => 1,
     default       => sub {
         { 'LongReadLen' => 2**25, AutoCommit => 1 };
     }
@@ -55,10 +56,11 @@ has 'schema' => (
 );
 
 has 'schema_debug' => (
-    is            => 'rw',
-    isa           => 'Bool',
-    default       => 0,
-    documentation => 'Output SQL statements that are executed,  default to false'
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'Output SQL statements that are executed,  default to false'
 );
 
 sub _build_schema {
