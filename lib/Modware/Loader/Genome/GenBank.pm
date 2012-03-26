@@ -492,7 +492,7 @@ FEAT:
 
 sub load_mitochondrial_features {
     my ( $self, $seq, $row ) = @_;
-    my $feat_stack = MyFeatureStack->new;
+    my $feat_stack = Modware::Collection::FeatureStack->new;
     $feat_stack->src_row($row);
 
 FEAT:
