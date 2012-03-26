@@ -65,7 +65,7 @@ sub execute {
     $loader->logger($logger);
     $loader->schema( $self->schema );
     $loader->transform_schema;
-    $loader->id_prefix( $self->id_prefix ) if $self->has_id_prefix;
+    $loader->id_prefix( $self->prefix ) if $self->has_id_prefix;
     $loader->reference_type( $self->reference_type );
     $loader->input($input);
 
