@@ -31,7 +31,8 @@ has 'input' => (
     isa           => FileObject,
     traits        => [qw/Getopt/],
     cmd_aliases   => 'i',
-    predicate => 'has_input', 
+    coerce        => 1,
+    predicate     => 'has_input',
     documentation => 'Name of the input file, if absent reads from STDIN'
 );
 
@@ -56,7 +57,6 @@ has 'output_handler' => (
         return $self->has_output
             ? $self->output->openw
             : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
-
     }
 );
 
