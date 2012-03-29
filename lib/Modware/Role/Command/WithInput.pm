@@ -13,7 +13,7 @@ use Modware::Load::Types qw/FileObject/;
 
 has 'output' => (
     is          => 'rw',
-    isa         => 'FileObject',
+    isa         => FileObject,
     traits      => [qw/Getopt/],
     cmd_aliases => 'o',
     coerce        => 1,
