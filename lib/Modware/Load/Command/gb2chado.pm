@@ -21,7 +21,7 @@ has 'source' => (
     isa           => 'Str',
     lazy          => 1,
     default       => 'genbank:nucleotide',
-    documentation => 'source of genome,  default is *genbank*'
+    documentation => 'source of genome,  default is genbank:nucleotide'
 );
 
 has 'dbsource' => (

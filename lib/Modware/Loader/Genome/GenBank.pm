@@ -919,7 +919,8 @@ sub chado_dbxref {
 sub calculate_polypeptide_seq {
     my ( $self, $trans ) = @_;
     my $model = Bio::SeqFeature::Gene::Transcript->new(
-        -seq_id => 'model_transcript' -strand => $trans->strand,
+        -seq_id => 'model_transcript', 
+        -strand => $trans->strand,
         -start  => $trans->start,
         -end    => $trans->end
     );
