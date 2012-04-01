@@ -128,8 +128,9 @@ REFERENCE:
     while ( my $ref_dbrow = $reference_rs->next ) {
         ## -- writing the header is a must,  so no coderef is necessary
         $output->print("##gff-version\t3\n");
-#        $self->get_coderef('write_meta_header')
-#            ->( $dbrow, $output, $self->taxon_id );
+
+        #        $self->get_coderef('write_meta_header')
+        #            ->( $dbrow, $output, $self->taxon_id );
 
         my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
 
