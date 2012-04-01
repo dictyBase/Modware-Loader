@@ -194,7 +194,7 @@ REFERENCE:
 
 sub write_reference_sequence {
     my ( $self, $dbrow, $seq_id, $output ) = @_;
-    $output->print( "###FASTA\n>$seq_id\n", $dbrow->residues, "\n" );
+    $output->print( "##FASTA\n>$seq_id\n", $dbrow->residues, "\n" );
 }
 
 sub _gene2gff3_feature {
