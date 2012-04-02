@@ -119,22 +119,23 @@ augment 'execute' => sub {
         );
     }
 
-    my $output = $self->output_handler;
+    my $dbrow = $self->_organism_result;
 
-    my $dbrow        = $self->_organism_result;
+    ## -- writing the header is a must,  so no coderef is necessary
+    my $output = $self->output_handler;
+    $output->print("##gff-version\t3\n");
+
     my $reference_rs = $self->get_coderef('read_reference_feature')
         ->( $dbrow, $self->reference_type );
+
 REFERENCE:
     while ( my $ref_dbrow = $reference_rs->next ) {
-        ## -- writing the header is a must,  so no coderef is necessary
-        $output->print("##gff-version\t3\n");
-
         #        $self->get_coderef('write_meta_header')
         #            ->( $dbrow, $output, $self->taxon_id );
 
         my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
-
         $logger->log("Starting GFF3 output of $seq_id");
+
         next
             if !$self->get_coderef('write_reference_feature')
                 ->( $ref_dbrow, $seq_id, $output );
@@ -582,7 +583,7 @@ sub write_aligned_feature {
         $hashref->{attributes}->{Name} = [$name];
     }
 
-    if ($align_parts)
+    if ( $align_parts )
     {    ## -- target attribute will be added in the feature parts
         $output->print( gff3_format_feature($hashref) );
         return;
