@@ -194,26 +194,28 @@ REFERENCE:
         }
         $logger->log("Finished GFF3 output of $seq_id");
     }
-    # end writing all features 
+
+    # end writing all features
     $output->print("###\n");
 
-# write sequences
-        if ( $self->write_sequence ) {
-    	$output->print("##FASTA\n");
+    # write sequences
+    if ( $self->write_sequence ) {
+        $output->print("##FASTA\n");
         $reference_rs->reset;
-        while(my $row = $reference_rs->next) {
-        	my $seq_id = $self->get_coderef('read_seq_id')->($row);
+        while ( my $row = $reference_rs->next ) {
+            my $seq_id = $self->get_coderef('read_seq_id')->($row);
             $self->get_coderef('write_reference_sequence')
                 ->( $dbrow, $seq_id, $output );
-                }
         }
+        $logger->log("Finished writing all sequences");
+    }
     $output->close;
 };
 
 sub write_reference_sequence {
     my ( $self, $dbrow, $seq_id, $output ) = @_;
-    (my $seq = $dbrow->residues) =~ s/(\S{1,60})/$1\n/g;
-    $output->print( ">$seq_id\n$seq\n");
+    ( my $seq = $dbrow->residues ) =~ s/(\S{1,60})/$1\n/g;
+    $output->print(">$seq_id\n$seq\n");
 }
 
 sub _gene2gff3_feature {
@@ -671,7 +673,7 @@ has '_hook_stack' => (
     isa     => 'HashRef[CodeRef]',
     traits  => [qw/Hash/],
     lazy    => 1,
-    builder => '_build_hook_stack', 
+    builder => '_build_hook_stack',
     handles => {
         get_coderef      => 'get',
         get_all_coderefs => 'keys',
@@ -680,38 +682,33 @@ has '_hook_stack' => (
 );
 
 sub _build_hook_stack {
-	my ($self) = @_;
-        return {
-            read_reference_feature =>
-                sub { $self->read_reference_feature(@_) },
-            read_seq_id           => sub { $self->read_seq_id(@_) },
-            write_meta_header     => sub { $self->write_meta_header(@_) },
-            write_sequence_region => sub { $self->write_sequence_region(@_) },
-            write_reference_feature =>
-                sub { $self->write_reference_feature(@_) },
-            read_gene_feature  => sub { $self->read_gene_feature(@_) },
-            write_gene_feature => sub { $self->write_gene_feature(@_) },
-            read_transcript_feature =>
-                sub { $self->read_transcript_feature(@_) },
-            write_transcript_feature =>
-                sub { $self->write_transcript_feature(@_) },
-            read_exon_feature  => sub { $self->read_exon_feature(@_) },
-            write_exon_feature => sub { $self->write_exon_feature(@_) },
-            write_cds_feature  => sub { $self->write_cds_feature(@_) },
-            write_reference_sequence =>
-                sub { $self->write_reference_sequence(@_) },
-            write_aligned_feature => sub { $self->write_aligned_feature(@_) },
-            read_aligned_feature  => sub { $self->read_aligned_feature(@_) },
-            write_aligned_subfeature =>
-                sub { $self->write_aligned_subfeature(@_) },
-            read_aligned_subfeature =>
-                sub { $self->read_aligned_subfeature(@_) },
-            write_extra_gene_model =>
-                sub { $self->write_extra_gene_model(@_) },
-            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) },
-            read_contig           => sub { $self->read_contig(@_) },
-            write_contig          => sub { $self->write_contig(@_) }
-        };
+    my ($self) = @_;
+    return {
+        read_reference_feature  => sub { $self->read_reference_feature(@_) },
+        read_seq_id             => sub { $self->read_seq_id(@_) },
+        write_meta_header       => sub { $self->write_meta_header(@_) },
+        write_sequence_region   => sub { $self->write_sequence_region(@_) },
+        write_reference_feature => sub { $self->write_reference_feature(@_) },
+        read_gene_feature       => sub { $self->read_gene_feature(@_) },
+        write_gene_feature      => sub { $self->write_gene_feature(@_) },
+        read_transcript_feature => sub { $self->read_transcript_feature(@_) },
+        write_transcript_feature =>
+            sub { $self->write_transcript_feature(@_) },
+        read_exon_feature  => sub { $self->read_exon_feature(@_) },
+        write_exon_feature => sub { $self->write_exon_feature(@_) },
+        write_cds_feature  => sub { $self->write_cds_feature(@_) },
+        write_reference_sequence =>
+            sub { $self->write_reference_sequence(@_) },
+        write_aligned_feature => sub { $self->write_aligned_feature(@_) },
+        read_aligned_feature  => sub { $self->read_aligned_feature(@_) },
+        write_aligned_subfeature =>
+            sub { $self->write_aligned_subfeature(@_) },
+        read_aligned_subfeature => sub { $self->read_aligned_subfeature(@_) },
+        write_extra_gene_model  => sub { $self->write_extra_gene_model(@_) },
+        read_extra_gene_model   => sub { $self->read_extra_gene_model(@_) },
+        read_contig             => sub { $self->read_contig(@_) },
+        write_contig            => sub { $self->write_contig(@_) }
+    };
 }
 
 __PACKAGE__->meta->make_immutable;
