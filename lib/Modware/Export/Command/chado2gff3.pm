@@ -128,12 +128,22 @@ augment 'execute' => sub {
     my $reference_rs = $self->get_coderef('read_reference_feature')
         ->( $dbrow, $self->reference_type );
 
+SEQUENCE_REGION:
+    while ( my $row = $reference_rs->next ) {
+        my $seq_id = $self->get_coderef('read_seq_id')->($row);
+        $self->get_coderef('write_sequence_region')
+            ->( $row, $seq_id, $output );
+    }
+    $logger->log("Finished writing sequence region");
+
+    # reset the cursor to read from start
+    $reference_rs->reset;
 REFERENCE:
     while ( my $ref_dbrow = $reference_rs->next ) {
+
         #        $self->get_coderef('write_meta_header')
         #            ->( $dbrow, $output, $self->taxon_id );
 
-        my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
         $logger->log("Starting GFF3 output of $seq_id");
 
         next
@@ -289,7 +299,8 @@ sub read_reference_feature {
         'features',
         { 'type.name' => $type },
         {   join     => 'type',
-            prefetch => 'dbxref'
+            prefetch => 'dbxref',
+            cache    => 1
         }
     );
     die "no reference feature(s) found for organism ", $dbrow->common_name,
@@ -315,17 +326,18 @@ sub write_meta_header {
         "\n" );
 }
 
+sub write_sequence_region {
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
+    if ( my $end = $dbrow->seqlen ) {
+        $output->print("##sequence-region\t$seq_id\t1\t$end\n");
+        return;
+    }
+    $self->logger->log("$seq_id has no length defined:skipped from export");
+}
+
 sub write_reference_feature {
     my ( $self, $dbrow, $seq_id, $output ) = @_;
     my $start = 1;
-    if ( my $end = $dbrow->seqlen ) {
-        $output->print("##sequence-region\t$seq_id\t$start\t$end\n");
-    }
-    else {
-        $self->logger->log(
-            "$seq_id has no length defined:skipped from export");
-        return;
-    }
 
     my $hashref;
     $hashref->{type}   = $dbrow->type->name;
@@ -583,7 +595,7 @@ sub write_aligned_feature {
         $hashref->{attributes}->{Name} = [$name];
     }
 
-    if ( $align_parts )
+    if ($align_parts)
     {    ## -- target attribute will be added in the feature parts
         $output->print( gff3_format_feature($hashref) );
         return;
@@ -650,13 +662,22 @@ has '_hook_stack' => (
     isa     => 'HashRef[CodeRef]',
     traits  => [qw/Hash/],
     lazy    => 1,
-    default => sub {
-        my ($self) = @_;
+    builder => '_build_hook_stack', 
+    handles => {
+        get_coderef      => 'get',
+        get_all_coderefs => 'keys',
+        register_handler => 'set'
+    }
+);
+
+sub _build_hook_stack {
+	my ($self) = @_;
         return {
             read_reference_feature =>
                 sub { $self->read_reference_feature(@_) },
-            read_seq_id       => sub { $self->read_seq_id(@_) },
-            write_meta_header => sub { $self->write_meta_header(@_) },
+            read_seq_id           => sub { $self->read_seq_id(@_) },
+            write_meta_header     => sub { $self->write_meta_header(@_) },
+            write_sequence_region => sub { $self->write_sequence_region(@_) },
             write_reference_feature =>
                 sub { $self->write_reference_feature(@_) },
             read_gene_feature  => sub { $self->read_gene_feature(@_) },
@@ -682,13 +703,7 @@ has '_hook_stack' => (
             read_contig           => sub { $self->read_contig(@_) },
             write_contig          => sub { $self->write_contig(@_) }
         };
-    },
-    handles => {
-        get_coderef      => 'get',
-        get_all_coderefs => 'keys',
-        register_handler => 'set'
-    }
-);
+}
 
 __PACKAGE__->meta->make_immutable;
 
