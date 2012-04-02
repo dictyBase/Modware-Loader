@@ -192,19 +192,28 @@ REFERENCE:
                 }
             }
         }
-
-        if ( $self->write_sequence ) {
-            $self->get_coderef('write_reference_sequence')
-                ->( $ref_dbrow, $seq_id, $output );
-        }
         $logger->log("Finished GFF3 output of $seq_id");
     }
+    # end writing all features 
+    $output->print("###\n");
+
+# write sequences
+        if ( $self->write_sequence ) {
+    	$output->print("##FASTA\n");
+        $reference_rs->reset;
+        while(my $row = $reference_rs->next) {
+        	my $seq_id = $self->get_coderef('read_seq_id')->($row);
+            $self->get_coderef('write_reference_sequence')
+                ->( $dbrow, $seq_id, $output );
+                }
+        }
     $output->close;
 };
 
 sub write_reference_sequence {
     my ( $self, $dbrow, $seq_id, $output ) = @_;
-    $output->print( "##FASTA\n>$seq_id\n", $dbrow->residues, "\n" );
+    (my $seq = $dbrow->residues) =~ s/(\S{1,60})/$1\n/g;
+    $output->print( ">$seq_id\n$seq\n");
 }
 
 sub _gene2gff3_feature {
