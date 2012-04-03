@@ -172,7 +172,7 @@ sub get_mito_type2feature {
     my ( $self, $dbrow, $type, $source ) = @_;
     my $ref_join = {
         join => [
-            'reference_featurelocs', { 'featurelocs' => { 'type' => 'cv' } }
+            'reference_featurelocs', { 'featureloc_features' => { 'type' => 'cv' } }
         ],
         cache => 1
     };
@@ -181,7 +181,7 @@ sub get_mito_type2feature {
         'type.name'                           => 'mitochondrial_DNA',
         'cv.name'                             => 'sequence'
     };
-    my $join = { join => [qw/type featurelocs/], prefetch => 'dbxref' };
+    my $join = { join => [qw/type featureloc_features/], prefetch => 'dbxref' };
     my $query = { 'type.name' => $type };
 
     if ($source) {
@@ -200,7 +200,7 @@ sub get_mito_type2feature {
     }
 
   # children features should map to one of the mitochondrial reference feature
-    $query->{'featurelocs.srcfeature_id'} = [ map { $_->feature_id }
+    $query->{'featureloc_features.srcfeature_id'} = [ map { $_->feature_id }
             $ref_rs->search( {}, { select => 'feature_id' } ) ];
     my $rs = $dbrow->search_related( 'features', $query, $join );
     $self->logger->log_fatal(
@@ -213,7 +213,7 @@ sub get_nuclear_type2feature {
     my ( $self, $dbrow, $type, $source ) = @_;
     my $mito_ref_join = {
         join => [
-            'reference_featurelocs', { 'featurelocs' => { 'type' => 'cv' } }
+            'reference_featurelocs', { 'featureloc_features' => { 'type' => 'cv' } }
         ],
         cache => 1
     };
@@ -222,7 +222,7 @@ sub get_nuclear_type2feature {
         'type.name'                           => 'mitochondrial_DNA',
         'cv.name'                             => 'sequence'
     };
-    my $join = { join => [qw/type featurelocs/], prefetch => 'dbxref' };
+    my $join = { join => [qw/type featureloc_features/], prefetch => 'dbxref' };
     my $query = { 'type.name' => $type };
 
     if ($source) {
@@ -251,7 +251,7 @@ sub get_nuclear_type2feature {
     }
 
     # children features should map to one of the nuclear reference feature
-    $query->{'featurelocs.srcfeature_id'} = [ map { $_->feature_id }
+    $query->{'featureloc_features.srcfeature_id'} = [ map { $_->feature_id }
             $ref_rs->search( {}, { select => 'feature_id' } ) ];
     my $rs = $dbrow->search_related( 'features', $query, $join );
     $self->logger->log_fatal("no nuclear feature $type found in the database")
