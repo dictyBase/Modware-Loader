@@ -9,6 +9,22 @@ extends qw/Modware::Export::Chado/;
 # Module implementation
 #
 
+has 'exclude_mitochondrial' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'Exclude mitochondrial genome,  default is to dump if it is present'
+);
+
+has 'only_mitochondrial' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'Dump mitochondrial genome only if it is present,  default is false'
+);
+
 has 'feature_name' => (
     is      => 'rw',
     isa     => 'Bool',
@@ -46,10 +62,10 @@ has '_dump_sequence' => (
     traits  => [qw/Hash/],
     lazy    => 1,
     handles => {
-        'all_typesof_sequence'    => 'keys',
-        'add_typefor_sequence'    => 'set',
-        'get_codereffor_sequence' => 'get',
-        'has_typefor_sequence'    => 'defined'
+        'all_types_of_sequence'    => 'keys',
+        'add_type_for_sequence'    => 'set',
+        'get_coderef_for_sequence' => 'get',
+        'has_type_for_sequence'    => 'defined'
     },
     default => sub {
         my ($self) = @_;
@@ -83,10 +99,58 @@ augment 'execute' => sub {
     my ($self) = @_;
     my $dbrow  = $self->_organism_result;
     my $type   = $self->type;
+
+    # coderef for nuclear dumps only
+    if ( $self->exclude_mitochondrial ) {
+        my $source = $self->schema->source('Sequence::Feature');
+
+        # add the relationship for LEFT JOIN
+        if ( !$source->has_relationship('reference_featurelocs') ) {
+            $source->add_relationship(
+                'reference_featurelocs',
+                'Sequence::Featureloc',
+                { 'foreign.feature_id' => 'self.feature_id' },
+                { join_type            => 'LEFT' }
+            );
+        }
+
+        $self->register_type2feature_handler(
+            $_,
+            sub {
+                $self->get_nuclear_type2feature(@_);
+            }
+            )
+            for qw/supercontig chromosome
+            ncRNA rRNA tRNA mRNA polypeptide/;
+    }
+
+    # coderef for mito dumps only
+    if ( $self->only_mitochondrial ) {
+
+        my $source = $self->schema->source('Sequence::Feature');
+        if ( !$source->has_relationship('reference_featurelocs') ) {
+            $source->add_relationship(
+                'reference_featurelocs',
+                'Sequence::Featureloc',
+                { 'foreign.feature_id' => 'self.feature_id' },
+                { join_type            => 'LEFT' }
+            );
+        }
+
+        $self->register_type2feature_handler(
+            $_,
+            sub {
+                $self->get_mito_type2feature(@_);
+            }
+            )
+            for qw/supercontig chromosome
+            gene ncRNA rRNA tRNA mRNA polypeptide/;
+    }
+
     if ( $self->has_type2feature_handler( $self->type ) ) {
         my $rs = $self->get_type2feature_coderef( $self->type )
             ->( $dbrow, $self->type, $self->gff_source );
-        $self->get_codereffor_sequence( $self->type )
+        $self->get_coderef_for_sequence( $self->type )
             ->( $rs, $self->output_handler );
     }
     else {
@@ -95,6 +159,81 @@ augment 'execute' => sub {
     }
     $self->output_handler->close;
 };
+
+sub get_mito_type2feature {
+    my ( $self, $dbrow, $type, $source ) = @_;
+    my $ref_join = {
+        join => [
+            'reference_featurelocs', { 'featurelocs' => { 'type' => 'cv' } }
+        ],
+        cache => 1
+    };
+    my $ref_query = {
+        'reference_featurelocs.srcfeature_id' => undef,
+        'type.name'                           => 'mitochondrial_DNA',
+        'cv.name'                             => 'sequence'
+    };
+    my $join = { join => [qw/type featurelocs/], prefetch => 'dbxref' };
+    my $query = { 'type.name' => $type };
+
+    if ($source) {
+        push @{ $ref_join->{join} },
+            { 'feature_dbxrefs' => { 'dbxref' => 'db' } };
+        push @{ $join->{join} },
+            { 'feature_dbxrefs' => { 'dbxref' => 'db' } };
+        $ref_query->{ 'db.name' => $source };
+        $query->{ 'db.name'     => $source };
+    }
+
+    # get SO type of reference feature
+    my $ref_rs = $dbrow->search_related( 'features', $ref_query, $ref_join );
+    if ( $ref_rs->first->type->name eq $type ) {
+        return $ref_rs;
+    }
+
+    # children features should map to one of the mitochondrial reference feature
+    $query->{
+        'featurelocs.srcfeature_id' => [
+            map { $_->feature_id }
+                $ref_rs->search( {}, { select => 'feature_id' } )
+        ]
+        };
+    my $rs = $dbrow->search_related( 'features', $query, $join );
+    $self->logger->log_fatal(
+        "no mitochondrial feature $type found in the database")
+        if !$rs->count;
+    return $rs;
+}
+
+sub get_nuclear_type2feature {
+    my ( $self, $dbrow, $type, $source ) = @_;
+    my $rs;
+    if ($source) {
+        $rs = $dbrow->search_related(
+            'features',
+            {   'type.name'        => $type,
+                'dbxref.accession' => $source,
+                'db.name'          => 'GFF_source'
+            },
+            {   join =>
+                    [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ],
+                prefetch => 'dbxref'
+            }
+        );
+    }
+    else {
+        $rs = $dbrow->search_related(
+            'features',
+            { 'type.name' => $type },
+            {   join     => 'type',
+                prefetch => 'dbxref'
+            }
+        );
+    }
+    $self->logger->log_fatal("no feature $type found in the database")
+        if !$rs->count;
+    return $rs;
+}
 
 sub get_type2feature {
     my ( $self, $dbrow, $type, $source ) = @_;
@@ -128,7 +267,8 @@ sub get_type2feature {
 
 sub get_cds {
     my ( $self, $dbrow, $type, $source ) = @_;
-    return $self->get_type2feature( $dbrow, 'mRNA', $source );
+    return $self->get_type2feature_coderef->('mRNA')
+        ->( $dbrow, 'mRNA', $source );
 }
 
 sub dump_sequence {
@@ -138,7 +278,8 @@ sub dump_sequence {
     while ( my $dbrow = $rs->next ) {
         my $id = $self->$method($dbrow);
         if ( !$id ) {
-            $logger->log( "Unable to fetch name for feature: ", $dbrow->uniquename );
+            $logger->log( "Unable to fetch name for feature: ",
+                $dbrow->uniquename );
             return;
         }
         if ( my $seq = $dbrow->residues ) {
@@ -157,7 +298,8 @@ sub infer_and_dump_sequence {
     while ( my $dbrow = $rs->next ) {
         my $id = $self->$method($dbrow);
         if ( !$id ) {
-            $self->logger->log( "Unable to fetch name for feature: ", $dbrow->uniquename );
+            $self->logger->log( "Unable to fetch name for feature: ",
+                $dbrow->uniquename );
             return;
         }
         my $seq = $dbrow->residues;
