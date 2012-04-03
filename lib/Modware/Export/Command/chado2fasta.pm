@@ -10,27 +10,27 @@ extends qw/Modware::Export::Chado/;
 #
 
 has 'exclude_mitochondrial' => (
-    is      => 'rw',
-    isa     => 'Bool',
-    traits => [qw/Getopt/], 
-    lazy => 1, 
-    cmd_aliases => 'only_nuclear', 
-    default => 0,
+    is          => 'rw',
+    isa         => 'Bool',
+    traits      => [qw/Getopt/],
+    lazy        => 1,
+    cmd_aliases => 'only_nuclear',
+    default     => 0,
     documentation =>
         'Exclude mitochondrial genome(only nuclear),  default is false'
 );
 
 has 'only_mitochondrial' => (
-    is      => 'rw',
-    isa     => 'Bool',
-    traits => [qw/Getopt/], 
-    lazy => 1, 
-    cmd_aliases => 'exclude_nuclear', 
-    default => 0,
+    is          => 'rw',
+    isa         => 'Bool',
+    traits      => [qw/Getopt/],
+    lazy        => 1,
+    cmd_aliases => 'exclude_nuclear',
+    default     => 0,
     documentation =>
-        'Dump mitochondrial genome(exclude nuclear),  default is false'.
-        'It works only if the SO term *mitochondrial_DNA* is being set as feature property'.
-        'for the reference feature'
+        'Dump mitochondrial genome(exclude nuclear),  default is false'
+        . 'It works only if the SO term *mitochondrial_DNA* is being set as feature property'
+        . 'for the reference feature'
 );
 
 has 'feature_name' => (
@@ -172,7 +172,7 @@ sub get_mito_type2feature {
     my ( $self, $dbrow, $type, $source ) = @_;
     my $ref_join = {
         join => [
-            'reference_featurelocs', { 'featureloc_features' => { 'type' => 'cv' } }
+            'reference_featurelocs', { 'featureprops' => { 'type' => 'cv' } }
         ],
         cache => 1
     };
@@ -181,7 +181,8 @@ sub get_mito_type2feature {
         'type.name'                           => 'mitochondrial_DNA',
         'cv.name'                             => 'sequence'
     };
-    my $join = { join => [qw/type featureloc_features/], prefetch => 'dbxref' };
+    my $join
+        = { join => [qw/type featureloc_features/], prefetch => 'dbxref' };
     my $query = { 'type.name' => $type };
 
     if ($source) {
@@ -196,6 +197,7 @@ sub get_mito_type2feature {
     # get SO type of reference feature
     my $ref_rs = $dbrow->search_related( 'features', $ref_query, $ref_join );
     if ( $ref_rs->first->type->name eq $type ) {
+        $ref_rs->reset;
         return $ref_rs;
     }
 
@@ -213,7 +215,7 @@ sub get_nuclear_type2feature {
     my ( $self, $dbrow, $type, $source ) = @_;
     my $mito_ref_join = {
         join => [
-            'reference_featurelocs', { 'featureloc_features' => { 'type' => 'cv' } }
+            'reference_featurelocs', { 'featureprops' => { 'type' => 'cv' } }
         ],
         cache => 1
     };
@@ -222,7 +224,8 @@ sub get_nuclear_type2feature {
         'type.name'                           => 'mitochondrial_DNA',
         'cv.name'                             => 'sequence'
     };
-    my $join = { join => [qw/type featureloc_features/], prefetch => 'dbxref' };
+    my $join
+        = { join => [qw/type featureloc_features/], prefetch => 'dbxref' };
     my $query = { 'type.name' => $type };
 
     if ($source) {
@@ -245,8 +248,10 @@ sub get_nuclear_type2feature {
         },
         { join => 'reference_featurelocs', cache => 1 }
     );
+
     if ( $ref_rs->first->type->name eq $type )
     {    #reference feature needs to be retrieved
+        $ref_rs->reset;
         return $ref_rs;
     }
 
