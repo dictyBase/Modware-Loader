@@ -181,8 +181,8 @@ sub get_mito_type2feature {
             { 'feature_dbxrefs' => { 'dbxref' => 'db' } };
         push @{ $join->{join} },
             { 'feature_dbxrefs' => { 'dbxref' => 'db' } };
-        $ref_query->{ 'db.name' => $source };
-        $query->{ 'db.name'     => $source };
+        $ref_query->{'db.name'} = $source;
+        $query->{'db.name'}     = $source;
     }
 
     # get SO type of reference feature
@@ -191,13 +191,9 @@ sub get_mito_type2feature {
         return $ref_rs;
     }
 
-    # children features should map to one of the mitochondrial reference feature
-    $query->{
-        'featurelocs.srcfeature_id' => [
-            map { $_->feature_id }
-                $ref_rs->search( {}, { select => 'feature_id' } )
-        ]
-        };
+  # children features should map to one of the mitochondrial reference feature
+    $query->{'featurelocs.srcfeature_id'} = [ map { $_->feature_id }
+            $ref_rs->search( {}, { select => 'feature_id' } ) ];
     my $rs = $dbrow->search_related( 'features', $query, $join );
     $self->logger->log_fatal(
         "no mitochondrial feature $type found in the database")
@@ -207,30 +203,50 @@ sub get_mito_type2feature {
 
 sub get_nuclear_type2feature {
     my ( $self, $dbrow, $type, $source ) = @_;
-    my $rs;
+    my $mito_ref_join = {
+        join => [
+            'reference_featurelocs', { 'featurelocs' => { 'type' => 'cv' } }
+        ],
+        cache => 1
+    };
+    my $mito_ref_query = {
+        'reference_featurelocs.srcfeature_id' => undef,
+        'type.name'                           => 'mitochondrial_DNA',
+        'cv.name'                             => 'sequence'
+    };
+    my $join = { join => [qw/type featurelocs/], prefetch => 'dbxref' };
+    my $query = { 'type.name' => $type };
+
     if ($source) {
-        $rs = $dbrow->search_related(
-            'features',
-            {   'type.name'        => $type,
-                'dbxref.accession' => $source,
-                'db.name'          => 'GFF_source'
-            },
-            {   join =>
-                    [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ],
-                prefetch => 'dbxref'
-            }
-        );
+        push @{ $mito_ref_join->{join} },
+            { 'feature_dbxrefs' => { 'dbxref' => 'db' } };
+        push @{ $join->{join} },
+            { 'feature_dbxrefs' => { 'dbxref' => 'db' } };
+        $mito_ref_query->{'db.name'} = $source;
+        $query->{'db.name'}          = $source;
     }
-    else {
-        $rs = $dbrow->search_related(
-            'features',
-            { 'type.name' => $type },
-            {   join     => 'type',
-                prefetch => 'dbxref'
-            }
-        );
+
+    # get SO type of nuclear(not mitochondrial) reference feature
+    my $mito_rs = $dbrow->search_related( 'features', $mito_ref_query,
+        $mito_ref_join );
+    my $ref_rs = $dbrow->search_related(
+        'features',
+        {   'reference_featurelocs.srcfeature_id' => undef,
+            feature_id =>
+                { -not_in => $mito_rs->get_column('feature_id')->as_query }
+        },
+        { join => 'reference_featurelocs', cache => 1 }
+    );
+    if ( $ref_rs->first->type->name eq $type )
+    {    #reference feature needs to be retrieved
+        return $ref_rs;
     }
-    $self->logger->log_fatal("no feature $type found in the database")
+
+    # children features should map to one of the nuclear reference feature
+    $query->{'featurelocs.srcfeature_id'} = [ map { $_->feature_id }
+            $ref_rs->search( {}, { select => 'feature_id' } ) ];
+    my $rs = $dbrow->search_related( 'features', $query, $join );
+    $self->logger->log_fatal("no nuclear feature $type found in the database")
         if !$rs->count;
     return $rs;
 }

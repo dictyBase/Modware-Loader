@@ -143,9 +143,8 @@ REFERENCE:
 
         #        $self->get_coderef('write_meta_header')
         #            ->( $dbrow, $output, $self->taxon_id );
-
-        $logger->log("Starting GFF3 output of $seq_id");
-
+		my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
+		$logger->log("Starting GFF3 output of $seq_id");
         next
             if !$self->get_coderef('write_reference_feature')
                 ->( $ref_dbrow, $seq_id, $output );
