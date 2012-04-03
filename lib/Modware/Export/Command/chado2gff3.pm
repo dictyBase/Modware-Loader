@@ -204,7 +204,7 @@ REFERENCE:
         while ( my $row = $reference_rs->next ) {
             my $seq_id = $self->get_coderef('read_seq_id')->($row);
             $self->get_coderef('write_reference_sequence')
-                ->( $dbrow, $seq_id, $output );
+                ->( $row, $seq_id, $output );
         }
         $logger->log("Finished writing all sequences");
     }
