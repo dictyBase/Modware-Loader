@@ -12,17 +12,25 @@ extends qw/Modware::Export::Chado/;
 has 'exclude_mitochondrial' => (
     is      => 'rw',
     isa     => 'Bool',
+    traits => [qw/Getopt/], 
+    lazy => 1, 
+    cmd_aliases => 'only_nuclear', 
     default => 0,
     documentation =>
-        'Exclude mitochondrial genome,  default is to dump if it is present'
+        'Exclude mitochondrial genome(only nuclear),  default is false'
 );
 
 has 'only_mitochondrial' => (
     is      => 'rw',
     isa     => 'Bool',
+    traits => [qw/Getopt/], 
+    lazy => 1, 
+    cmd_aliases => 'exclude_nuclear', 
     default => 0,
     documentation =>
-        'Dump mitochondrial genome only if it is present,  default is false'
+        'Dump mitochondrial genome(exclude nuclear),  default is false'.
+        'It works only if the SO term *mitochondrial_DNA* is being set as feature property'.
+        'for the reference feature'
 );
 
 has 'feature_name' => (
