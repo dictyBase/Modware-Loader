@@ -103,11 +103,39 @@ has 'gff_source' => (
         'GFF source(column 2) to which the feature belong to,  optional'
 );
 
-augment 'execute' => sub {
+override 'execute' => sub {
     my ($self) = @_;
-    my $dbrow  = $self->_organism_result;
-    my $type   = $self->type;
+    my $logger = $self->logger;
 
+    if ( !$self->has_species ) {
+        if ( !$self->has_genus ) {
+            if ( !$self->has_organism ) {
+                $logger->log_fatal(
+                    "at least species,  genus or common_name has to be set");
+            }
+        }
+    }
+
+    my $query;
+    $query->{species}     = $self->species  if $self->has_species;
+    $query->{genus}       = $self->genus    if $self->has_genus;
+    $query->{common_name} = $self->organism if $self->has_organism;
+
+    my $org_rs = $self->schema->resultset('Organism::Organism')->search(
+        $query,
+        {   select => [
+                qw/species genus
+                    common_name organism_id/
+            ]
+        }
+    );
+
+    if ( !$org_rs->count ) {
+        $logger->log_fatal(
+            "Could not find given organism  in chado database");
+    }
+
+    my $type   = $self->type;
     # coderef for nuclear dumps only
     if ( $self->exclude_mitochondrial ) {
         my $source = $self->schema->source('Sequence::Feature');
@@ -171,7 +199,7 @@ augment 'execute' => sub {
 
     if ( $self->has_type2feature_handler( $self->type ) ) {
         my $rs = $self->get_type2feature_coderef( $self->type )
-            ->( $dbrow, $self->type, $self->gff_source );
+            ->( $org_rs, $self->type, $self->gff_source );
         $self->get_coderef_for_sequence( $self->type )
             ->( $rs, $self->output_handler );
     }
