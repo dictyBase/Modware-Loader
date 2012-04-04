@@ -308,7 +308,7 @@ sub get_type2feature {
 
 sub get_cds {
     my ( $self, $dbrow, $type, $source ) = @_;
-    return $self->get_type2feature_coderef->('mRNA')
+    return $self->get_type2feature_coderef('mRNA')
         ->( $dbrow, 'mRNA', $source );
 }
 
