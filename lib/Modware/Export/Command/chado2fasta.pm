@@ -70,10 +70,10 @@ has '_dump_sequence' => (
     traits  => [qw/Hash/],
     lazy    => 1,
     handles => {
-        'all_types_of_sequence'    => 'keys',
-        'add_type_for_sequence'    => 'set',
-        'get_coderef_for_sequence' => 'get',
-        'has_type_for_sequence'    => 'defined'
+        'all_types_of_sequence'      => 'keys',
+        'register_type_for_sequence' => 'set',
+        'get_coderef_for_sequence'   => 'get',
+        'has_type_for_sequence'      => 'defined'
     },
     default => sub {
         my ($self) = @_;
@@ -137,12 +137,15 @@ augment 'execute' => sub {
             }
             )
             for qw/supercontig chromosome
-            ncRNA rRNA tRNA mRNA polypeptide/;
+            ncRNA rRNA tRNA mRNA/;
+        $self->register_type2feature_handler( 'polypeptide',
+            sub { $self->get_polypeptide_feature(@_) } );
+        $self->register_type_for_sequence( 'polypeptide',
+            sub { $self->dump_polypeptide_sequence(@_) } );
     }
 
     # coderef for mito dumps only
     if ( $self->only_mitochondrial ) {
-
         my $source = $self->schema->source('Sequence::Feature');
         if ( !$source->has_relationship('reference_featurelocs') ) {
             $source->add_relationship(
@@ -152,7 +155,6 @@ augment 'execute' => sub {
                 { join_type            => 'LEFT' }
             );
         }
-
         $self->register_type2feature_handler(
             $_,
             sub {
@@ -160,7 +162,11 @@ augment 'execute' => sub {
             }
             )
             for qw/supercontig chromosome
-            gene ncRNA rRNA tRNA mRNA polypeptide/;
+            gene ncRNA rRNA tRNA mRNA/;
+        $self->register_type2feature_handler( 'polypeptide',
+            sub { $self->get_polypeptide_feature(@_) } );
+        $self->register_type_for_sequence( 'polypeptide',
+            sub { $self->dump_polypeptide_sequence(@_) } );
     }
 
     if ( $self->has_type2feature_handler( $self->type ) ) {
@@ -268,8 +274,12 @@ sub get_nuclear_type2feature {
     }
 
     # children features should map to one of the nuclear reference feature
-    $query->{'featureloc_features.srcfeature_id'} = [ map { $_->feature_id }
-            $ref_rs->search( {}, { select => 'feature_id' } ) ];
+    $query->{'featureloc_features.srcfeature_id'} = {
+        'in',
+        [   map { $_->feature_id }
+                $ref_rs->search( {}, { select => 'feature_id' } )
+        ]
+    };
     my $rs = $dbrow->search_related( 'features', $query, $join );
     $self->logger->log_fatal("no nuclear feature $type found in the database")
         if !$rs->count;
@@ -307,6 +317,12 @@ sub get_type2feature {
 }
 
 sub get_cds {
+    my ( $self, $dbrow, $type, $source ) = @_;
+    return $self->get_type2feature_coderef('mRNA')
+        ->( $dbrow, 'mRNA', $source );
+}
+
+sub get_polypeptide_feature {
     my ( $self, $dbrow, $type, $source ) = @_;
     return $self->get_type2feature_coderef('mRNA')
         ->( $dbrow, 'mRNA', $source );
@@ -367,6 +383,22 @@ sub infer_and_dump_sequence {
         $seq =~ s/(\S{1,60})/$1\n/g;
         $output->print( ">$id\n", $seq );
     }
+}
+
+sub dump_polypeptide_sequence {
+    my ( $self, $rs, $output ) = @_;
+
+    # it is a mRNA resultset object
+    my $poly_rs = $rs->search_related(
+        'feature_relationship_objects',
+        { 'type_2.name' => 'derives_from' },
+        { join        => 'type' }
+        )->search_related(
+        'subject',
+        { 'type_3.name' => 'polypeptide' },
+        { join          => 'type', prefetch => 'dbxref' }
+        );
+    $self->dump_sequence( $poly_rs, $output );
 }
 
 sub dump_cds_sequence {
