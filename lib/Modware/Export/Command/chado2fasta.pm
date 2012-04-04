@@ -122,6 +122,14 @@ augment 'execute' => sub {
             );
         }
 
+        # reference feature testing
+        $source->add_relationship(
+            'reference_featurerels',
+            'Sequence::FeatureRelationship',
+            { 'foreign.subject_id' => 'self.feature_id' },
+            { join_type            => 'LEFT' }
+        );
+
         $self->register_type2feature_handler(
             $_,
             sub {
@@ -243,12 +251,16 @@ sub get_nuclear_type2feature {
     my $ref_rs = $dbrow->search_related(
         'features',
         {   'reference_featurelocs.srcfeature_id' => undef,
-            feature_id =>
+            'reference_featurerels.object_id'     => undef,
+            'me.feature_id' =>
                 { -not_in => $mito_rs->get_column('feature_id')->as_query }
         },
-        { join => 'reference_featurelocs', cache => 1 }
+        {   join  => [ 'reference_featurelocs', 'reference_featurerels' ],
+            cache => 1
+        }
     );
 
+    my $ref_type = $ref_rs->first->type->name;
     if ( $ref_rs->first->type->name eq $type )
     {    #reference feature needs to be retrieved
         $ref_rs->reset;
