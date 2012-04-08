@@ -1,6 +1,8 @@
 Modware-*
 .build/
 !modware-update
+!modware-export
+!modware-transform
 !modware-load
 locallib/
 *gff3
