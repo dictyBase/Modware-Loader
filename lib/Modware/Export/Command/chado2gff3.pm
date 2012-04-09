@@ -321,8 +321,7 @@ sub read_reference_feature {
 
 sub read_seq_id {
     my ( $self, $row ) = @_;
-    my $seq_id = $row->name ? $row->name : $row->uniquename;
-    return $seq_id;
+    return $self->_chado_feature_id($row);
 }
 
 sub write_meta_header {
