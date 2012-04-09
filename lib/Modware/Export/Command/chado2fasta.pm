@@ -286,7 +286,7 @@ sub get_nuclear_type2feature {
         'features',
         {   'reference_featurelocs.srcfeature_id' => undef,
             'reference_featurerels.object_id'     => undef,
-            'me.feature_id' =>
+            'features.feature_id' =>
                 { -not_in => $mito_rs->get_column('feature_id')->as_query }
         },
         {   join  => [ 'reference_featurelocs', 'reference_featurerels' ],
