@@ -68,12 +68,17 @@ has 'include_align_parts' => (
         'Group the aligned feature with one or more match_part feature'
 );
 
-
 has 'feature_name' => (
     is      => 'rw',
     isa     => 'Bool',
     default => 0,
-    lazy    => 1,
+    trigger => sub {
+        my ($self) = @_;
+        if ( $self->has_coderef('read_seq_id') ) {
+            $self->register_handler( 'read_seq_id',
+                sub { $self->read_seq_id_by_name(@_) } );
+        }
+    },
     documentation =>
         'Output feature name instead of sequence id in the seq_id field,  default is off.'
 );
@@ -154,9 +159,9 @@ REFERENCE:
 
         #        $self->get_coderef('write_meta_header')
         #            ->( $dbrow, $output, $self->taxon_id );
-		my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
+        my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
         next REFERENCE if !$seq_id;
-		$logger->log("Starting GFF3 output of $seq_id");
+        $logger->log("Starting GFF3 output of $seq_id");
         next
             if !$self->get_coderef('write_reference_feature')
                 ->( $ref_dbrow, $seq_id, $output );
@@ -332,10 +337,10 @@ sub read_reference_feature {
 }
 
 sub read_seq_id_by_name {
-	my ($self, $row) = @_;
-	if (my $name =  $row->name) {
-		return $name;
-	}
+    my ( $self, $row ) = @_;
+    if ( my $name = $row->name ) {
+        return $name;
+    }
 }
 
 sub read_seq_id {
@@ -694,7 +699,8 @@ has '_hook_stack' => (
     handles => {
         get_coderef      => 'get',
         get_all_coderefs => 'keys',
-        register_handler => 'set'
+        register_handler => 'set',
+        has_coderef      => 'defined'
     }
 );
 
