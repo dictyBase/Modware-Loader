@@ -68,6 +68,16 @@ has 'include_align_parts' => (
         'Group the aligned feature with one or more match_part feature'
 );
 
+
+has 'feature_name' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'Output feature name instead of sequence id in the seq_id field,  default is off.'
+);
+
 has 'extra_gene_model' => (
     is      => 'rw',
     isa     => 'ArrayRef',
@@ -131,6 +141,7 @@ augment 'execute' => sub {
 SEQUENCE_REGION:
     while ( my $row = $reference_rs->next ) {
         my $seq_id = $self->get_coderef('read_seq_id')->($row);
+        next SEQUENCE_REGION if !$seq_id;
         $self->get_coderef('write_sequence_region')
             ->( $row, $seq_id, $output );
     }
@@ -144,6 +155,7 @@ REFERENCE:
         #        $self->get_coderef('write_meta_header')
         #            ->( $dbrow, $output, $self->taxon_id );
 		my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
+        next REFERENCE if !$seq_id;
 		$logger->log("Starting GFF3 output of $seq_id");
         next
             if !$self->get_coderef('write_reference_feature')
@@ -317,6 +329,13 @@ sub read_reference_feature {
         "\n"
         if !$reference_rs->count;
     return $reference_rs;
+}
+
+sub read_seq_id_by_name {
+	my ($self, $row) = @_;
+	if (my $name =  $row->name) {
+		return $name;
+	}
 }
 
 sub read_seq_id {
