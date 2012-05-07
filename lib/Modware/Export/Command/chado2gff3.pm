@@ -157,9 +157,6 @@ SEQUENCE_REGION:
     $reference_rs->reset;
 REFERENCE:
     while ( my $ref_dbrow = $reference_rs->next ) {
-
-        #        $self->get_coderef('write_meta_header')
-        #            ->( $dbrow, $output, $self->taxon_id );
         my $seq_id = $self->get_coderef('read_seq_id')->($ref_dbrow);
         next REFERENCE if !$seq_id;
         $logger->log("Starting GFF3 output of $seq_id");
@@ -381,11 +378,21 @@ sub write_reference_feature {
     my $start = 1;
 
     my $hashref;
+    my $end = $dbrow->seqlen ? $dbrow->seqlen : $dbrow->get_column('sequence_lenght');
+    if (!$end) { 
+     # unable to figure out end location of reference feature,  abort
+        $self->logger->log(
+            "$seq_id has no length defined:skipped from export");
+            return;
+    }
+    
+
+
     $hashref->{type}   = $dbrow->type->name;
     $hashref->{score}  = undef;
     $hashref->{seq_id} = $seq_id;
     $hashref->{start}  = 1;
-    $hashref->{end}    = $dbrow->seqlen;
+    $hashref->{end}    = $end;
     $hashref->{strand} = undef;
     $hashref->{phase}  = undef;
     my $dbxref_rs
