@@ -366,249 +366,194 @@ sub write_sequence_region {
     my ( $self, $dbrow, $seq_id, $output ) = @_;
     if ( my $end = $dbrow->seqlen ) {
         $output->print("##sequence-region\t$seq_id\t1\t$end\n");
-        return;
     }
-    elsif (
-        my $) $self->logger->log(
+    elsif ( my $length = $row->get_column('sequence_length') ) {
+        $output->print("##sequence-region\t$seq_id\t1\t$length\n");
+    }
+    else {
+        $self->logger->log(
             "$seq_id has no length defined:skipped from export");
     }
+}
 
-    sub write_reference_feature {
-        my ( $self, $dbrow, $seq_id, $output ) = @_;
-        my $start = 1;
+sub write_reference_feature {
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
+    my $start = 1;
 
-        my $hashref;
-        $hashref->{type}   = $dbrow->type->name;
-        $hashref->{score}  = undef;
-        $hashref->{seq_id} = $seq_id;
-        $hashref->{start}  = 1;
-        $hashref->{end}    = $dbrow->seqlen;
-        $hashref->{strand} = undef;
-        $hashref->{phase}  = undef;
-        my $dbxref_rs
-            = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
-            'dbxref',
-            { 'db.name' => 'GFF_source' },
-            { join      => 'db' }
-            );
-
-        if ( my $row = $dbxref_rs->first ) {
-            $hashref->{source} = $row->accession;
-        }
-        else {
-            $self->logger->log(
-                $dbrow->type->name,
-                " feature ",
-                $dbrow->uniquename,
-                " do not have GFF3 source defined in the database: it is skipped from output"
-            );
-            return;
-        }
-
-        ## -- attributes
-        $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
-        if ( my $name = $dbrow->name ) {
-            $hashref->{attributes}->{Name} = [$name];
-        }
-        my $dbxrefs;
-        for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
-            $dbrow->secondary_dbxrefs )
-        {
-            push @$dbxrefs, $xref_row->db->name . ':' . $xref_row->accession;
-        }
-        $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
-        $output->print( gff3_format_feature($hashref) );
-    }
-
-    sub read_gene_feature {
-        my ( $self, $dbrow ) = @_;
-        return $self->_children_dbrows( $dbrow, 'part_of', 'gene' );
-    }
-
-    sub read_exon_feature {
-        my ( $self, $dbrow ) = @_;
-        return $self->_children_dbrows( $dbrow, 'part_of', 'exon' );
-    }
-
-    sub read_transcript_feature {
-        my ( $self, $dbrow ) = @_;
-        return $self->_children_dbrows( $dbrow, 'part_of', '%RNA' );
-    }
-
-    sub write_gene_feature {
-        my ( $self, $dbrow, $seq_id, $output ) = @_;
-        my $gene_hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
-        return if not defined $gene_hash;
-        $output->print( gff3_format_feature($gene_hash) );
-        return 1;
-    }
-
-    sub write_transcript_feature {
-        my ( $self, $dbrow, $seq_id, $gene_id, $output ) = @_;
-        my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
-        $output->print( gff3_format_feature($hash) );
-        return 1;
-    }
-
-    sub write_exon_feature {
-        my ( $self, $dbrow, $seq_id, $trans_id, $output ) = @_;
-        my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $trans_id );
-        $output->print( gff3_format_feature($hash) );
-        return 1;
-    }
-
-    sub write_cds_feature {
-        my ( $self, $dbrow, $seq_id, $output ) = @_;
-    }
-
-    sub read_reference_feature_without_mito {
-        my ( $self, $dbrow, $type ) = @_;
-        my $mito_rs = $dbrow->search_related(
-            'features',
-            {   'type.name'   => $type,
-                'type_2.name' => 'mitochondrial_DNA',
-                'cv.name'     => 'sequence'
-            },
-            { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
+    my $hashref;
+    $hashref->{type}   = $dbrow->type->name;
+    $hashref->{score}  = undef;
+    $hashref->{seq_id} = $seq_id;
+    $hashref->{start}  = 1;
+    $hashref->{end}    = $dbrow->seqlen;
+    $hashref->{strand} = undef;
+    $hashref->{phase}  = undef;
+    my $dbxref_rs
+        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
+        'dbxref',
+        { 'db.name' => 'GFF_source' },
+        { join      => 'db' }
         );
 
-        my $nuclear_rs;
-        if ( $mito_rs->count ) {    ## -- mitochondrial genome is present
-            $nuclear_rs = $dbrow->search_related(
-                'features',
-                {   'feature_id' => {
-                        -not_in =>
-                            $mito_rs->get_column('feature_id')->as_query
-                    },
-                    'type.name' => $type
+    if ( my $row = $dbxref_rs->first ) {
+        $hashref->{source} = $row->accession;
+    }
+    else {
+        $self->logger->log(
+            $dbrow->type->name,
+            " feature ",
+            $dbrow->uniquename,
+            " do not have GFF3 source defined in the database: it is skipped from output"
+        );
+        return;
+    }
+
+    ## -- attributes
+    $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
+    if ( my $name = $dbrow->name ) {
+        $hashref->{attributes}->{Name} = [$name];
+    }
+    my $dbxrefs;
+    for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
+        $dbrow->secondary_dbxrefs )
+    {
+        push @$dbxrefs, $xref_row->db->name . ':' . $xref_row->accession;
+    }
+    $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
+    $output->print( gff3_format_feature($hashref) );
+}
+
+sub read_gene_feature {
+    my ( $self, $dbrow ) = @_;
+    return $self->_children_dbrows( $dbrow, 'part_of', 'gene' );
+}
+
+sub read_exon_feature {
+    my ( $self, $dbrow ) = @_;
+    return $self->_children_dbrows( $dbrow, 'part_of', 'exon' );
+}
+
+sub read_transcript_feature {
+    my ( $self, $dbrow ) = @_;
+    return $self->_children_dbrows( $dbrow, 'part_of', '%RNA' );
+}
+
+sub write_gene_feature {
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
+    my $gene_hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    return if not defined $gene_hash;
+    $output->print( gff3_format_feature($gene_hash) );
+    return 1;
+}
+
+sub write_transcript_feature {
+    my ( $self, $dbrow, $seq_id, $gene_id, $output ) = @_;
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
+    $output->print( gff3_format_feature($hash) );
+    return 1;
+}
+
+sub write_exon_feature {
+    my ( $self, $dbrow, $seq_id, $trans_id, $output ) = @_;
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $trans_id );
+    $output->print( gff3_format_feature($hash) );
+    return 1;
+}
+
+sub write_cds_feature {
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
+}
+
+sub read_reference_feature_without_mito {
+    my ( $self, $dbrow, $type ) = @_;
+    my $mito_rs = $dbrow->search_related(
+        'features',
+        {   'type.name'   => $type,
+            'type_2.name' => 'mitochondrial_DNA',
+            'cv.name'     => 'sequence'
+        },
+        { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
+    );
+
+    my $nuclear_rs;
+    if ( $mito_rs->count ) {    ## -- mitochondrial genome is present
+        $nuclear_rs = $dbrow->search_related(
+            'features',
+            {   'feature_id' => {
+                    -not_in => $mito_rs->get_column('feature_id')->as_query
                 },
-                { join => 'type' }
-            );
-        }
-        else {                      # no mito genome
-            $nuclear_rs = $dbrow->search_related(
-                'features',
-                { 'type.name' => $type },
-                { join        => 'type' }
-            );
-        }
-
-        die "no reference feature found for organism ", $dbrow->common_name,
-            "\n"
-            if !$nuclear_rs->count;
-        return $nuclear_rs;
-    }
-
-    sub read_mito_reference_feature {
-        my ( $self, $dbrow, $type ) = @_;
-        my $rs = $dbrow->search_related(
-            'features',
-            {   'type.name'   => $type,
-                'type_2.name' => 'mitochondrial_DNA',
-                'cv.name'     => 'sequence'
+                'type.name' => $type
             },
-            { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
+            { join => 'type' }
         );
-        die "no mitochondrial reference feature(s) found for organism ",
-            $dbrow->common_name, "\n"
-            if !$rs->count;
-        return $rs;
     }
-
-    sub read_contig {
-        my ( $self, $dbrow ) = @_;
-        return $self->read_aligned_feature( $dbrow, 'contig' );
-    }
-
-    sub read_aligned_feature {
-        my ( $self, $dbrow, $type ) = @_;
-        return $dbrow->search_related( 'featureloc_srcfeatures', {} )
-            ->search_related(
-            'feature',
+    else {                      # no mito genome
+        $nuclear_rs = $dbrow->search_related(
+            'features',
             { 'type.name' => $type },
             { join        => 'type' }
-            );
+        );
     }
 
-    sub read_aligned_subfeature {
-        my ( $self, $dbrow ) = @_;
-        return $dbrow->search_related(
-            'feature_relationship_objects',
-            { 'type.name' => 'part_of' },
-            { join        => 'type' }
-        )->search_related('subject');
-    }
+    die "no reference feature found for organism ", $dbrow->common_name, "\n"
+        if !$nuclear_rs->count;
+    return $nuclear_rs;
+}
 
-    sub write_aligned_subfeature {
-        my ( $self, $rs, $parent, $seq_id, $output ) = @_;
-        my $source    = $self->gff_source($parent) || undef;
-        my $type      = 'match_part';
-        my $parent_id = $self->_chado_feature_id($parent);
+sub read_mito_reference_feature {
+    my ( $self, $dbrow, $type ) = @_;
+    my $rs = $dbrow->search_related(
+        'features',
+        {   'type.name'   => $type,
+            'type_2.name' => 'mitochondrial_DNA',
+            'cv.name'     => 'sequence'
+        },
+        { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
+    );
+    die "no mitochondrial reference feature(s) found for organism ",
+        $dbrow->common_name, "\n"
+        if !$rs->count;
+    return $rs;
+}
 
-        while ( my $dbrow = $rs->next ) {
-            my $hashref;
-            $hashref->{seq_id} = $seq_id;
-            $hashref->{type}   = $type;
-            $hashref->{source} = $source;
+sub read_contig {
+    my ( $self, $dbrow ) = @_;
+    return $self->read_aligned_feature( $dbrow, 'contig' );
+}
 
-            my $floc_rs = $dbrow->featureloc_features( { rank => 0 },
-                { order_by => { -asc => 'fmin' } } );
-            my $floc_row;
-            if ( $floc_row = $floc_rs->first ) {
-                $hashref->{start}  = $floc_row->fmin + 1;
-                $hashref->{end}    = $floc_row->fmax;
-                $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
-            }
-            else {
-                $self->logger->log(
-                    "No feature location relative to genome is found: Skipped from output"
-                );
-                next;
-            }
-            $hashref->{phase} = undef;
-            $hashref->{attributes}->{ID}
-                = [ $self->_chado_feature_id($dbrow) ];
-            $hashref->{attributes}->{Parent} = [$parent_id];
+sub read_aligned_feature {
+    my ( $self, $dbrow, $type ) = @_;
+    return $dbrow->search_related( 'featureloc_srcfeatures', {} )
+        ->search_related(
+        'feature',
+        { 'type.name' => $type },
+        { join        => 'type' }
+        );
+}
 
-            my $target = $parent_id;
-            my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
-            if ( my $row = $floc2_rs->next ) {
-                $target .= "\t" . ( $row->fmin + 1 ) . "\t" . $row->fmax;
-                if ( my $strand = $row->strand ) {
-                    $strand = $strand == -1 ? '-' : '+';
-                    $target .= "\t$strand";
-                }
-            }
-            else {
-                $self->logger->log(
-                    "No feature location relative to itself(query) is found");
-                if ( !$self->tolerate_missing ) {
-                    $self->logger->log(
-                        "Skipped target attribute from output");
-                    $output->print( gff3_format_feature($hashref) );
-                    return;
-                }
-            }
-            $hashref->{attributes}->{Target} = [$target];
+sub read_aligned_subfeature {
+    my ( $self, $dbrow ) = @_;
+    return $dbrow->search_related(
+        'feature_relationship_objects',
+        { 'type.name' => 'part_of' },
+        { join        => 'type' }
+    )->search_related('subject');
+}
 
-            if ( my $gap_str = $floc_row->residue_info ) {
-                $hashref->{attributes}->{Gap} = [$gap_str];
-            }
-            $output->print( gff3_format_feature($hashref) );
-        }
-    }
+sub write_aligned_subfeature {
+    my ( $self, $rs, $parent, $seq_id, $output ) = @_;
+    my $source    = $self->gff_source($parent) || undef;
+    my $type      = 'match_part';
+    my $parent_id = $self->_chado_feature_id($parent);
 
-    sub write_aligned_feature {
-        my ( $self, $dbrow, $seq_id, $output, $align_parts ) = @_;
+    while ( my $dbrow = $rs->next ) {
         my $hashref;
         $hashref->{seq_id} = $seq_id;
-        $hashref->{source} = $self->gff_source($dbrow) || undef;
+        $hashref->{type}   = $type;
+        $hashref->{source} = $source;
 
-        my $type = $dbrow->type->name;
-        $type = $type . '_match' if $type !~ /match/;
-        $hashref->{type} = $type;
-
-        my $floc_rs = $dbrow->featureloc_features( { rank => 0 } );
+        my $floc_rs = $dbrow->featureloc_features( { rank => 0 },
+            { order_by => { -asc => 'fmin' } } );
         my $floc_row;
         if ( $floc_row = $floc_rs->first ) {
             $hashref->{start}  = $floc_row->fmin + 1;
@@ -619,31 +564,13 @@ sub write_sequence_region {
             $self->logger->log(
                 "No feature location relative to genome is found: Skipped from output"
             );
-            return;
+            next;
         }
         $hashref->{phase} = undef;
+        $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
+        $hashref->{attributes}->{Parent} = [$parent_id];
 
-        my $analysis_rs = $dbrow->search_related( 'analysisfeatures', {} );
-        if ( my $row = $analysis_rs->first ) {
-            $hashref->{score} = $row->significance;
-        }
-        else {
-            $hashref->{score} = undef;
-        }
-
-        my $id = $self->_chado_feature_id($dbrow);
-        $hashref->{attributes}->{ID} = [$id];
-        if ( my $name = $dbrow->name ) {
-            $hashref->{attributes}->{Name} = [$name];
-        }
-
-        if ($align_parts)
-        {    ## -- target attribute will be added in the feature parts
-            $output->print( gff3_format_feature($hashref) );
-            return;
-        }
-
-        my $target = $id;
+        my $target = $parent_id;
         my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
         if ( my $row = $floc2_rs->next ) {
             $target .= "\t" . ( $row->fmin + 1 ) . "\t" . $row->fmax;
@@ -668,91 +595,158 @@ sub write_sequence_region {
         }
         $output->print( gff3_format_feature($hashref) );
     }
+}
 
-    sub write_contig {
-        my ( $self, $dbrow, $seq_id, $output ) = @_;
-        my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
-        $output->print( gff3_format_feature($hash) );
+sub write_aligned_feature {
+    my ( $self, $dbrow, $seq_id, $output, $align_parts ) = @_;
+    my $hashref;
+    $hashref->{seq_id} = $seq_id;
+    $hashref->{source} = $self->gff_source($dbrow) || undef;
+
+    my $type = $dbrow->type->name;
+    $type = $type . '_match' if $type !~ /match/;
+    $hashref->{type} = $type;
+
+    my $floc_rs = $dbrow->featureloc_features( { rank => 0 } );
+    my $floc_row;
+    if ( $floc_row = $floc_rs->first ) {
+        $hashref->{start}  = $floc_row->fmin + 1;
+        $hashref->{end}    = $floc_row->fmax;
+        $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
+    }
+    else {
+        $self->logger->log(
+            "No feature location relative to genome is found: Skipped from output"
+        );
+        return;
+    }
+    $hashref->{phase} = undef;
+
+    my $analysis_rs = $dbrow->search_related( 'analysisfeatures', {} );
+    if ( my $row = $analysis_rs->first ) {
+        $hashref->{score} = $row->significance;
+    }
+    else {
+        $hashref->{score} = undef;
     }
 
-    sub read_extra_gene_model {
-        my ( $self, $dbrow, $source ) = @_;
-        return $dbrow->search_related( 'featureloc_srcfeatures', {} )
-            ->search_related(
-            'feature',
-            {   'type.name'        => { like => '%RNA' },
-                'dbxref.accession' => $source
-            },
-            { join => [ 'type', { 'feature_dbxrefs' => 'dbxref' } ] }
-            );
+    my $id = $self->_chado_feature_id($dbrow);
+    $hashref->{attributes}->{ID} = [$id];
+    if ( my $name = $dbrow->name ) {
+        $hashref->{attributes}->{Name} = [$name];
     }
 
-    sub write_extra_gene_model {
-        my ( $self, $dbrow, $seq_id, $output ) = @_;
-        my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
-        $output->print( gff3_format_feature($hash) );
+    if ($align_parts)
+    {    ## -- target attribute will be added in the feature parts
+        $output->print( gff3_format_feature($hashref) );
+        return;
+    }
 
-        my @exon_dbrows = $self->read_exon_feature($dbrow);
-        return if !@exon_dbrows;
-
-        my $trans_id = $self->_chado_feature_id($dbrow);
-        for my $erow (@exon_dbrows) {
-            $self->write_exon_feature( $erow, $seq_id, $trans_id, $output );
+    my $target = $id;
+    my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
+    if ( my $row = $floc2_rs->next ) {
+        $target .= "\t" . ( $row->fmin + 1 ) . "\t" . $row->fmax;
+        if ( my $strand = $row->strand ) {
+            $strand = $strand == -1 ? '-' : '+';
+            $target .= "\t$strand";
         }
     }
-
-    has '_hook_stack' => (
-        is      => 'rw',
-        isa     => 'HashRef[CodeRef]',
-        traits  => [qw/Hash/],
-        lazy    => 1,
-        builder => '_build_hook_stack',
-        handles => {
-            get_coderef      => 'get',
-            get_all_coderefs => 'keys',
-            register_handler => 'set',
-            has_coderef      => 'defined'
+    else {
+        $self->logger->log(
+            "No feature location relative to itself(query) is found");
+        if ( !$self->tolerate_missing ) {
+            $self->logger->log("Skipped target attribute from output");
+            $output->print( gff3_format_feature($hashref) );
+            return;
         }
-    );
-
-    sub _build_hook_stack {
-        my ($self) = @_;
-        return {
-            read_reference_feature =>
-                sub { $self->read_reference_feature(@_) },
-            read_seq_id           => sub { $self->read_seq_id(@_) },
-            write_meta_header     => sub { $self->write_meta_header(@_) },
-            write_sequence_region => sub { $self->write_sequence_region(@_) },
-            write_reference_feature =>
-                sub { $self->write_reference_feature(@_) },
-            read_gene_feature  => sub { $self->read_gene_feature(@_) },
-            write_gene_feature => sub { $self->write_gene_feature(@_) },
-            read_transcript_feature =>
-                sub { $self->read_transcript_feature(@_) },
-            write_transcript_feature =>
-                sub { $self->write_transcript_feature(@_) },
-            read_exon_feature  => sub { $self->read_exon_feature(@_) },
-            write_exon_feature => sub { $self->write_exon_feature(@_) },
-            write_cds_feature  => sub { $self->write_cds_feature(@_) },
-            write_reference_sequence =>
-                sub { $self->write_reference_sequence(@_) },
-            write_aligned_feature => sub { $self->write_aligned_feature(@_) },
-            read_aligned_feature  => sub { $self->read_aligned_feature(@_) },
-            write_aligned_subfeature =>
-                sub { $self->write_aligned_subfeature(@_) },
-            read_aligned_subfeature =>
-                sub { $self->read_aligned_subfeature(@_) },
-            write_extra_gene_model =>
-                sub { $self->write_extra_gene_model(@_) },
-            read_extra_gene_model => sub { $self->read_extra_gene_model(@_) },
-            read_contig           => sub { $self->read_contig(@_) },
-            write_contig          => sub { $self->write_contig(@_) }
-        };
     }
+    $hashref->{attributes}->{Target} = [$target];
 
-    __PACKAGE__->meta->make_immutable;
+    if ( my $gap_str = $floc_row->residue_info ) {
+        $hashref->{attributes}->{Gap} = [$gap_str];
+    }
+    $output->print( gff3_format_feature($hashref) );
+}
 
-    1;    # Magic true value required at end of module
+sub write_contig {
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    $output->print( gff3_format_feature($hash) );
+}
+
+sub read_extra_gene_model {
+    my ( $self, $dbrow, $source ) = @_;
+    return $dbrow->search_related( 'featureloc_srcfeatures', {} )
+        ->search_related(
+        'feature',
+        {   'type.name'        => { like => '%RNA' },
+            'dbxref.accession' => $source
+        },
+        { join => [ 'type', { 'feature_dbxrefs' => 'dbxref' } ] }
+        );
+}
+
+sub write_extra_gene_model {
+    my ( $self, $dbrow, $seq_id, $output ) = @_;
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    $output->print( gff3_format_feature($hash) );
+
+    my @exon_dbrows = $self->read_exon_feature($dbrow);
+    return if !@exon_dbrows;
+
+    my $trans_id = $self->_chado_feature_id($dbrow);
+    for my $erow (@exon_dbrows) {
+        $self->write_exon_feature( $erow, $seq_id, $trans_id, $output );
+    }
+}
+
+has '_hook_stack' => (
+    is      => 'rw',
+    isa     => 'HashRef[CodeRef]',
+    traits  => [qw/Hash/],
+    lazy    => 1,
+    builder => '_build_hook_stack',
+    handles => {
+        get_coderef      => 'get',
+        get_all_coderefs => 'keys',
+        register_handler => 'set',
+        has_coderef      => 'defined'
+    }
+);
+
+sub _build_hook_stack {
+    my ($self) = @_;
+    return {
+        read_reference_feature  => sub { $self->read_reference_feature(@_) },
+        read_seq_id             => sub { $self->read_seq_id(@_) },
+        write_meta_header       => sub { $self->write_meta_header(@_) },
+        write_sequence_region   => sub { $self->write_sequence_region(@_) },
+        write_reference_feature => sub { $self->write_reference_feature(@_) },
+        read_gene_feature       => sub { $self->read_gene_feature(@_) },
+        write_gene_feature      => sub { $self->write_gene_feature(@_) },
+        read_transcript_feature => sub { $self->read_transcript_feature(@_) },
+        write_transcript_feature =>
+            sub { $self->write_transcript_feature(@_) },
+        read_exon_feature  => sub { $self->read_exon_feature(@_) },
+        write_exon_feature => sub { $self->write_exon_feature(@_) },
+        write_cds_feature  => sub { $self->write_cds_feature(@_) },
+        write_reference_sequence =>
+            sub { $self->write_reference_sequence(@_) },
+        write_aligned_feature => sub { $self->write_aligned_feature(@_) },
+        read_aligned_feature  => sub { $self->read_aligned_feature(@_) },
+        write_aligned_subfeature =>
+            sub { $self->write_aligned_subfeature(@_) },
+        read_aligned_subfeature => sub { $self->read_aligned_subfeature(@_) },
+        write_extra_gene_model  => sub { $self->write_extra_gene_model(@_) },
+        read_extra_gene_model   => sub { $self->read_extra_gene_model(@_) },
+        read_contig             => sub { $self->read_contig(@_) },
+        write_contig            => sub { $self->write_contig(@_) }
+    };
+}
+
+__PACKAGE__->meta->make_immutable;
+
+1;    # Magic true value required at end of module
 
 __END__
 
