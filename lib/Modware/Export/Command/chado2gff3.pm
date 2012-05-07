@@ -114,6 +114,7 @@ has 'taxon_id' => (
     isa           => 'Int',
     is            => 'rw',
     predicate     => 'has_taxon_id',
+    traits        => [qw/NoGetopt/],
     documentation => 'NCBI taxon id,  used for GFF3 header output,  optional'
 );
 
