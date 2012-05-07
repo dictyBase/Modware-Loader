@@ -386,8 +386,6 @@ sub write_reference_feature {
             return;
     }
     
-
-
     $hashref->{type}   = $dbrow->type->name;
     $hashref->{score}  = undef;
     $hashref->{seq_id} = $seq_id;
@@ -395,6 +393,7 @@ sub write_reference_feature {
     $hashref->{end}    = $end;
     $hashref->{strand} = undef;
     $hashref->{phase}  = undef;
+
     my $dbxref_rs
         = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
         'dbxref',
@@ -406,13 +405,7 @@ sub write_reference_feature {
         $hashref->{source} = $row->accession;
     }
     else {
-        $self->logger->log(
-            $dbrow->type->name,
-            " feature ",
-            $dbrow->uniquename,
-            " do not have GFF3 source defined in the database: it is skipped from output"
-        );
-        return;
+        $hashref->{source} = undef;
     }
 
     ## -- attributes
