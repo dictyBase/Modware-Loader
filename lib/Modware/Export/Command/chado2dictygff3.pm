@@ -159,6 +159,6 @@ __END__
 
 =head1 NAME
 
-<Modware::Export::Command::chado2dictygff3> - [Export GFF3 for Dictyostelium discoideum]
+Modware::Export::Command::chado2dictygff3 - [Export GFF3 for Dictyostelium discoideum]
 
 
