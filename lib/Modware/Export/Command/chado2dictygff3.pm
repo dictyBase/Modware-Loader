@@ -58,6 +58,41 @@ sub read_transcript_feature {
     );
 }
 
+sub write_transcript_feature {
+    my ( $self, $dbrow, $seq_id, $gene_id, $output ) = @_;
+
+    if ( $dbrow->type->name eq 'pseudogene' ) {
+
+        # dicty pseudogene gene model have to be SO complaint
+        # it writes gene and transcript feature
+        $self->pseudogene2gff3( $dbrow, $seq_id, $gene_id, $output );
+    }
+    else {
+
+        #write the cached gene
+        my $gene_hash = $self->_dbrow2gff3hash( $self->gene_row, $seq_id );
+        return if not defined $gene_hash;
+        $output->print( gff3_format_feature($gene_hash) );
+
+        #transcript
+        my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
+        $output->print( gff3_format_feature($trans_hash) );
+    }
+}
+
+sub write_exon_feature {
+    my ( $self, $dbrow, $seq_id, $trans_id, $output ) = @_;
+    my $rs = $self->schema->resultset('Sequence::Feature')
+        ->search( { 'dbxref.accession' => $trans_id }, { join => 'dbxref' } );
+    if ( $rs->first->type->name eq 'pseudogene' ) {
+        $self->pseudoexon2gff3( $dbrow, $seq_id, $trans_id, $output );
+    }
+    else {
+        my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $trans_id );
+        $output->print( gff3_format_feature($hash) );
+    }
+}
+
 1;    # Magic true value required at end of module
 
 __END__
