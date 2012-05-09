@@ -94,8 +94,6 @@ sub read_transcript_feature {
 
 sub write_transcript_feature {
     my ( $self, $dbrow, $seq_id, $gene_id, $output ) = @_;
-    $self->logger->log("writing gene feature for $gene_id");
-
     if ( $dbrow->type->name eq 'pseudogene' ) {
 
         # dicty pseudogene gene model have to be SO complaint
