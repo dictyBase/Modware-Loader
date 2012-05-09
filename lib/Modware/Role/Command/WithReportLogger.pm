@@ -45,7 +45,7 @@ sub _build_logger {
    if ($logfile) {
         my $t = Time::Piece->new;
         $options->{to_file}  = 1;
-        $options->{log_file} = $t->ymd('-') . "_$logfile";
+        $options->{log_file} = $logfile;
     }
     else {
         $options->{to_stderr} = 1;
