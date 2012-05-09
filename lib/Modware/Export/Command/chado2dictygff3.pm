@@ -20,7 +20,14 @@ has '+tolerate_missing' => ( traits  => [qw/NoGetopt/] );
 has '+exclude_mitochondrial' => ( traits        => [qw/NoGetopt/] );
 has '+only_mitochondrial'    => ( traits        => [qw/NoGetopt/] );
 has '+extra_gene_model'      => ( documentation => 'Not implemented yet' );
-has 'reference_id' => ( is => 'rw', isa => 'Bool', default => 0, lazy => 1 );
+has 'reference_id'           => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    'docuemantation' =>
+        'reference feature name/ID/accession number. In this case,  only all of its associated features will be dumped'
+);
 has 'gene_row' =>
     ( is => 'rw', isa => 'DBIx::Class::Row', traits => [qw/NoGetopt/] );
 
@@ -41,6 +48,7 @@ sub read_single_reference_feature {
     return $dbrow->search_related(
         'features',
         {   -or => [
+                'me.name'    => $self->reference_id,
                 'me.uniquename'    => $self->reference_id,
                 'dbxref.accession' => $self->reference_id
             ]
