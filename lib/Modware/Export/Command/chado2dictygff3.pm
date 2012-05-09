@@ -20,9 +20,34 @@ has '+tolerate_missing' => ( traits  => [qw/NoGetopt/] );
 has '+exclude_mitochondrial' => ( traits        => [qw/NoGetopt/] );
 has '+only_mitochondrial'    => ( traits        => [qw/NoGetopt/] );
 has '+extra_gene_model'      => ( documentation => 'Not implemented yet' );
-
+has 'reference_id' => ( is => 'rw', isa => 'Bool', default => 0, lazy => 1 );
 has 'gene_row' =>
     ( is => 'rw', isa => 'DBIx::Class::Row', traits => [qw/NoGetopt/] );
+
+before 'execute' => sub {
+    my ($self) = @_;
+    if ( $self->reference_id ) {
+        $self->register_handler(
+            'read_reference_feature',
+            sub {
+                $self->read_single_reference_feature(@_);
+            }
+        );
+    }
+};
+
+sub read_single_reference_feature {
+    my ( $self, $dbrow ) = @_;
+    return $dbrow->search_related(
+        'features',
+        {   -or => [
+                'me.uniquename'    => $self->reference_id,
+                'dbxref.accession' => $self->reference_id
+            ]
+        },
+        { join => 'dbxref' }
+    );
+}
 
 sub read_gene_feature {
     my ( $self, $dbrow ) = @_;
@@ -47,8 +72,8 @@ sub read_transcript_feature {
         { join        => 'type' }
         )->search_related(
         'subject',
-        { 'type.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ] },
-        { join        => 'type' }
+        { 'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ] },
+        { join          => 'type' }
         );
     return $trans_rs->all if $trans_rs->count == 1;
     return $trans_rs->search(
@@ -61,6 +86,7 @@ sub read_transcript_feature {
 
 sub write_transcript_feature {
     my ( $self, $dbrow, $seq_id, $gene_id, $output ) = @_;
+    $self->logger->log("writing gene feature for $gene_id");
 
     if ( $dbrow->type->name eq 'pseudogene' ) {
 
@@ -159,6 +185,6 @@ __END__
 
 =head1 NAME
 
-Modware::Export::Command::chado2dictygff3 - [Export GFF3 for Dictyostelium discoideum]
+Modware::Export::Command::chado2dictygff3 - Export GFF3 for Dictyostelium discoideum
 
 
