@@ -25,7 +25,7 @@ has 'reference_id'           => (
     isa     => 'Bool',
     default => 0,
     lazy    => 1,
-    'docuemantation' =>
+    'documentation' =>
         'reference feature name/ID/accession number. In this case,  only all of its associated features will be dumped'
 );
 has 'gene_row' =>
