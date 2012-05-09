@@ -48,7 +48,7 @@ sub read_single_reference_feature {
     return $dbrow->search_related(
         'features',
         {   -or => [
-                'me.name'    => $self->reference_id,
+                'me.name'          => $self->reference_id,
                 'me.uniquename'    => $self->reference_id,
                 'dbxref.accession' => $self->reference_id
             ]
@@ -183,6 +183,19 @@ sub pseudorow2gff3hash {
     }
     $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
     return $hashref;
+}
+
+sub read_exon_feature {
+    my ( $self, $dbrow ) = @_;
+    return $dbrow->search_related(
+        'feature_relationship_objects',
+        { 'type.name' => 'part_of' },
+        { join        => 'type' }
+        )->search_related(
+        'subject',
+        { 'type_2.name' => [qw/exon pseudogenic_exon/] },
+        { join          => 'type' }
+        );
 }
 
 1;    # Magic true value required at end of module

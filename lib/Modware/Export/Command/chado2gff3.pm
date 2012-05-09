@@ -364,7 +364,7 @@ sub write_sequence_region {
     if ( my $end = $dbrow->seqlen ) {
         $output->print("##sequence-region\t$seq_id\t1\t$end\n");
     }
-    elsif ( my $length = $row->get_column('sequence_length') ) {
+    elsif ( my $length = $dbrow->get_column('sequence_length') ) {
         $output->print("##sequence-region\t$seq_id\t1\t$length\n");
     }
     else {
@@ -378,14 +378,18 @@ sub write_reference_feature {
     my $start = 1;
 
     my $hashref;
-    my $end = $dbrow->seqlen ? $dbrow->seqlen : $dbrow->get_column('sequence_lenght');
-    if (!$end) { 
-     # unable to figure out end location of reference feature,  abort
+    my $end
+        = $dbrow->seqlen
+        ? $dbrow->seqlen
+        : $dbrow->get_column('sequence_length');
+    if ( !$end ) {
+
+        # unable to figure out end location of reference feature,  abort
         $self->logger->log(
             "$seq_id has no length defined:skipped from export");
-            return;
+        return;
     }
-    
+
     $hashref->{type}   = $dbrow->type->name;
     $hashref->{score}  = undef;
     $hashref->{seq_id} = $seq_id;
