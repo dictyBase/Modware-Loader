@@ -99,7 +99,7 @@ sub write_transcript_feature {
         # dicty pseudogene gene model have to be SO complaint
         # it writes gene and transcript feature
         my $pseudogene_hash
-            = $self->pseudorow2gff3hash( $self->gene_row, $seq_id, $gene_id,
+            = $self->pseudorow2gff3hash( $self->gene_row, $seq_id, '',
             'pseudogene' );
         my $trans_hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $gene_id,
             'pseudogenic_transcript' );
@@ -126,7 +126,7 @@ sub write_exon_feature {
 
     my $hash;
     if ( $rs->first->type->name eq 'pseudogene' ) {
-        $hash = $self->pseudorow2gffhash( $dbrow, $seq_id, $trans_id,
+        $hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $trans_id,
             'pseudogenic_exon' );
     }
     else {
