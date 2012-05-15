@@ -8,4 +8,4 @@ Modware::Export->run;
 
 =head1 NAME
 
-B<update> - [Runnable for update modules]
+B<export> - [Runnable for export modules]
