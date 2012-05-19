@@ -44,16 +44,21 @@ before 'execute' => sub {
 };
 
 sub read_single_reference_feature {
-    my ( $self, $dbrow ) = @_;
+    my ( $self, $dbrow, $type ) = @_;
     return $dbrow->search_related(
         'features',
         {   -or => [
                 'me.name'          => $self->reference_id,
                 'me.uniquename'    => $self->reference_id,
                 'dbxref.accession' => $self->reference_id
-            ]
+            ],
+            'type.name' => $type
         },
-        { join => 'dbxref' }
+        {   join => [qw/type dbxref/],
+            '+select' =>
+                [ { LENGTH => 'me.residues', -as => 'sequence_length' } ],
+            cache => 1
+        }
     );
 }
 
