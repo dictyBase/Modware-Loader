@@ -2,6 +2,7 @@
 
 CMD="perl -Ilib ${PWD}/bin/modware-export chado2dictygff3" 
 runcmd () {
+	  echo dumping chromosome $1
     $CMD -o ${PWD}/data/discoideum/chr${1}.gff3 \
            -c ${PWD}/config/dicty_gff3.yaml --reference_id $1
 }
@@ -17,7 +18,6 @@ if [ ! -f "${PWD}/config/dicty_gff3.yaml" ]; then
 	exit
 fi
 
-exit
 
 
 counter=1
@@ -25,8 +25,6 @@ maxjob=3
 names=(1 2 3 4 5 6 BF 2F 3F M R)
 for entry in "${names[@]}"
 do
-	echo dumping chromosome $entry
-	# forking a new subshell
   (runcmd $entry) &
   let "counter++"
   while [ $counter -gt $maxjob ]

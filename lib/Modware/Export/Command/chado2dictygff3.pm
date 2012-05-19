@@ -22,9 +22,7 @@ has '+only_mitochondrial'    => ( traits        => [qw/NoGetopt/] );
 has '+extra_gene_model'      => ( documentation => 'Not implemented yet' );
 has 'reference_id'           => (
     is      => 'rw',
-    isa     => 'Bool',
-    default => 0,
-    lazy    => 1,
+    isa     => 'Str',
     'documentation' =>
         'reference feature name/ID/accession number. In this case,  only all of its associated features will be dumped'
 );
