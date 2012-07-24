@@ -8,33 +8,36 @@ package Modware::Transform::Command::interpro2gff3;
 
 #Modules
 use warnings;
+use namespace::autoclean;
 use strict;
 use IO::File;
 use Bio::GFF3::LowLevel qw (gff3_format_feature);
 use Moose;
-
+extends qw/Modware::Transform::Command/;
 
     our $VERSION = '1.0.0';
 
-    has input => (is => 'ro', isa => "Str");
-    has output => (is => 'ro', isa => "Str");
+    has 'input' => (is => 'ro', isa => "Str", default => 'Dd_trial.txt', documentation => 'Input tab delimited file');
+    has 'output' => (is => 'ro', isa => "Str", default => 'Output.gff3', documentation => 'Default Output file: Output.gff3');
     
 
-    sub process_file{
+    sub execute{
         
         my $running_id;
         my $current_id;
         my $data;
         my $self = shift;
+        my $input = $self->input;
+        my $output = $self->output;
         
     
         #Opening File with IO file handlers to read in a line at a time
         
-        my $fh = IO::File->new( $self->input, 'r' )
-        or die "Can't open $self->input File: $!";
+        my $fh = IO::File->new( $input, 'r' )
+        or die "Can't open $input File: $!";
         
-        my $fh2 = IO::File->new( $self->output, 'w' )
-        or die "Couldn't open file for writing: $!\n";
+        my $fh2 = IO::File->new( $output, 'w' )
+        or die "Couldn't open $output file for writing: $!\n";
         
         $fh2->print("##gff-version\t3\n");
         
@@ -187,12 +190,16 @@ sub write_gff3
 
 }
 
-1;
+__PACKAGE__->meta->make_immutable;
+
+1;    # Magic true value required at end of module
+
+__END__
 
 =head1 NAME
  
-B<domain2gff3.pl> - [Converts InterPro Download File into GFF3 Format]
-
+Modware::Transform::Command::interpro2gff3 - Converts dictyBase InterPro Download File into GFF3 Format
+ 
 =head1 SYNOPSIS
 
 perl domain2gff3.pl -i input_file.txt -o output_file.gff3
