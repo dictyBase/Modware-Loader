@@ -1,24 +1,34 @@
 package Modware::Transform::Command::interpro2gff3;
+use strict;
+use warnings;
 
 #!/usr/local/bin/perl
 
 # $Date: 2012-06-13 $
 # $Revision: 1.0.0 $
-# $Source: /usr/local/Desktop/dictyProjects/​domain2gff3.pl $
 
-#Modules
-use warnings;
+#Other Modules
 use namespace::autoclean;
-use strict;
 use IO::File;
 use Bio::GFF3::LowLevel qw (gff3_format_feature);
 use Moose;
-extends qw/Modware::Transform::Command/;
+extends qw/Modware::Transform::Convert/;
 
     our $VERSION = '1.0.0';
 
-    has 'input' => (is => 'ro', isa => "Str", default => 'Dd_trial.txt', documentation => 'Input tab delimited file');
-    has 'output' => (is => 'ro', isa => "Str", default => 'Output.gff3', documentation => 'Default Output file: Output.gff3');
+    has 'input' => (
+        is => 'ro', 
+        isa => "Str", 
+        default => 'Dd_trial.txt', 
+        documentation => 'Input tab delimited file'
+);
+    
+    has 'output' => (
+        is => 'ro', 
+        isa => "Str", 
+        default => 'Output.gff3', 
+        documentation => 'Default Output file: Output.gff3'
+);
     
 
     sub execute{
@@ -230,7 +240,7 @@ Warnings that can occur with this module are the following:
 =item *
  
 If words are in the columns for B<start> and B<end>, the module will warn that words do not work with the sort function.
- 
+
 =item *
  
 If there is no input file, the module will try to run Dd_trial.txt as an input file in the current working directory.
