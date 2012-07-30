@@ -1,0 +1,17 @@
+Things that have been done
+
+-interpro2gff3 has been added to the modware-transform
+
+-interpro2gff3 has added extends Modware::Transform::Command to it extends
+
+-Moose has been added as a module to the interpro2gff3.pm
+
+-interpro2gff3 loads like other commands
+
+-interpro2gff3 made --input parameter required
+
+-changed subroutine name from process_file to execute 
+
+-created $input / $output variables for execute subroutine
+
+-Added package meta make_immutable and END to file.
