@@ -12,15 +12,15 @@ use namespace::autoclean;
 use IO::File;
 use Bio::GFF3::LowLevel qw (gff3_format_feature);
 use Moose;
-extends qw/Modware::Transform::Convert/;
+extends qw/Modware::Transform::Command/;
 
     our $VERSION = '1.0.0';
 
     has 'input' => (
         is => 'ro', 
         isa => "Str", 
-        default => 'Dd_trial.txt', 
-        documentation => 'Input tab delimited file'
+        required  => 1,
+        documentation => 'Input tab delimited file required'
 );
     
     has 'output' => (
