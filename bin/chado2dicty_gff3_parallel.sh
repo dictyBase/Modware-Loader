@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#PODNAME: parallel-gff3
+
 CMD="perl -Ilib ${PWD}/bin/modware-export chado2dictygff3" 
 runcmd () {
 	  echo dumping chromosome $1
