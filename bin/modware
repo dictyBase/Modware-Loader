@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+
+package generate;
+use Modware::Generator;
+
+Modware::Generator->run;
+
+
+=head1 NAME
+
+B<generate> - [Runnable for generator modules]

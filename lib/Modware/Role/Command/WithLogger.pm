@@ -217,7 +217,7 @@ These are only available in the consuming classes
 
 =over
 
-=item  current_logger - To get an instance of Log::Log4perl 
+=item  current_logger - To get an instance of Log::Log4perl,  identical to logger method 
 
 =item  log_appender
 
