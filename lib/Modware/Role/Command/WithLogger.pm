@@ -45,8 +45,24 @@ has 'log_level' => (
     is            => 'rw',
     isa           => enum(qw/debug error fatal info warn/),
     lazy          => 1,
-    default       => 'error',
+    default       => 'debug',
     documentation => 'Log level of the logger,  default is error'
+);
+
+has 'logger_format' => (
+    is      => 'ro',
+    isa     => 'Str',
+    traits  => [qw/NoGetopt/],
+    default => '%m%n', 
+    lazy => 1
+);
+
+has 'extended_logger_format' => (
+    is      => 'ro',
+    isa     => 'Str',
+    traits  => [qw/NoGetopt/],
+    default => '[%d{MM-dd-yyyy hh:mm}] %p > %F{1}:%L - %m%n', 
+    lazy => 1
 );
 
 sub dual_logger {
@@ -81,9 +97,7 @@ sub fetch_dual_logger {
             );
     }
     $self->log_appender($appender);
-
-    my $layout = Log::Log4perl::Layout::PatternLayout->new(
-        "[%d{MM-dd-yyyy hh:mm}] %p > %F{1}:%L - %m%n");
+    my $layout = Log::Log4perl::Layout::PatternLayout->new($self->logger_format);
 
     my $log = Log::Log4perl->get_logger(__PACKAGE__);
     $appender->layout($layout);
@@ -140,3 +154,78 @@ sub fetch_logger {
 
 1;    # Magic true value required at end of module
 
+__END__
+
+=head1 NAME
+
+Modware::Role::Command::WithLogger - A Moose role to integrate Log::Log4perl in MooseX::App::Cmd application classes
+
+
+=head1 SYNOPSIS
+
+package YourApp::Cmd::Command::baz;
+use Moose;
+extends qw/MooseX::App::Cmd::Command/;
+
+with 'Modware::Role::Command::WithLogger';
+
+
+sub execute {
+
+   my ($self) = @_;
+   my $logger = $self->logger;
+
+   $logger->info('what is happening');
+   $logger->error('I have no idea');
+}
+
+=head1 More examples
+
+=head2 Change the logger's output style
+
+=head2 Change the log level
+
+=head2 Output log to a file
+
+=head2 METHODS
+
+The following public methods are exported in the consuming application command classes.
+
+=over
+
+=item logger - A Log::Log4perl object
+
+=back
+
+
+=head2 ATTRIBUTES
+
+The following attributes are available in the command line as well as in the consuing
+classes
+
+=over
+
+=item  logfile - Output to a given file,  default is STDERR. 
+
+=item  log_level - Various log level,  could be one of debug, info,  error and fatal,
+defaults to debug.
+
+=back
+
+
+These are only available in the consuming classes
+
+=over
+
+=item  current_logger - To get an instance of Log::Log4perl 
+
+=item  log_appender
+
+=item  msg_appender
+
+=item  logger_format - default pattern layout for logging output
+
+=item  extended_logger_format - another pattern layout for ouput,  for details please
+consult L<Log::Log4perl::Layout::PatternLayout> 
+
+=back
