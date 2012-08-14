@@ -1,67 +1,92 @@
-package Modware::Role::Command::WithIO;
+package Modware::Load::Command;
 
 use strict;
 
 # Other modules:
+use Moose;
 use namespace::autoclean;
-use Moose::Role;
 use Cwd;
 use File::Spec::Functions qw/catfile catdir rel2abs/;
 use File::Basename;
-use IO::Handle;
-use Modware::Load::Types qw/DataDir DataFile FileObject/;
+use Time::Piece;
+use YAML qw/LoadFile/;
+use Modware::Load::Types qw/DataDir DataFile FileObject Dsn/;
+extends qw/MooseX::App::Cmd::Command/;
+with 'MooseX::ConfigFromFile';
 
 # Module implementation
 #
 
+
+has '+configfile' => (
+	cmd_aliases => 'c', 
+	documentation => 'yaml config file to specify all command line options', 
+	traits => [qw/Getopt/]
+);
+
+has 'data_dir' => (
+    is          => 'rw',
+    isa         => DataDir,
+    traits      => [qw/Getopt/],
+    cmd_flag    => 'dir',
+    cmd_aliases => 'd',
+    documentation =>
+        'Folder from where input files can be captured,  default to the folder of the running script',
+    builder => '_build_data_dir', 
+    lazy => 1, 
+);
+
 has 'input' => (
     is            => 'rw',
-    isa           => FileObject,
+    isa           => DataFile,
     traits        => [qw/Getopt/],
     cmd_aliases   => 'i',
-    coerce        => 1,
-    predicate     => 'has_input',
-    documentation => 'Name of the input file, if absent reads from STDIN'
+    documentation => 'Name of the input file'
 );
 
-has 'output' => (
-    is            => 'rw',
-    isa           => FileObject,
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'o',
-    coerce        => 1,
-    predicate     => 'has_output',
-    documentation => 'Name of the output file,  if absent writes to STDOUT'
+has 'dsn' => (
+	is => 'rw', 
+	isa => Dsn, 
+	documentation => 'database DSN', 
+	required => 1
 );
 
-has 'output_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return $self->has_output
-            ? $self->output->openw
-            : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
-    }
+has 'user' => (
+	is => 'rw', 
+	isa => 'Str', 
+	traits => [qw/Getopt/], 
+	cmd_aliases => 'u', 
+	documentation => 'database user'
 );
 
-has 'input_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return $self->has_input
-            ? $self->input->openr
-            : IO::Handle->new_from_fd( fileno(STDIN), 'r' );
-    }
+has 'password' => (
+	is => 'rw', 
+	isa => 'Str', 
+	traits => [qw/Getopt/], 
+	cmd_aliases => [qw/p pass/], 
+	documentation => 'database password'
 );
+
+has 'attribute' => (
+	is => 'rw', 
+	isa => 'HashRef', 
+	traits => [qw/Getopt/], 
+	cmd_aliases => 'attr', 
+	documentation => 'Additional database attribute', 
+	default => sub {
+		{ 'LongReadLen' => 2**20,  AutoCommit => 1}
+	}
+);
+
+
 
 sub _build_data_dir {
     return rel2abs(cwd);
+}
+
+sub get_config_from_file {
+    my ( $self, $file ) = @_;
+    return LoadFile($file);
 }
 
 1;    # Magic true value required at end of module

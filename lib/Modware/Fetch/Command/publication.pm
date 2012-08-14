@@ -1,67 +1,208 @@
-package Modware::Role::Command::WithIO;
-
+package Modware::Fetch::Command::publication;
 use strict;
 
 # Other modules:
+use Moose;
+use Time::Piece;
+use Email::Valid;
+use File::Temp;
+use Bio::DB::EUtilities;
+use XML::Twig;
+use Moose::Util::TypeConstraints;
 use namespace::autoclean;
-use Moose::Role;
-use Cwd;
-use File::Spec::Functions qw/catfile catdir rel2abs/;
-use File::Basename;
-use IO::Handle;
-use Modware::Load::Types qw/DataDir DataFile FileObject/;
+use File::Temp;
+use File::Spec::Functions;
+extends qw/Modware::Fetch::Command/;
+with 'Modware::Role::Command::WithLogger';
+with 'Modware::Role::Command::WithEmail';
 
 # Module implementation
 #
 
-has 'input' => (
-    is            => 'rw',
-    isa           => FileObject,
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'i',
-    coerce        => 1,
-    predicate     => 'has_input',
-    documentation => 'Name of the input file, if absent reads from STDIN'
-);
+has '+input' => ( traits => [qw/NoGetopt/]);
 
-has 'output' => (
-    is            => 'rw',
-    isa           => FileObject,
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'o',
-    coerce        => 1,
-    predicate     => 'has_output',
-    documentation => 'Name of the output file,  if absent writes to STDOUT'
-);
-
-has 'output_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
+has '+output' => (
     default => sub {
-        my ($self) = @_;
-        return $self->has_output
-            ? $self->output->openw
-            : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
+        my $self = shift;
+        return catfile( $self->data_dir, 'pubmed_' . $self->date . '.xml' );
+    },
+    documentation =>
+        'It is written in the data_dir folder with the name [ default is pubmed_(current_date).xml]'
+);
+
+has 'link_output' => (
+    is          => 'rw',
+    traits      => [qw/Getopt/],
+    cmd_aliases => 'lo',
+    isa         => 'Str',
+    documentation =>
+        'file name where the elink output will be written,  by default it is written under
+        the data_dir folder with the name [default is pubmed_links_(current_date) . xml ] ',
+    default => sub {
+        my $self = shift;
+        return catfile( $self->data_dir,
+            'pubmed_links_' . $self->date . '.xml' );
+    }, 
+    lazy => 1
+);
+
+has 'temp_file' => (
+    is      => 'rw',
+    isa     => 'Str',
+    traits  => [qw/NoGetopt/],
+    default => sub {
+        my $fh = File::Temp->new;
+        $fh->filename;
     }
 );
 
-has 'input_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
+has 'genus' => (
+    is          => 'rw',
+    isa         => 'Str',
+    predicate   => 'has_genus',
+    traits      => [qw/Getopt/],
+    cmd_aliases => 'g',
+    required    => 1,
+);
+
+has 'species' => (
+    is          => 'rw',
+    isa         => 'Str',
+    traits      => [qw/Getopt/],
+    predicate   => 'has_species',
+    cmd_aliases => 'sp',
+    required    => 1
+);
+
+has 'query' => (
+    is  => 'rw',
+    isa => 'Maybe [Str]',
+    documentation =>
+        'query for getting the pubmed entries, by default it is [genus] OR [species][tw]',
     default => sub {
-        my ($self) = @_;
-        return $self->has_input
-            ? $self->input->openr
-            : IO::Handle->new_from_fd( fileno(STDIN), 'r' );
+        my $self = shift;
+        if ( $self->has_genus and $self->has_species ) {
+            return $self->genus . ' OR ' . $self->species . '[tw]';
+        }
+    }, 
+    lazy => 1
+);
+
+has 'should_get_links' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 1,
+    documentation =>
+        'flag to indicate if it is going to fetch the elinks, default is true'
+);
+
+has 'do_copyright_patch' => (
+    is          => 'rw',
+    isa         => 'Bool',
+    default     => 1,
+    traits      => [qw/Getopt/],
+    cmd_aliases => 'patch',
+    documentation =>
+        'flag to indicate to remove the copyright tag from pubmed xml,  default is true'
+);
+
+has 'reldate' => (
+    is            => 'rw',
+    isa           => 'Int',
+    default       => 14,
+    documentation => 'number of dates preceding todays date, default is 14'
+);
+
+has 'retmax' => (
+    is            => 'rw',
+    isa           => 'Int',
+    default       => 100,
+    documentation => 'maximum no of entries to return, default is 100'
+);
+
+has 'db' => (
+    is            => 'rw',
+    isa           => 'Str',
+    default       => 'pubmed',
+    documentation => 'Name of entrez database, default is PubMed'
+);
+
+has 'email' => (
+    is      => 'rw',
+    isa     => 'Email',
+    default => 'dictybase@northwestern.edu',
+    documentation =>
+        'e-mail that will be passed to eutils for fetching default is dictybase@northwestern.edu'
+);
+
+has 'date' => (
+    is      => 'ro',
+    traits  => [qw/NoGetopt/],
+    isa     => 'Str',
+    default => sub {
+        Time::Piece->new->mdy('');
     }
 );
 
-sub _build_data_dir {
-    return rel2abs(cwd);
+sub execute {
+    my $self   = shift;
+    my $log = $self->dual_logger;
+    my $eutils = Bio::DB::EUtilities->new(
+        -eutil      => 'esearch',
+        -db         => $self->db,
+        -term       => $self->query,
+        -reldate    => $self->reldate,
+        -retmax     => $self->retmax,
+        -usehistory => 'y',
+        -email      => $self->from
+    );
+    my $hist = $eutils->next_History || $log->logdie("no history");
+
+    $log->info('got ',  $eutils->get_count,  ' references');
+
+    my @ids = $eutils->get_ids;
+
+    $eutils->reset_parameters(
+        -eutils  => 'efetch',
+        -db      => $self->db,
+        -history => $hist, 
+        -email => $self->from
+    );
+
+    $eutils->get_Response(
+        -file => $self->do_copyright_patch
+        ? $self->temp_file
+        : $self->output->stringify
+    );
+
+    $eutils->reset_parameters(
+        -eutil  => 'elink',
+        -dbfrom => $self->db,
+        -cmd    => 'prlinks',
+        -id     => [@ids], 
+        -email => $self->from
+    );
+
+    $eutils->get_Response( -file => $self->link_output );
+    $log->info('done writing elink output');
+
+    if ( $self->do_copyright_patch ) {
+
+#patch to remove the CopyrightInformation node from pubmedxml
+#It contains a encoding that causes XML::Parser to throw therefore breaking bioperl parser
+        my $twig = XML::Twig->new(
+            twig_handlers => {
+                'CopyrightInformation' => sub { $_[1]->delete }
+            },
+            'pretty_print' => 'indented',
+        )->parsefile( $self->temp_file );
+        $twig->print($self->output_handler);
+        $self->output_handler->close;
+        $log->info('done patching copyright');
+    }
+
+    $log->info('wrote output to file ',  $self->output->stringify);
+    $self->subject('weekly pubmed retrieval');
 }
 
 1;    # Magic true value required at end of module

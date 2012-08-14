@@ -1,4 +1,4 @@
-package Modware::Transform;
+package Modware::Update;
 
 
 # Other modules:
@@ -16,6 +16,4 @@ __END__
 
 =head1 NAME
 
-<Modware::Transform> - [Base class for all Transform modules]
-
-
+<Modware::Update> - [Base application class for writing update command classes]

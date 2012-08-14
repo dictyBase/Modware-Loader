@@ -11,7 +11,7 @@ extends qw/MooseX::App::Cmd::Command/;
 #
 with 'MooseX::ConfigFromFile';
 with 'Modware::Role::Command::WithIO';
-with 'Modware::Role::Command::WithLogger';
+with 'Modware::Role::Command::WithReportLogger';
 
 
 has '+configfile' => (

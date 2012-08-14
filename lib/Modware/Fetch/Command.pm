@@ -1,67 +1,83 @@
-package Modware::Role::Command::WithIO;
+package Modware::Fetch::Command;
 
 use strict;
 
 # Other modules:
+use Moose;
 use namespace::autoclean;
-use Moose::Role;
+use Moose::Util::TypeConstraints;
 use Cwd;
 use File::Spec::Functions qw/catfile catdir rel2abs/;
 use File::Basename;
-use IO::Handle;
-use Modware::Load::Types qw/DataDir DataFile FileObject/;
+use Time::Piece;
+use YAML qw/LoadFile/;
+use Path::Class::File;
+extends qw/MooseX::App::Cmd::Command/;
+with 'MooseX::ConfigFromFile';
 
 # Module implementation
 #
+subtype 'DataDir'  => as 'Str' => where { -d $_ };
+subtype 'DataFile' => as 'Str' => where { -f $_ };
+subtype 'FileObject' => as class_type('Path::Class::File');
+coerce 'FileObject'  => from 'Str' =>
+    via { Path::Class::File->new($_) };
+
+has '+configfile' => (
+    cmd_aliases   => 'c',
+    documentation => 'yaml config file to specify all command line options',
+    traits        => [qw/Getopt/]
+);
+
+has 'data_dir' => (
+    is          => 'rw',
+    isa         => 'DataDir',
+    traits      => [qw/Getopt/],
+    cmd_flag    => 'dir',
+    cmd_aliases => 'd',
+    documentation =>
+        'Folder under which input and output files can be configured to be written',
+    builder => '_build_data_dir',
+    lazy    => 1
+);
 
 has 'input' => (
     is            => 'rw',
-    isa           => FileObject,
+    isa           => 'DataFile',
     traits        => [qw/Getopt/],
     cmd_aliases   => 'i',
-    coerce        => 1,
-    predicate     => 'has_input',
-    documentation => 'Name of the input file, if absent reads from STDIN'
+    documentation => 'Name of the input file'
 );
 
 has 'output' => (
     is            => 'rw',
-    isa           => FileObject,
+    isa           => 'FileObject',
     traits        => [qw/Getopt/],
     cmd_aliases   => 'o',
-    coerce        => 1,
-    predicate     => 'has_output',
-    documentation => 'Name of the output file,  if absent writes to STDOUT'
+    required      => 1,
+    coerce => 1, 
+    documentation => 'Name of the output file'
 );
 
 has 'output_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return $self->has_output
-            ? $self->output->openw
-            : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
-    }
+	is => 'ro', 
+	isa => 'IO::Handle', 
+	traits => [qw/NoGetopt/], 
+	lazy => 1, 
+	default => sub {
+		my ($self) = @_;
+		return $self->output->openw;
+	}
 );
 
-has 'input_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return $self->has_input
-            ? $self->input->openr
-            : IO::Handle->new_from_fd( fileno(STDIN), 'r' );
-    }
-);
 
 sub _build_data_dir {
     return rel2abs(cwd);
+}
+
+sub get_config_from_file {
+    my ( $self, $file ) = @_;
+    return LoadFile($file);
 }
 
 1;    # Magic true value required at end of module

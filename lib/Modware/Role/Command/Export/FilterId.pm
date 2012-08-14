@@ -1,67 +1,42 @@
-package Modware::Role::Command::WithIO;
-
-use strict;
+package Modware::Role::Command::Export::FilterId;
 
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
-use Cwd;
-use File::Spec::Functions qw/catfile catdir rel2abs/;
-use File::Basename;
-use IO::Handle;
-use Modware::Load::Types qw/DataDir DataFile FileObject/;
+use Path::Class::File;
+use Carp;
 
 # Module implementation
 #
 
-has 'input' => (
-    is            => 'rw',
-    isa           => FileObject,
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'i',
-    coerce        => 1,
-    predicate     => 'has_input',
-    documentation => 'Name of the input file, if absent reads from STDIN'
-);
+requires 'skip_file';
 
-has 'output' => (
-    is            => 'rw',
-    isa           => FileObject,
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'o',
-    coerce        => 1,
-    predicate     => 'has_output',
-    documentation => 'Name of the output file,  if absent writes to STDOUT'
-);
-
-has 'output_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return $self->has_output
-            ? $self->output->openw
-            : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
+has '_skip_id_stack' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        '_add_skip_id'      => 'set',
+        'has_skip_id'      => 'get',
+        '_clear_skip_stack' => 'clear'
     }
 );
 
-has 'input_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return $self->has_input
-            ? $self->input->openr
-            : IO::Handle->new_from_fd( fileno(STDIN), 'r' );
-    }
-);
+sub init_resource {
+    my ( $self, $file ) = @_;
+    $file ||= $self->skip_file;
+    my $input = Path::Class::File->new($file);
+    croak "cannot slurp file more than 100 MB in size\n"
+        if $input->stat->size > ( 100 * 1024 * 1024 );
 
-sub _build_data_dir {
-    return rel2abs(cwd);
+    my $handler = $input->openr;
+    while ( my $line = $handler->getline ) {
+        next if $line !~ /\S+/;
+        chomp $line;
+        $self->_add_skip_id($line,  1);
+    }
+    $handler->close;
 }
 
 1;    # Magic true value required at end of module
@@ -70,7 +45,7 @@ __END__
 
 =head1 NAME
 
-<MODULE NAME> - [One line description of module's purpose here]
+B<Modware::Role::Command::Export::FilterId> - [One line description of module's purpose here]
 
 
 =head1 VERSION

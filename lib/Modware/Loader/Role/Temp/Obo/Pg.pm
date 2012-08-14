@@ -1,67 +1,118 @@
-package Modware::Role::Command::WithIO;
-
-use strict;
+package Modware::Loader::Role::Temp::Obo::WithPg;
 
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
-use Cwd;
-use File::Spec::Functions qw/catfile catdir rel2abs/;
-use File::Basename;
-use IO::Handle;
-use Modware::Load::Types qw/DataDir DataFile FileObject/;
 
 # Module implementation
 #
 
-has 'input' => (
-    is            => 'rw',
-    isa           => FileObject,
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'i',
-    coerce        => 1,
-    predicate     => 'has_input',
-    documentation => 'Name of the input file, if absent reads from STDIN'
-);
+sub on_connect_sql {
+    my $storage = shift;
+    my $sql     = [
+        qq {
+	CREATE TEMP TABLE tmp_cv (
+		name character varying(1024) not null, 
+		accession character varying(255) not null, 
+		db_id integer not null, 
+		cv_id integer not null, 
+		definition text, 
+		is_obsolete integer not null default 0, 
+		is_relationshiptype integer not null default 0, 
+		cmmt text, 
+		UNIQUE(accession,name,is_obsolete)
+	)},
+        qq{CREATE TEMP TABLE tmp_cv_new(
+        name character varying(1024) not null,
+        accession character varying(255) not null,
+        db_id integer not null,
+        cv_id integer not null,
+        cvterm_id integer, 
+        dbxref_id integer,
+        definition text,
+        is_obsolete integer not null default 0,
+		is_relationshiptype integer not null default 0, 
+		cmmt text, 
+        UNIQUE( accession,name,is_obsolete )
+        )},
+        qq {
+	CREATE TEMPORARY TABLE tmp_cv_exist (
+		accession character varying(255) not null, 
+		name character varying(1024) not null, 
+		db_id integer not null,
+        cv_id integer not null,
+        cvterm_id integer not null, 
+        dbxref_id integer not null,
+        definition text,
+        is_obsolete integer not null default 0,
+		is_relationshiptype integer not null default 0, 
+		UNIQUE(accession,name,is_obsolete)
+	)},
+        qq{
+		CREATE TEMP TABLE tmp_relation_attr (
+			cvterm_id integer, 
+			name character varying(255), 
+		    relation_attr integer not null, 
+		    relation_value character varying(255)
+		)
+	},
+        qq {
+	CREATE TEMP TABLE tmp_relation (
+		subject character varying(255) not null, 
+		object character varying(255) not null, 
+		predicate character varying(255) not null, 
+		subject_id integer, 
+		object_id integer, 
+		predicate_id integer, 
+		UNIQUE(subject, object,  predicate)
+	)},
+        qq{
+    CREATE TEMP TABLE tmp_syn(
+        type_id integer not null,
+        name character varying(1024) not null,
+        syn character varying(1024) not null, 
+        is_obsolete integer not null default 0,
+        cvterm_id integer 
+    )},
+        qq{
+	CREATE TEMP TABLE tmp_alt_ids(
+        accession character varying(255) not null,
+        db_id integer not null,
+        name character varying(1024) not null,
+        cvterm_id integer,  
+        UNIQUE( accession, name, db_id )
+        )
+    },
+        qq{
+	CREATE TEMP TABLE tmp_xref(
+        accession character varying(1024) not null,
+        db_id integer not null,
+        name character varying(1024) not null,
+        cvterm_id integer,  
+        is_obsolete integer not null default 0,  
+        UNIQUE( accession, name, db_id ,  is_obsolete)
+        )
+    },
+        qq { CREATE INDEX tmp_cvn_name_idx on tmp_cv_new(name)},
+        qq { CREATE INDEX tmp_cvn_cvtid_idx on tmp_cv_new(cvterm_id)},
+        qq { CREATE INDEX tmp_subject_idx on tmp_relation(subject_id)},
+        qq { CREATE INDEX tmp_object_idx on tmp_relation(object_id)},
+        qq { CREATE INDEX tmp_predicate_idx on tmp_relation(predicate_id)}
+    ];
+    $storage->dbh->do($_) for @$sql;
+}
 
-has 'output' => (
-    is            => 'rw',
-    isa           => FileObject,
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'o',
-    coerce        => 1,
-    predicate     => 'has_output',
-    documentation => 'Name of the output file,  if absent writes to STDOUT'
-);
-
-has 'output_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return $self->has_output
-            ? $self->output->openw
-            : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
-    }
-);
-
-has 'input_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return $self->has_input
-            ? $self->input->openr
-            : IO::Handle->new_from_fd( fileno(STDIN), 'r' );
-    }
-);
-
-sub _build_data_dir {
-    return rel2abs(cwd);
+sub on_disconnect_sql {
+    my $storage = @_;
+    my $sql     = [
+        qq{ANALYZE VERBOSE cvterm},
+        qq{ANALYZE VERBOSE dbxref},
+        qq{ANALYZE VERBOSE cvterm_dbxref},
+        qq{ANALYZE VERBOSE cvtermsynonym},
+        qq{ANALYZE VERBOSE cvtermprop},
+        qq{ANALYZE VERBOSE cvterm_relationship}
+    ];
+    $storage->dbh->do($_) for @$sql;
 }
 
 1;    # Magic true value required at end of module

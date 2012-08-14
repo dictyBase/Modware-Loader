@@ -1,0 +1,25 @@
+_perl_locallib_custom() {
+    local cwd=$(pwd)
+    if [[ "$HOME" != "$cwd" && -f "$cwd/.llrc" ]] ; then
+        local ll=$(cat $cwd/.llrc)
+        local lpath=$ll/lib/perl5
+        local OLD_PATH=$PERL_LOCAL_LIB_ROOT
+        eval $(perl -I$lpath -Mlocal::lib='--deactivate-all' 2>/dev/null)
+        eval $(perl -I$lpath -Mlocal::lib=$ll 2>/dev/null)
+        if [ "$?" -eq "0" ] && [ "$ll" != "$OLD_PATH" ] && [ -n "$PERL_LOCAL_LIB_ROOT" ]; then
+            echo "Setting local::lib to: $ll"
+        fi
+    else
+        if [[ -f "$HOME/.llrc" ]] ; then
+        		local ll=$(cat $cwd/.llrc)
+            local OLD_PATH=$PERL_LOCAL_LIB_ROOT
+        		eval $(perl -I$lpath -Mlocal::lib='--deactivate-all' 2>/dev/null)
+        		eval $(perl -I$lpath -Mlocal::lib=$ll 2>/dev/null)
+            if [ "$?" -eq "0" ] && [ "$ll" != "$OLD_PATH" ] && [ -n "$PERL_LOCAL_LIB_ROOT" ]; then
+                echo "Setting local::lib to: $ll"
+            fi
+        fi
+    fi
+}
+
+_perl_locallib_custom
