@@ -11,26 +11,26 @@ use Modware::Load::Types qw/FileObject/;
 # Module implementation
 #
 
-has 'output' => (
+has 'input' => (
     is          => 'rw',
     isa         => FileObject,
     traits      => [qw/Getopt/],
-    cmd_aliases => 'o',
+    cmd_aliases => 'i',
     coerce        => 1,
-    predicate     => 'has_output',
-    documentation => 'Name of the output file'
+    predicate     => 'has_input',
+    documentation => 'Name of the input file, if absent reads from STDIN'
 );
 
-has 'output_handler' => (
+has 'input_handler' => (
     is      => 'ro',
     isa     => 'IO::Handle',
     traits  => [qw/NoGetopt/],
     lazy    => 1,
     default => sub {
         my ($self) = @_;
-        return $self->has_output
-            ? $self->output->openw
-            : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
+        return $self->has_input
+            ? $self->input->openr
+            : IO::Handle->new_from_fd( fileno(STDIN), 'r' );
     }
 );
 
