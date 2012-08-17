@@ -86,7 +86,7 @@ sub intron_stats {
     my ( $self, $db, $filename ) = @_;
     my %opt
         = $self->has_source
-        ? ( -type => 'mRNA', -source_tag => $self->source_tag )
+        ? ( -type => 'mRNA', -source_tag => $self->source )
         : ( -type => 'mRNA' );
 
     # stats on introns
