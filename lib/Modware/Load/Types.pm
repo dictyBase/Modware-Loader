@@ -6,7 +6,7 @@ use Path::Class::File;
 
 subtype DataDir,  as Str, where { -d $_ };
 subtype DataFile, as Str, where { -f $_ };
-subtype FileObject, as class_type('Path::Class::File');
+class_type FileObject, { class => 'Path::Class::File' };
 subtype Dsn, as Str, where {/^dbi:(\w+).+$/};
 
 coerce FileObject, from Str, via { Path::Class::File->new($_) };

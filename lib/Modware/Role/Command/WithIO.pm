@@ -9,14 +9,14 @@ use Cwd;
 use File::Spec::Functions qw/catfile catdir rel2abs/;
 use File::Basename;
 use IO::Handle;
-use Modware::Load::Types qw/DataDir DataFile FileObject/;
+use MooseX::Types::Path::Class qw/File/;
 
 # Module implementation
 #
 
 has 'input' => (
     is            => 'rw',
-    isa           => FileObject,
+    isa           => File,
     traits        => [qw/Getopt/],
     cmd_aliases   => 'i',
     coerce        => 1,
@@ -26,7 +26,7 @@ has 'input' => (
 
 has 'output' => (
     is            => 'rw',
-    isa           => FileObject,
+    isa           => File,
     traits        => [qw/Getopt/],
     cmd_aliases   => 'o',
     coerce        => 1,
@@ -65,6 +65,4 @@ sub _build_data_dir {
 }
 
 1;    # Magic true value required at end of module
-
-
 
