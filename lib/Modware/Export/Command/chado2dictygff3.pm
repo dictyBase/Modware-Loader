@@ -21,8 +21,8 @@ has '+exclude_mitochondrial' => ( traits        => [qw/NoGetopt/] );
 has '+only_mitochondrial'    => ( traits        => [qw/NoGetopt/] );
 has '+extra_gene_model'      => ( documentation => 'Not implemented yet' );
 has 'reference_id'           => (
-    is      => 'rw',
-    isa     => 'Str',
+    is  => 'rw',
+    isa => 'Str',
     'documentation' =>
         'reference feature name/ID/accession number. In this case,  only all of its associated features will be dumped'
 );
@@ -31,6 +31,14 @@ has 'gene_row' =>
 
 before 'execute' => sub {
     my ($self) = @_;
+    my $schema = $self->schema;
+    $schema->source('Sequence::Feature')->add_column(
+        'is_deleted',
+        {   data_type     => 'boolean',
+            is_nullable   => 0,
+            default_value => 'false'
+        }
+    );
     if ( $self->reference_id ) {
         $self->register_handler(
             'read_reference_feature',
@@ -65,7 +73,7 @@ sub read_gene_feature {
     return $dbrow->search_related( 'featureloc_srcfeatures', {} )
         ->search_related(
         'feature',
-        { 'type.name' => 'gene' },
+        { 'type.name' => 'gene', 'me.is_deleted' => 0 },
         { join        => 'type' }
         );
 }
