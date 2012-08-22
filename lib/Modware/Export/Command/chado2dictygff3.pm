@@ -73,7 +73,7 @@ sub read_gene_feature {
     return $dbrow->search_related( 'featureloc_srcfeatures', {} )
         ->search_related(
         'feature',
-        { 'type.name' => 'gene', 'me.is_deleted' => 0 },
+        { 'type.name' => 'gene', 'feature.is_deleted' => 0 },
         { join        => 'type' }
         );
 }
