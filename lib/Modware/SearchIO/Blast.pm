@@ -34,54 +34,50 @@ has 'parser' => (
 
 has 'result_response' => (
     is        => 'rw',
-    isa       => 'Any',
+    isa       => 'Bio::Search::Result::GenericResult',
     clearer   => 'clear_result',
     predicate => 'has_result'
 );
 
 has 'hit_response' => (
     is        => 'rw',
-    isa       => 'Any',
+    isa       => 'Bio::Search::Hit::GenericHit',
     clearer   => 'clear_hit',
     predicate => 'has_hit'
 );
 
 has 'hsp_response' => (
     is        => 'rw',
-    isa       => 'Any',
+    isa       => 'Bio::Search::HSP::GenericHSP',
     clearer   => 'clear_hsp',
     predicate => 'has_predicate'
 );
 
 sub process {
     my $searchio = $self->parser;
+RESULT:
     while ( my $result = $searchio->next_result ) {
+        next RESULT if $result->no_hits_found;
         $self->emit( filter_result => $result );
         if ( $self->has_result ) {
-            $self->emit( write_result => $self->result );
+            $result = $self->result_response;
             $self->clear_result;
         }
-        else {
-            $self->emit( write_result => $result );
-        }
+        $self->emit( write_result => $result );
+    HIT:
         while ( my $hit = $result->next_hit ) {
-            $self->emit( filter_hit => $hit );
             if ( $self->has_hit ) {
-                $self->emit( write_hit => $self->hit );
+                $hit = $self->hit_response;
                 $self->clear_hit;
             }
-            else {
-                $self->emit( write_hit => $hit );
-            }
-            while ( my $hsp = $reulst->next_hsp ) {
-                $self->emit( filter_hsp => $hsp );
+            $self->emit( write_hit => $hit );
+
+            while ( my $hsp = $hit->next_hsp ) {
                 if ( $self->has_hsp ) {
-                    $self->emit( write_hsp => $self->hsp );
+                    $hsp = $self->hsp_response;
                     $self->clear_hsp;
                 }
-                else {
-                    $self->emit( write_hsp => $hsp );
-                }
+                $self->emit( write_hsp => $hsp );
             }
         }
     }
