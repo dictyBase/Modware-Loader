@@ -54,9 +54,16 @@ has 'input_handler' => (
     lazy    => 1,
     default => sub {
         my ($self) = @_;
-        return $self->has_input
-            ? $self->input->openr
-            : IO::Handle->new_from_fd( fileno(STDIN), 'r' );
+        if ($self->has_input) {
+        	return $self->input->openr;
+        }
+        else {
+        	if (-t STDIN) {
+        		warn "**Cannot read from STDIN**\n";
+        	    $self->usage->die;
+        	}
+            return IO::Handle->new_from_fd( fileno(STDIN), 'r' );
+        }
     }
 );
 
