@@ -449,7 +449,7 @@ __END__
 
 =head1 NAME
 
-Modware::Transform::Command::blast2chadogff3 - Convert blast output to gff3 file for loading in chado database
+Modware::Transform::Command::blast2chadogff3 [Deprecated] - Convert blast output to gff3 file for loading in chado database
 
 
 
