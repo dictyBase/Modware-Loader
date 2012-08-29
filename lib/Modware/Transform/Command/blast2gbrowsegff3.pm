@@ -19,7 +19,8 @@ has 'format' => (
         'Type of blast output,  either blast(text) or blastxml. For blastxml format the query name is parsed from query description'
 );
 
-has '+input' => ( documentation => 'blast result file if absent reads from STDIN' );
+has '+input' =>
+    ( documentation => 'blast result file if absent reads from STDIN' );
 has 'source' => (
     is          => 'rw',
     isa         => 'Str',
@@ -160,6 +161,8 @@ sub execute {
 
     $parser->subscribe( 'filter_result' => sub { $self->filter_result(@_) } );
     $parser->subscribe( 'write_result'  => sub { $self->write_result(@_) } );
+    $parser->subscribe( 'write_hit'  => sub { $self->write_hit(@_) } );
+    $parser->subscribe( 'write_hsp'  => sub { $self->write_hsp(@_) } );
     $parser->process;
 }
 
@@ -256,54 +259,64 @@ HIT:
 
 sub write_result {
     my ( $self, $event, $result ) = @_;
-    my $output = $self->output_handler;
-
-    while ( my $hit = $result->next_hit ) {
-        $output->print(
-            gff3_format_feature(
-                {   start      => $hit->start('query'),
-                    end        => $hit->end('query'),
-                    seq_id     => $hit->accession,
-                    strand     => $hit->strand('query'),
-                    source     => $self->source,
-                    type       => $self->primary_tag,
-                    score      => sprintf( "%.3g", $hit->significance ),
-                    attributes => {
-                        ID   => [ $hit->accession ],
-                        Name => [ $result->query_name ],
-                        Note => [ $result->query_description ]
-
-                    }
-                }
-            )
-        );
-
-        while ( my $hsp = $hit->next_hsp ) {
-            my @str = $hsp->cigar_string =~ /\d{1,3}[A-Z]?/g;
-            $output->print(
-                gff3_format_feature(
-                    {   seq_id     => $hit->accession,
-                        type       => 'match_part',
-                        source     => $self->source,
-                        start      => $hsp->start('subject'),
-                        end        => $hsp->end('subject'),
-                        strand     => $hsp->strand('hit'),
-                        score      => sprintf( "%.3g", $hsp->significance ),
-                        attributes => {
-                            Gap    => [ join( ' ', @str ) ],
-                            Parent => [ $hit->accession ],
-                            Target => [
-                                sprintf( "%s\t%d\t%d\t%d",
-                                    $result->query_name, $hsp->start,
-                                    $hsp->end,           $hsp->strand )
-                            ],
-                        }
-                    }
-                )
-            );
-        }
-    }
+    $self->_result_object($result);
 }
+
+sub write_hit {
+    my ( $self, $event, $hit ) = @_;
+    my $output = $self->output_handler;
+    my $result = $self->_result_object;
+
+    $output->print(
+        gff3_format_feature(
+            {   start      => $hit->start('query'),
+                end        => $hit->end('query'),
+                seq_id     => $hit->accession,
+                strand     => $hit->strand('query'),
+                source     => $self->source,
+                type       => $self->primary_tag,
+                score      => sprintf( "%.3g", $hit->significance ),
+                attributes => {
+                    ID   => [ $hit->name ],
+                    Name => [ $result->query_name ],
+                    Note => [ $result->query_description ]
+
+                }
+            }
+        )
+    );
+}
+
+sub write_hsp {
+    my ( $self, $event, $hsp ) = @_;
+    my $output = $self->output_handler;
+    my $hit    = $hsp->hit;
+
+    my @str = $hsp->cigar_string =~ /\d{1,3}[A-Z]?/g;
+    $output->print(
+        gff3_format_feature(
+            {   seq_id     => $hit->seq_id,
+                type       => 'match_part',
+                source     => $self->source,
+                start      => $hsp->start('subject'),
+                end        => $hsp->end('subject'),
+                strand     => $hsp->strand('hit'),
+                score      => sprintf( "%.3g", $hsp->significance ),
+                attributes => {
+                    Gap    => [ join( ' ', @str ) ],
+                    Parent => [ $hit->display_name ],
+                    Target => [
+                        sprintf( "%s\t%d\t%d\t%d",
+                            $result->query_name, $hsp->start,
+                            $hsp->end,           $hsp->strand )
+                    ],
+                }
+            }
+        )
+    );
+}
+
+
 
 __PACKAGE__->meta->make_immutable;
 
