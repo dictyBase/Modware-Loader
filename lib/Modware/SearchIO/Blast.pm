@@ -7,7 +7,6 @@ use MooseX::Event '-alias' => {
     on              => 'subscribe',
     remove_listener => 'unsubscribe'
 };
-use Modware::Load::Types qw/DataFile/;
 use Bio::SearchIO;
 
 # Module implementation
@@ -16,7 +15,7 @@ use Bio::SearchIO;
 has_events
     qw/filter_result write_result filter_hit write_hit filter_hsp write_hsp/;
 
-has 'file' => ( is => 'rw', isa => DataFile );
+has 'file' => ( is => 'rw', isa => 'IO::Handle' );
 has 'format' =>
     ( is => 'rw', isa => 'Str', default => 'blastxml', lazy => 1 );
 has 'parser' => (
@@ -25,7 +24,7 @@ has 'parser' => (
     lazy    => 1,
     default => sub {
         my $self = shift;
-        return Bio::SearchIO->new(
+        return Bio::SearchIO->newFh(
             -file   => $self->file,
             -format => $self->format
         );
