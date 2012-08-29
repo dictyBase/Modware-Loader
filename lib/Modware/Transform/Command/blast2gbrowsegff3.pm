@@ -7,6 +7,7 @@ use Bio::SearchIO;
 use Bio::Search::Result::GenericResult;
 use Bio::Search::Hit::GenericHit;
 use Bio::GFF3::LowLevel qw/gff3_format_feature/;
+use Modware::SearchIO::Blast;
 extends qw/Modware::Transform::Command/;
 
 has 'format' => (
@@ -18,7 +19,7 @@ has 'format' => (
         'Type of blast output,  either blast(text) or blastxml. For blastxml format the query name is parsed from query description'
 );
 
-has '+input' => ( documentation => 'blast result file' );
+has '+input' => ( documentation => 'blast result file if absent reads from STDIN' );
 has 'source' => (
     is          => 'rw',
     isa         => 'Str',
@@ -153,7 +154,7 @@ sub execute {
     my ($self) = @_;
     my $parser = Modware::SearchIO::Blast->new(
         format => $self->format,
-        file   => $self->input
+        file   => $self->input_handler
     );
     $self->output_handler->print("##gff-version\t3\n");
 
@@ -222,7 +223,7 @@ sub split_hit_by_strand {
     my ( $self, $old_result, $new_result ) = @_;
 
 HIT:
-    while ( my $hit = $result->next_hit ) {
+    while ( my $hit = $old_result->next_hit ) {
         my $hname
             = $self->hit_id_parser
             ? $self->get_parser( $self->hit_id_parser )->( $hit->name )
@@ -312,7 +313,7 @@ __END__
 
 =head1 NAME
 
-Modware::Transform::Command::blast2gbrowsegff3 - Convert blast output to gff3 file for displaying in genome browser
+Modware::Transform::Command::blast2gbrowsegff3 - Convert blast output to gff3 file to display in genome browser
 
 
 

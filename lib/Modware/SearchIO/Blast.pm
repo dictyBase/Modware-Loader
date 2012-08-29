@@ -54,6 +54,7 @@ has 'hsp_response' => (
 );
 
 sub process {
+	my ($self) = @_;
     my $searchio = $self->parser;
 RESULT:
     while ( my $result = $searchio->next_result ) {
