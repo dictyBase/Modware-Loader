@@ -52,27 +52,54 @@ has 'hsp_response' => (
     predicate => 'has_predicate'
 );
 
+has 'filter' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    clearer => 'clear_filter',
+    lazy    => 1
+);
+
 sub process {
-	my ($self) = @_;
+    my ($self) = @_;
     my $searchio = $self->parser;
 RESULT:
     while ( my $result = $searchio->next_result ) {
         next RESULT if $result->no_hits_found;
+
         $self->emit( filter_result => $result );
+        if ( $self->filter ) {
+            $self->clear_filter;
+            next RESULT;
+        }
+
         if ( $self->has_result ) {
             $result = $self->result_response;
             $self->clear_result;
         }
         $self->emit( write_result => $result );
+
     HIT:
         while ( my $hit = $result->next_hit ) {
+            $self->emit( filter_hit => $hit );
+            if ( $self->filter ) {
+                $self->clear_filter;
+                next HIT;
+            }
+
             if ( $self->has_hit ) {
                 $hit = $self->hit_response;
                 $self->clear_hit;
             }
             $self->emit( write_hit => $hit );
 
+        HSP:
             while ( my $hsp = $hit->next_hsp ) {
+                $self->emit( filter_hsp => $hsp );
+                if ( $self->filter ) {
+                    $self->clear_filter;
+                    next HSP;
+                }
                 if ( $self->has_hsp ) {
                     $hsp = $self->hsp_response;
                     $self->clear_hsp;
