@@ -161,8 +161,8 @@ sub execute {
 
     $parser->subscribe( 'filter_result' => sub { $self->filter_result(@_) } );
     $parser->subscribe( 'write_result'  => sub { $self->write_result(@_) } );
-    $parser->subscribe( 'write_hit'  => sub { $self->write_hit(@_) } );
-    $parser->subscribe( 'write_hsp'  => sub { $self->write_hsp(@_) } );
+    $parser->subscribe( 'write_hit'     => sub { $self->write_hit(@_) } );
+    $parser->subscribe( 'write_hsp'     => sub { $self->write_hsp(@_) } );
     $parser->process;
 }
 
@@ -191,8 +191,6 @@ sub filter_result {
             ? $result->query_accession
             : $qname;
     }
-    $self->set_id_count( $qname, 1 ) if !$self->has_id($qname);
-
     my $qdesc
         = $self->desc_parser
         ? $self->get_desc_parser( $self->desc_parser )
@@ -212,7 +210,7 @@ sub filter_result {
 #additional grouping of hsp's by the hit strand as in case of tblastn hsp
 #belonging to separate strand of query gets grouped into the same hit,  however
 #for gff3 format they should be splitted in separate hit groups.
-    if ( $new_result->algorithm eq 'tblastn' ) {
+    if ( lc $new_result->algorithm eq 'tblastn' ) {
         $self->split_hit_by_strand( $result, $new_result );
     }
     else {
@@ -234,26 +232,28 @@ HIT:
         my $hacc = $hit->accession ? $hit->accession : $hname;
 
         my $plus_hit = Bio::Search::Hit::GenericHit->new(
-            -name      => $hname . '-plus',
+            -name      => $hname . '-plus-strand',
             -accession => $hacc,
-            -algorithm => $hit->algorithm
+            -algorithm => $hit->algorithm,
         );
         my $minus_hit = Bio::Search::Hit::GenericHit->new(
-            -name      => $hname . '-minus',
+            -name      => $hname . '-minus-strand',
             -accession => $hacc,
-            -algorithm => $hit->algorithm
+            -algorithm => $hit->algorithm,
         );
 
         for my $hsp ( $hit->hsps ) {
-            if ( $hsp->strand('hit') == 1 ) {
-                $plus_hit->add_hsp($hit);
+            if ( $hsp->strand('hit') == -1 ) {
+            	$hsp->hit->display_name($minus_hit->name);
+                $minus_hit->add_hsp($hsp);
             }
             else {
-                $minus_hit->add_hsp($hit);
+            	$hsp->hit->display_name($plus_hit->name);
+                $plus_hit->add_hsp($hsp);
             }
         }
-        $new_result->add_hit($plus_hit)  if $plus_hit->num_of_hsps;
-        $new_result->add_hit($minus_hit) if $minus_hit->num_of_hsps;
+        $new_result->add_hit($plus_hit)  if $plus_hit->num_hsps  =~ /^\d+$/;
+        $new_result->add_hit($minus_hit) if $minus_hit->num_hsps =~ /^\d+$/;
     }
 }
 
@@ -269,12 +269,12 @@ sub write_hit {
 
     $output->print(
         gff3_format_feature(
-            {   start      => $hit->start('query'),
-                end        => $hit->end('query'),
-                seq_id     => $hit->accession,
-                strand     => $hit->strand('query'),
-                source     => $self->source,
-                type       => $self->primary_tag,
+            {   start  => $hit->start('hit'),
+                end    => $hit->end('hit'),
+                seq_id => $hit->accession,
+                strand => $hit->strand('hit') == 1 ? '+' : '-',
+                source => $self->source,
+                type   => $self->primary_tag,
                 score      => sprintf( "%.3g", $hit->significance ),
                 attributes => {
                     ID   => [ $hit->name ],
@@ -291,32 +291,33 @@ sub write_hsp {
     my ( $self, $event, $hsp ) = @_;
     my $output = $self->output_handler;
     my $hit    = $hsp->hit;
+    my $result = $self->_result_object;
 
     my @str = $hsp->cigar_string =~ /\d{1,3}[A-Z]?/g;
+    my $target = sprintf "%s %d %d", $result->query_name, $hsp->start,
+        $hsp->end;
+    if (lc $result->algorithm ne 'tblastn') {
+    	$target .= ' '.$hsp->strand;
+    }
+
     $output->print(
         gff3_format_feature(
-            {   seq_id     => $hit->seq_id,
-                type       => 'match_part',
-                source     => $self->source,
-                start      => $hsp->start('subject'),
-                end        => $hsp->end('subject'),
-                strand     => $hsp->strand('hit'),
+            {   seq_id => $hit->seq_id,
+                type   => 'match_part',
+                source => $self->source,
+                start  => $hsp->start('subject'),
+                end    => $hsp->end('subject'),
+                strand => $hsp->strand('hit') == 1 ? '+' : '-',
                 score      => sprintf( "%.3g", $hsp->significance ),
                 attributes => {
                     Gap    => [ join( ' ', @str ) ],
                     Parent => [ $hit->display_name ],
-                    Target => [
-                        sprintf( "%s\t%d\t%d\t%d",
-                            $result->query_name, $hsp->start,
-                            $hsp->end,           $hsp->strand )
-                    ],
+                    Target => [$target],
                 }
             }
         )
     );
 }
-
-
 
 __PACKAGE__->meta->make_immutable;
 
