@@ -24,8 +24,8 @@ has 'parser' => (
     lazy    => 1,
     default => sub {
         my $self = shift;
-        return Bio::SearchIO->newFh(
-            -file   => $self->file,
+        return Bio::SearchIO->new(
+            -fh   => $self->file,
             -format => $self->format
         );
     }
@@ -49,7 +49,7 @@ has 'hsp_response' => (
     is        => 'rw',
     isa       => 'Bio::Search::HSP::GenericHSP',
     clearer   => 'clear_hsp',
-    predicate => 'has_predicate'
+    predicate => 'has_hsp'
 );
 
 has 'filter' => (
