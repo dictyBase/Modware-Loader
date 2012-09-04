@@ -10,6 +10,15 @@ use Bio::GFF3::LowLevel qw/gff3_format_feature/;
 use Modware::SearchIO::Blast;
 extends qw/Modware::Transform::Command/;
 
+has 'max_intron_length' => (
+    is      => 'rw',
+    isa     => 'Int',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'Max intron length threshold for spliting hsps into separate hit groups,  only true for TBLASTN,  default in none.'
+);
+
 has 'format' => (
     is      => 'rw',
     isa     => 'Str',
@@ -60,6 +69,18 @@ has 'primary_tag' => (
     documentation =>
         'The type of feature(column3) that will be used for grouping, by default it will be guessed from the blast algorithm',
 
+);
+
+has '_hit_counter' => (
+    is      => 'rw',
+    isa     => 'Num',
+    traits  => [qw/Counter/],
+    default => 0,
+    lazy    => 1,
+    handles => {
+        'inc_hit_count'   => 'inc',
+        'reset_hit_count' => 'reset'
+    }
 );
 
 has '_result_object' => (
@@ -171,53 +192,37 @@ sub execute {
 
 sub filter_result {
     my ( $self, $event, $result ) = @_;
-    my ( $qname, $qacc );
-    if ( $self->format eq 'blastxml' ) {
-        $qname
-            = $self->query_id_parser
-            ? $self->get_parser( $self->query_id_parser )
-            ->( $result->query_description )
-            : $result->query_description;
-        $qacc = $qname;
-    }
-    else {
-        my $qname
-            = $self->query_id_parser
-            ? $self->get_parser( $self->query_id_parser )
-            ->( $result->query_name )
-            : $result->query_name;
-        $qacc
-            = $result->query_accession
-            ? $result->query_accession
-            : $qname;
-    }
-    my $qdesc
-        = $self->desc_parser
-        ? $self->get_desc_parser( $self->desc_parser )
-        ->( $result->query_description )
-        : $result->query_description;
 
     # construct a fresh result object
     my $new_result = Bio::Search::Result::GenericResult->new;
-    $new_result->query_name($qname);
-    $new_result->query_accession($qacc);
-    $new_result->query_description($qdesc);
-    $new_result->$_( $result->$_ ) for qw/query_length database_name
-        algorithm/;
-    $new_result->add_statistic( $_, $result->{statistics}->{$_} )
-        for keys %{ $result->{statistics} };
+    $self->normalize_result_names( $result, $new_result );
+    $self->clone_minimal_result_fields( $result, $new_result );
 
-#additional grouping of hsp's by the hit strand as in case of tblastn hsp
-#belonging to separate strand of query gets grouped into the same hit,  however
-#for gff3 format they should be splitted in separate hit groups.
+  #additional grouping of hsp's by the hit strand as in case of tblastn,  hsp
+  #belong to separate strand of query gets grouped into the same hit,  however
+  #for gff3 format they should be splitted in separate hit groups.
     if ( lc $new_result->algorithm eq 'tblastn' ) {
         $self->split_hit_by_strand( $result, $new_result );
+
+        if ( $self->max_intron_length ) {
+
+            #further splitting in case max intron length is given
+            my $new_result2 = $self->clone_result($new_result);
+            $self->split_hit_by_intron_length( $self->max_intron_length,
+                $new_result, $new_result2 );
+            $self->_result_object($new_result2) if !$self->has_result_object;
+            $event->result_response($new_result2);
+        }
+        else {
+            $event->result_response($new_result);
+        }
+
     }
     else {
         $new_result->add_hit($_) for $result->hits;
+        $self->_result_object($new_result) if !$self->has_result_object;
+        $event->result_response($new_result);
     }
-    $self->_result_object($new_result) if !$self->has_result_object;
-    $event->result_response($new_result);
 }
 
 sub split_hit_by_strand {
@@ -232,28 +237,77 @@ HIT:
         my $hacc = $hit->accession ? $hit->accession : $hname;
 
         my $plus_hit = Bio::Search::Hit::GenericHit->new(
-            -name      => $hname . '-plus-strand',
+            -name      => $hname . '-match-plus',
             -accession => $hacc,
             -algorithm => $hit->algorithm,
         );
         my $minus_hit = Bio::Search::Hit::GenericHit->new(
-            -name      => $hname . '-minus-strand',
+            -name      => $hname . '-match-minus',
             -accession => $hacc,
             -algorithm => $hit->algorithm,
         );
 
         for my $hsp ( $hit->hsps ) {
             if ( $hsp->strand('hit') == -1 ) {
-            	$hsp->hit->display_name($minus_hit->name);
+                $hsp->hit->display_name( $minus_hit->name );
                 $minus_hit->add_hsp($hsp);
             }
             else {
-            	$hsp->hit->display_name($plus_hit->name);
+                $hsp->hit->display_name( $plus_hit->name );
                 $plus_hit->add_hsp($hsp);
             }
         }
         $new_result->add_hit($plus_hit)  if $plus_hit->num_hsps  =~ /^\d+$/;
         $new_result->add_hit($minus_hit) if $minus_hit->num_hsps =~ /^\d+$/;
+    }
+}
+
+sub split_hit_by_intron_length {
+    my ( $self, $intron_length, $old_result, $new_result ) = @_;
+HIT:
+    while ( my $old_hit = $old_result->next_hit ) {
+        my @hsps = sort { $a->start('hit') <=> $b->start('hit') } $old_hit->hsps;
+        if ( @hsps == 1 ) {
+            $new_result->add_hit($old_hit);
+            next HIT;
+        }
+
+# array of hsp array
+# [ ['hsp', 'hsp',  'hsp' ...],  ['hsp', 'hsp' ....], ['hsp',  'hsp',  'hsp' ...]]
+        my $hsp_stack;
+
+        # the index in the hsp stack where the next hsp should go
+        my $index = 0;
+
+     # the index of the hsp that is already been pushed into the new hsp stack
+        my $pointer = {};
+        for my $i ( 0 .. $#hsps - 1 ) {
+            my $distance
+                = $hsps[$i]->end('hit') - $hsps[ $i + 1 ]->start('hit');
+            if ( not exists $pointer->{$i} ) {
+                push @{ $hsp_stack->[$index] }, $hsps[$i];
+                $pointer->{$i} = 1;
+            }
+            $index++ if $distance > $intron_length;
+            push @{ $hsp_stack->[$index] }, $hsps[ $i + 1 ];
+            $pointer->{ $i + 1 } = 1;
+        }
+
+        if ( @$hsp_stack == 1 ) {
+            $new_result->add_hit($old_hit);
+        }
+        else {
+            for my $i ( 0 .. $#$hsp_stack ) {
+                my $new_hit
+                    = $self->clone_hit( $old_hit, $self->inc_hit_count );
+				for my $new_hsp(@{$hsp_stack->[$i]}) {
+					$new_hsp->hit->display_name($new_hit->name);
+					$new_hit->add_hsp($new_hsp);
+				}
+                $new_result->add_hit($new_hit);
+            }
+            $self->reset_hit_count;
+        }
     }
 }
 
@@ -296,8 +350,8 @@ sub write_hsp {
     my @str = $hsp->cigar_string =~ /\d{1,3}[A-Z]?/g;
     my $target = sprintf "%s %d %d", $result->query_name, $hsp->start,
         $hsp->end;
-    if (lc $result->algorithm ne 'tblastn') {
-    	$target .= ' '.$hsp->strand;
+    if ( lc $result->algorithm ne 'tblastn' ) {
+        $target .= ' ' . $hsp->strand;
     }
 
     $output->print(
@@ -317,6 +371,71 @@ sub write_hsp {
             }
         )
     );
+}
+
+sub normalize_result_names {
+    my ( $self, $result, $new_result ) = @_;
+    my ( $qname, $qacc );
+    if ( $self->format eq 'blastxml' ) {
+        $qname
+            = $self->query_id_parser
+            ? $self->get_parser( $self->query_id_parser )
+            ->( $result->query_description )
+            : $result->query_description;
+        $qacc = $qname;
+    }
+    else {
+        my $qname
+            = $self->query_id_parser
+            ? $self->get_parser( $self->query_id_parser )
+            ->( $result->query_name )
+            : $result->query_name;
+        $qacc
+            = $result->query_accession
+            ? $result->query_accession
+            : $qname;
+    }
+    my $qdesc
+        = $self->desc_parser
+        ? $self->get_desc_parser( $self->desc_parser )
+        ->( $result->query_description )
+        : $result->query_description;
+
+    $new_result->query_name($qname);
+    $new_result->query_accession($qacc);
+    $new_result->query_description($qdesc);
+}
+
+sub clone_minimal_result_fields {
+    my ( $self, $result, $new_result ) = @_;
+    $new_result->$_( $result->$_ ) for qw/query_length database_name
+        algorithm/;
+    $new_result->add_statistic( $_, $result->{statistics}->{$_} )
+        for keys %{ $result->{statistics} };
+}
+
+sub clone_all_results_fields {
+    my ( $self, $result, $new_result ) = @_;
+    $self->clone_minimal_result_fields( $result, $new_result );
+    $new_result->$_( $result->$_ )
+        for qw/query_name query_accession query_description/;
+}
+
+sub clone_result {
+    my ( $self, $old ) = @_;
+    my $new = Bio::Search::Result::GenericResult->new;
+    $self->clone_all_results_fields( $old, $new );
+    return $new;
+}
+
+sub clone_hit {
+    my ( $self, $old_hit, $counter ) = @_;
+    my $new_hit = Bio::Search::Hit::GenericHit->new(
+        -name      => sprintf ("%s%01d", $old_hit->name, $counter),
+        -accession => $old_hit->accession,
+        -algorithm => $old_hit->algorithm,
+    );
+    return $new_hit;
 }
 
 __PACKAGE__->meta->make_immutable;
