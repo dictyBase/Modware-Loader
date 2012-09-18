@@ -10,6 +10,15 @@ use Bio::GFF3::LowLevel qw/gff3_format_feature/;
 use Modware::SearchIO::Blast;
 extends qw/Modware::Transform::Command/;
 
+has 'merge_contained' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 1,
+    lazy    => 1,
+    documentation =>
+        'Merge HSPs where both of their endpoints are completely contained within other. The merged HSP will retain attributes of the largest one,  default is true'
+);
+
 has 'max_intron_length' => (
     is      => 'rw',
     isa     => 'Int',
@@ -81,6 +90,15 @@ has '_hit_counter' => (
         'inc_hit_count'   => 'inc',
         'reset_hit_count' => 'reset'
     }
+);
+
+has 'global_hit_counter' => (
+    is      => 'rw',
+    isa     => 'Num',
+    traits  => [qw/NoGetopt Counter/],
+    default => 1,
+    lazy    => 1,
+    handles => { 'inc_global_hit_count' => 'inc', }
 );
 
 has '_result_object' => (
@@ -184,6 +202,9 @@ sub execute {
     $parser->subscribe( 'write_result'  => sub { $self->write_result(@_) } );
     $parser->subscribe( 'write_hit'     => sub { $self->write_hit(@_) } );
     $parser->subscribe( 'write_hsp'     => sub { $self->write_hsp(@_) } );
+    $parser->subscribe( 'filter_hit'    => sub { $self->filter_hit(@_) } )
+        if $self->merge_contained;
+
     $parser->process;
 }
 
@@ -203,18 +224,17 @@ sub filter_result {
   #for gff3 format they should be splitted in separate hit groups.
     if ( lc $new_result->algorithm eq 'tblastn' ) {
         $self->split_hit_by_strand( $result, $new_result );
+        $event->result_response($new_result);
 
         if ( $self->max_intron_length ) {
 
             #further splitting in case max intron length is given
-            my $new_result2 = $self->clone_result($new_result);
-            $self->split_hit_by_intron_length( $self->max_intron_length,
-                $new_result, $new_result2 );
+            my $existing_result = $event->result_response;
+            my $new_result2     = $self->clone_result($existing_result);
+            $self->split_hit_by_intron_length( $existing_result, $new_result2,
+                $self->max_intron_length );
             $self->_result_object($new_result2) if !$self->has_result_object;
             $event->result_response($new_result2);
-        }
-        else {
-            $event->result_response($new_result);
         }
 
     }
@@ -237,12 +257,12 @@ HIT:
         my $hacc = $hit->accession ? $hit->accession : $hname;
 
         my $plus_hit = Bio::Search::Hit::GenericHit->new(
-            -name      => $hname . '-match-plus',
+            -name      => $hname . '-match-plus' . $self->global_hit_counter,
             -accession => $hacc,
             -algorithm => $hit->algorithm,
         );
         my $minus_hit = Bio::Search::Hit::GenericHit->new(
-            -name      => $hname . '-match-minus',
+            -name      => $hname . '-match-minus' . $self->global_hit_counter,
             -accession => $hacc,
             -algorithm => $hit->algorithm,
         );
@@ -259,14 +279,40 @@ HIT:
         }
         $new_result->add_hit($plus_hit)  if $plus_hit->num_hsps  =~ /^\d+$/;
         $new_result->add_hit($minus_hit) if $minus_hit->num_hsps =~ /^\d+$/;
+
+        $self->inc_global_hit_count;
     }
 }
 
 sub split_hit_by_intron_length {
-    my ( $self, $intron_length, $old_result, $new_result ) = @_;
+    my ( $self, $old_result, $new_result, $intron_length ) = @_;
+    my $coderef = sub {
+        my ( $hsp_current, $hsp_next, $length ) = @_;
+        my $distance = $hsp_next->start('hit') - $hsp_current->end('hit');
+        return 1 if $distance > $length;
+    };
+    $self->_split_hit( $old_result, $new_result, $coderef, $intron_length );
+}
+
+sub split_overlapping_hit {
+    my ( $self, $old_result, $new_result ) = @_;
+    my $coderef = sub {
+        my ( $current_hsp, $next_hsp ) = @_;
+        if (    ( $current_hsp->end('hit') >= $next_hsp->start('hit') )
+            and ( $current_hsp->end('hit') <= $next_hsp->end('hit') ) )
+        {
+            return 1;
+        }
+    };
+    $self->_split_hit( $old_result, $new_result, $coderef );
+}
+
+sub _split_hit {
+    my ( $self, $old_result, $new_result, $coderef, $param ) = @_;
 HIT:
     while ( my $old_hit = $old_result->next_hit ) {
-        my @hsps = sort { $a->start('hit') <=> $b->start('hit') } $old_hit->hsps;
+        my @hsps
+            = sort { $a->start('hit') <=> $b->start('hit') } $old_hit->hsps;
         if ( @hsps == 1 ) {
             $new_result->add_hit($old_hit);
             next HIT;
@@ -282,13 +328,14 @@ HIT:
      # the index of the hsp that is already been pushed into the new hsp stack
         my $pointer = {};
         for my $i ( 0 .. $#hsps - 1 ) {
-            my $distance
-                = $hsps[$i]->end('hit') - $hsps[ $i + 1 ]->start('hit');
             if ( not exists $pointer->{$i} ) {
                 push @{ $hsp_stack->[$index] }, $hsps[$i];
                 $pointer->{$i} = 1;
             }
-            $index++ if $distance > $intron_length;
+
+            # coderef decides if the hsp stays in the current position
+            my $return = $coderef->( $hsps[$i], $hsps[ $i + 1 ], $param );
+            $index++ if $return;
             push @{ $hsp_stack->[$index] }, $hsps[ $i + 1 ];
             $pointer->{ $i + 1 } = 1;
         }
@@ -300,14 +347,45 @@ HIT:
             for my $i ( 0 .. $#$hsp_stack ) {
                 my $new_hit
                     = $self->clone_hit( $old_hit, $self->inc_hit_count );
-				for my $new_hsp(@{$hsp_stack->[$i]}) {
-					$new_hsp->hit->display_name($new_hit->name);
-					$new_hit->add_hsp($new_hsp);
-				}
+                for my $new_hsp ( @{ $hsp_stack->[$i] } ) {
+                    $new_hsp->hit->display_name( $new_hit->name );
+                    $new_hit->add_hsp($new_hsp);
+                }
                 $new_result->add_hit($new_hit);
             }
             $self->reset_hit_count;
         }
+    }
+}
+
+sub filter_hit {
+    my ( $self, $event, $hit ) = @_;
+    my @hsps = sort { $a->start('hit') <=> $b->start('hit') } $hit->hsps;
+    return if @hsps == 1;
+
+    my $index          = 0;
+    my $merged_index   = {};
+    my $new_hsps_index = {};
+    my $end            = $#hsps;
+OUTER:
+    for my $i ( 0 .. $end - 1 ) {
+        next OUTER if exists $merged_index->{$i};
+    INNER:
+        for my $y ( $i + 1 .. $end ) {
+            if ( $hsps[$i]->end('hit') >= $hsps[$y]->end('hit') ) {
+                $merged_index->{$y} = 1;
+            }
+        }
+        $new_hsps_index->{$i} = 1;
+    }
+
+    # the last element needs to be checked
+    $new_hsps_index->{$end} = 1 if not exists $merged_index->{$end};
+
+    if ( scalar keys %$new_hsps_index ) {
+        my $new_hit = $self->clone_hit($hit);
+        $new_hit->add_hsp( $hsps[$_] ) for keys %$new_hsps_index;
+        $event->hit_response($new_hit);
     }
 }
 
@@ -430,8 +508,10 @@ sub clone_result {
 
 sub clone_hit {
     my ( $self, $old_hit, $counter ) = @_;
+    my $name = $old_hit->name;
+    $name .= sprintf( "%01d", $counter ) if $counter;
     my $new_hit = Bio::Search::Hit::GenericHit->new(
-        -name      => sprintf ("%s%01d", $old_hit->name, $counter),
+        -name      => $name,
         -accession => $old_hit->accession,
         -algorithm => $old_hit->algorithm,
     );
