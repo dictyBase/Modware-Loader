@@ -9,6 +9,7 @@ use Bio::Search::Hit::GenericHit;
 use Bio::GFF3::LowLevel qw/gff3_format_feature/;
 use Modware::SearchIO::Blast;
 extends qw/Modware::Transform::Command/;
+with 'Modware::Role::Tblastn::Filter';
 
 has 'merge_contained' => (
     is      => 'rw',
@@ -16,7 +17,9 @@ has 'merge_contained' => (
     default => 1,
     lazy    => 1,
     documentation =>
-        'Merge HSPs where both of their endpoints are completely contained within other. The merged HSP will retain attributes of the largest one,  default is true'
+        'Merge HSPs where both of their endpoints are completely contained within other.
+        The merged HSP will retain attributes of the largest one,  default is true. If
+        true,  *orf_only* option takes precedence.'
 );
 
 has 'max_intron_length' => (
@@ -26,6 +29,14 @@ has 'max_intron_length' => (
     lazy    => 1,
     documentation =>
         'Max intron length threshold for spliting hsps into separate hit groups,  only true for TBLASTN,  default in none.'
+);
+
+has 'orf_only' => (
+    is            => 'rw',
+    isa           => 'Bool',
+    default       => 1,
+    lazy          => 1,
+    documentation => 'This option keeps alignments with possible orf'
 );
 
 has 'format' => (
@@ -78,27 +89,6 @@ has 'primary_tag' => (
     documentation =>
         'The type of feature(column3) that will be used for grouping, by default it will be guessed from the blast algorithm',
 
-);
-
-has '_hit_counter' => (
-    is      => 'rw',
-    isa     => 'Num',
-    traits  => [qw/Counter/],
-    default => 0,
-    lazy    => 1,
-    handles => {
-        'inc_hit_count'   => 'inc',
-        'reset_hit_count' => 'reset'
-    }
-);
-
-has 'global_hit_counter' => (
-    is      => 'rw',
-    isa     => 'Num',
-    traits  => [qw/NoGetopt Counter/],
-    default => 1,
-    lazy    => 1,
-    handles => { 'inc_global_hit_count' => 'inc', }
 );
 
 has '_result_object' => (
@@ -202,14 +192,9 @@ sub execute {
     $parser->subscribe( 'write_result'  => sub { $self->write_result(@_) } );
     $parser->subscribe( 'write_hit'     => sub { $self->write_hit(@_) } );
     $parser->subscribe( 'write_hsp'     => sub { $self->write_hsp(@_) } );
-    $parser->subscribe( 'filter_hit'    => sub { $self->filter_hit(@_) } )
-        if $self->merge_contained;
-
+    $parser->subscribe( 'filter_hit'    => sub { $self->filter_hit(@_) } );
     $parser->process;
 }
-
-#extract query accession, name and description from result object
-# and split hits in case of tblastn
 
 sub filter_result {
     my ( $self, $event, $result ) = @_;
@@ -219,11 +204,16 @@ sub filter_result {
     $self->normalize_result_names( $result, $new_result );
     $self->clone_minimal_result_fields( $result, $new_result );
 
-  #additional grouping of hsp's by the hit strand as in case of tblastn,  hsp
-  #belong to separate strand of query gets grouped into the same hit,  however
-  #for gff3 format they should be splitted in separate hit groups.
+#additional grouping of hsp's by the hit frame and strand as in case of tblastn,  hsp
+#belong to separate strand of query gets grouped into the same hit,  however
+#for gff3 format they should be splitted in separate hit groups.
     if ( lc $new_result->algorithm eq 'tblastn' ) {
-        $self->split_hit_by_strand( $result, $new_result );
+        if ( $self->orf_only ) {
+            $self->split_hit_by_strand_and_frame( $result, $new_result );
+        }
+        else {
+            $self->split_hit_by_strand( $result, $new_result );
+        }
         $event->result_response($new_result);
 
         if ( $self->max_intron_length ) {
@@ -245,121 +235,21 @@ sub filter_result {
     }
 }
 
-sub split_hit_by_strand {
-    my ( $self, $old_result, $new_result ) = @_;
-
-HIT:
-    while ( my $hit = $old_result->next_hit ) {
-        my $hname
-            = $self->hit_id_parser
-            ? $self->get_parser( $self->hit_id_parser )->( $hit->name )
-            : $hit->name;
-        my $hacc = $hit->accession ? $hit->accession : $hname;
-
-        my $plus_hit = Bio::Search::Hit::GenericHit->new(
-            -name      => $hname . '-match-plus' . $self->global_hit_counter,
-            -accession => $hacc,
-            -algorithm => $hit->algorithm,
-        );
-        my $minus_hit = Bio::Search::Hit::GenericHit->new(
-            -name      => $hname . '-match-minus' . $self->global_hit_counter,
-            -accession => $hacc,
-            -algorithm => $hit->algorithm,
-        );
-
-        for my $hsp ( $hit->hsps ) {
-            if ( $hsp->strand('hit') == -1 ) {
-                $hsp->hit->display_name( $minus_hit->name );
-                $minus_hit->add_hsp($hsp);
-            }
-            else {
-                $hsp->hit->display_name( $plus_hit->name );
-                $plus_hit->add_hsp($hsp);
-            }
-        }
-        $new_result->add_hit($plus_hit)  if $plus_hit->num_hsps  =~ /^\d+$/;
-        $new_result->add_hit($minus_hit) if $minus_hit->num_hsps =~ /^\d+$/;
-
-        $self->inc_global_hit_count;
-    }
-}
-
-sub split_hit_by_intron_length {
-    my ( $self, $old_result, $new_result, $intron_length ) = @_;
-    my $coderef = sub {
-        my ( $hsp_current, $hsp_next, $length ) = @_;
-        my $distance = $hsp_next->start('hit') - $hsp_current->end('hit');
-        return 1 if $distance > $length;
-    };
-    $self->_split_hit( $old_result, $new_result, $coderef, $intron_length );
-}
-
-sub split_overlapping_hit {
-    my ( $self, $old_result, $new_result ) = @_;
-    my $coderef = sub {
-        my ( $current_hsp, $next_hsp ) = @_;
-        if (    ( $current_hsp->end('hit') >= $next_hsp->start('hit') )
-            and ( $current_hsp->end('hit') <= $next_hsp->end('hit') ) )
-        {
-            return 1;
-        }
-    };
-    $self->_split_hit( $old_result, $new_result, $coderef );
-}
-
-sub _split_hit {
-    my ( $self, $old_result, $new_result, $coderef, $param ) = @_;
-HIT:
-    while ( my $old_hit = $old_result->next_hit ) {
-        my @hsps
-            = sort { $a->start('hit') <=> $b->start('hit') } $old_hit->hsps;
-        if ( @hsps == 1 ) {
-            $new_result->add_hit($old_hit);
-            next HIT;
-        }
-
-# array of hsp array
-# [ ['hsp', 'hsp',  'hsp' ...],  ['hsp', 'hsp' ....], ['hsp',  'hsp',  'hsp' ...]]
-        my $hsp_stack;
-
-        # the index in the hsp stack where the next hsp should go
-        my $index = 0;
-
-     # the index of the hsp that is already been pushed into the new hsp stack
-        my $pointer = {};
-        for my $i ( 0 .. $#hsps - 1 ) {
-            if ( not exists $pointer->{$i} ) {
-                push @{ $hsp_stack->[$index] }, $hsps[$i];
-                $pointer->{$i} = 1;
-            }
-
-            # coderef decides if the hsp stays in the current position
-            my $return = $coderef->( $hsps[$i], $hsps[ $i + 1 ], $param );
-            $index++ if $return;
-            push @{ $hsp_stack->[$index] }, $hsps[ $i + 1 ];
-            $pointer->{ $i + 1 } = 1;
-        }
-
-        if ( @$hsp_stack == 1 ) {
-            $new_result->add_hit($old_hit);
-        }
-        else {
-            for my $i ( 0 .. $#$hsp_stack ) {
-                my $new_hit
-                    = $self->clone_hit( $old_hit, $self->inc_hit_count );
-                for my $new_hsp ( @{ $hsp_stack->[$i] } ) {
-                    $new_hsp->hit->display_name( $new_hit->name );
-                    $new_hit->add_hsp($new_hsp);
-                }
-                $new_result->add_hit($new_hit);
-            }
-            $self->reset_hit_count;
-        }
-    }
-}
-
 sub filter_hit {
     my ( $self, $event, $hit ) = @_;
+    if ( $self->orf_only ) {
+        if ( $self->has_stop_codon($hit) ) {
+            $event->filter(1);
+            return;
+        }
+        if ( !$self->has_start_codon($hit) ) {
+            $event->filter(1);
+            return;
+        }
+    }
+
+    return if !$self->merge_contained;
+
     my @hsps = sort { $a->start('hit') <=> $b->start('hit') } $hit->hsps;
     return if @hsps == 1;
 
