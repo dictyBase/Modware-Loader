@@ -14,12 +14,10 @@ with 'Modware::Role::Tblastn::Filter';
 has 'merge_contained' => (
     is      => 'rw',
     isa     => 'Bool',
-    default => 1,
+    default => 0,
     lazy    => 1,
     documentation =>
-        'Merge HSPs where both of their endpoints are completely contained within other.
-        The merged HSP will retain attributes of the largest one,  default is true. If
-        true,  *orf_only* option takes precedence.'
+        'Merge HSPs where both of their endpoints are completely contained within other. The merged HSP will retain attributes of the largest one,  default is false. If true,  *orf_only* option takes precedence.'
 );
 
 has 'max_intron_length' => (
@@ -32,11 +30,35 @@ has 'max_intron_length' => (
 );
 
 has 'orf_only' => (
-    is            => 'rw',
-    isa           => 'Bool',
-    default       => 1,
-    lazy          => 1,
-    documentation => 'This option keeps alignments with possible orf'
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    trigger => sub {
+        my ($self) = @_;
+        $self->start_codon_only(1);
+        $self->remove_stop_codon(1);
+    },
+    documentation =>
+        'Activates both start_codon_only and remove_stop_codon options,  default is off. True for only TBLASTN'
+);
+
+has 'start_codon_only' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'Keep alignments only with start codon,  default is off. True for only TBLASTN'
+);
+
+has 'remove_stop_codon' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'Remove stop codon from the alignment,  default is off. True for only TBLASTN'
 );
 
 has 'format' => (
@@ -191,8 +213,8 @@ sub execute {
     $parser->subscribe( 'filter_result' => sub { $self->filter_result(@_) } );
     $parser->subscribe( 'write_result'  => sub { $self->write_result(@_) } );
     $parser->subscribe( 'write_hit'     => sub { $self->write_hit(@_) } );
-    $parser->subscribe( 'write_hsp'     => sub { $self->write_hsp(@_) } );
     $parser->subscribe( 'filter_hit'    => sub { $self->filter_hit(@_) } );
+    $parser->subscribe( 'write_hsp'     => sub { $self->write_hsp(@_) } );
     $parser->process;
 }
 
@@ -208,7 +230,7 @@ sub filter_result {
 #belong to separate strand of query gets grouped into the same hit,  however
 #for gff3 format they should be splitted in separate hit groups.
     if ( lc $new_result->algorithm eq 'tblastn' ) {
-        if ( $self->orf_only ) {
+        if ( $self->start_codon_only or $self->remove_stop_codon ) {
             $self->split_hit_by_strand_and_frame( $result, $new_result );
         }
         else {
@@ -223,6 +245,7 @@ sub filter_result {
             my $new_result2     = $self->clone_result($existing_result);
             $self->split_hit_by_intron_length( $existing_result, $new_result2,
                 $self->max_intron_length );
+
             $self->_result_object($new_result2) if !$self->has_result_object;
             $event->result_response($new_result2);
         }
@@ -237,11 +260,13 @@ sub filter_result {
 
 sub filter_hit {
     my ( $self, $event, $hit ) = @_;
-    if ( $self->orf_only ) {
+    if ( $self->remove_stop_codon ) {
         if ( $self->has_stop_codon($hit) ) {
             $event->filter(1);
             return;
         }
+    }
+    if ( $self->start_codon_only ) {
         if ( !$self->has_start_codon($hit) ) {
             $event->filter(1);
             return;
@@ -329,7 +354,7 @@ sub write_hsp {
                 source => $self->source,
                 start  => $hsp->start('subject'),
                 end    => $hsp->end('subject'),
-                strand => $hsp->strand('hit') == 1 ? '+' : '-',
+                strand => $hsp->strand( 'hit') == 1 ? '+' : '-',
                 score      => sprintf( "%.3g", $hsp->significance ),
                 attributes => {
                     Gap    => [ join( ' ', @str ) ],

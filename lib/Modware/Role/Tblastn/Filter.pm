@@ -134,14 +134,18 @@ HIT:
             my $frame_context
                 = $self->get_frame_context( $strand . $hsp->frame('hit') );
             my $context_hit = $self->get_hit_by_context($frame_context);
-            next HSP if !$context_hit;
+            if ( !$context_hit ) {
+                next HSP;
+            }
             $hsp->hit->display_name( $context_hit->name );
             $context_hit->add_hsp($hsp);
         }
 
     CHIT:
         for my $newhit ( $self->all_hits_with_context ) {
-            next CHIT if $newhit->num_hsps !~ /^\d+$/;
+            if ( $newhit->num_hsps !~ /^\d+$/ ) {
+                next CHIT;
+            }
             $new_result->add_hit($newhit);
         }
         $self->inc_global_hit_count;
@@ -210,15 +214,14 @@ HIT:
         }
         else {
             for my $i ( 0 .. $#$hsp_stack ) {
-                my $new_hit
-                    = $self->clone_hit( $old_hit, $self->inc_hit_count );
+                my $new_hit = $self->clone_hit( $old_hit,
+                    $self->inc_global_hit_count );
                 for my $new_hsp ( @{ $hsp_stack->[$i] } ) {
                     $new_hsp->hit->display_name( $new_hit->name );
                     $new_hit->add_hsp($new_hsp);
                 }
                 $new_result->add_hit($new_hit);
             }
-            $self->reset_hit_count;
         }
     }
 }
@@ -237,9 +240,11 @@ sub has_start_codon {
 sub has_stop_codon {
     my ( $self, $hit ) = @_;
     while ( my $hsp = $hit->next_hsp ) {
-        return if $hsp->hit_string =~ /\*/;
+        if ( $hsp->hit_string =~ /\*/ ) {
+            return 1;
+        }
     }
-    return 1;
+    return ;
 }
 
 1;    # Magic true value required at end of module
