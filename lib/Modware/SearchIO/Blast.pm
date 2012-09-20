@@ -25,7 +25,7 @@ has 'parser' => (
     default => sub {
         my $self = shift;
         return Bio::SearchIO->new(
-            -fh   => $self->file,
+            -fh     => $self->file,
             -format => $self->format
         );
     }
@@ -94,7 +94,7 @@ RESULT:
             $self->emit( write_hit => $hit );
 
         HSP:
-            while ( my $hsp = $hit->next_hsp ) {
+            for my $hsp ( $hit->hsps ) {
                 $self->emit( filter_hsp => $hsp );
                 if ( $self->filter ) {
                     $self->clear_filter;
