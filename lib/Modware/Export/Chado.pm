@@ -55,18 +55,6 @@ sub get_config_from_file {
     return LoadFile($file);
 }
 
-sub _chado_feature_id {
-    my ( $self, $dbrow ) = @_;
-    if ( my $dbxref = $dbrow->dbxref ) {
-        if ( my $id = $dbxref->accession ) {
-            return $id;
-        }
-    }
-    else {
-        return $dbrow->uniquename;
-    }
-}
-
 sub _chado_name {
     my ( $self, $dbrow ) = @_;
     if ( my $name = $dbrow->name ) {
@@ -85,20 +73,6 @@ sub gff_source {
     if ( my $row = $dbxref_rs->first ) {
         return $row->accession;
     }
-}
-
-sub _children_dbrows {
-    my ( $self, $parent_row, $relation, $type ) = @_;
-    $type = { -like => $type } if $type =~ /^%/;
-    return $parent_row->search_related(
-        'feature_relationship_objects',
-        { 'type.name' => $relation },
-        { join        => 'type' }
-        )->search_related(
-        'subject',
-        { 'type_2.name' => $type },
-        { join          => 'type' }
-        );
 }
 
 sub execute {
