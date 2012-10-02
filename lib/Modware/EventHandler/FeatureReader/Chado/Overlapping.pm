@@ -1,121 +1,46 @@
-package Modware::EventHandler::FeatureWriter::GFF3;
+package Modware::EventHandler::FeatureReader::Chado::Overlapping;
 
 # Other modules:
 use namespace::autoclean;
 use Moose;
+extends 'Modware::EventHandler::FeatureReader::Chado';
+with 'Modware::Role::EventHandler::Genome::Chado';
 
 # Module implementation
 #
 
-has 'output' => (
-    is  => 'rw',
-    isa => 'IO::Handle'
+has 'feature_type' => ( is => 'rw', isa => 'Str', required => 1 );
+has 'subfeature_type' => (
+    is        => 'rw',
+    isa       => 'Str',
+    predicate => 'has_subfeature_type'
 );
 
-sub write_header {
-    my ( $self, $event ) = @_;
-    $self->output->print("##gff-version\t3\n");
-}
-
-sub write_meta_header {
-    my ( $self, $event ) = @_;
-}
-
-sub write_sequence_region {
-    my ( $self, $event, $seq_id, $dbrow ) = @_;
-    my $output = $self->output;
-
-    if ( my $end = $dbrow->seqlen ) {
-        $output->print("##sequence-region\t$seq_id\t1\t$end\n");
-    }
-    elsif ( my $length = $dbrow->get_column('sequence_length') ) {
-        $output->print("##sequence-region\t$seq_id\t1\t$length\n");
-    }
-    else {
-        $event->warn("$seq_id has no length defined:skipped from export");
-    }
-
-}
-
-sub _dbrow2gff3hash {
-    my ( $self, $dbrow, $seq_id, $parent_id, $parent ) = @_;
-    my $hashref;
-    $hashref->{type}   = $dbrow->type->name;
-    $hashref->{score}  = undef;
-    $hashref->{seq_id} = $seq_id;
-
-    my $floc_row = $dbrow->featureloc_features->first;
-    $hashref->{start} = $floc_row->fmin + 1;
-    $hashref->{end}   = $floc_row->fmax;
-    if ( my $strand = $floc_row->strand ) {
-        $hashref->{strand} = $strand == -1 ? '-' : '+';
-    }
-    else {
-        $hashref->{strand} = undef;
-    }
-
-    if ( $hashref->{type} eq 'CDS' ) {
-        ## -- phase for CDS
-    }
-    else {
-        $hashref->{phase} = undef;
-    }
-
-    # source
-    my $dbxref_rs
-        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
-        'dbxref',
-        { 'db.name' => 'GFF_source' },
-        { join      => 'db' }
+sub read_feature {
+    my ( $self, $event, $dbrow ) = @_;
+    my $rs
+        = $dbrow->search_related( 'featureloc_srcfeatures', {} )
+        ->search_related(
+        'feature',
+        { 'type.name' => $self->feature_type },
+        { join        => 'type' }
         );
-    if ( my $row = $dbxref_rs->first ) {
-        $hashref->{source} = $row->accession;
-    }
-    else {
-        $hashref->{source} = undef;
-    }
+    $event->response($rs);
 
-    ## -- attributes
-    $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
-    if ( my $name = $dbrow->name ) {
-        $hashref->{attributes}->{Name} = [$name];
-    }
-    $hashref->{attributes}->{Parent} = [$parent_id] if $parent_id;
-    my $dbxrefs;
-    for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
-        $dbrow->secondary_dbxrefs )
-    {
-        my $dbname = $xref_row->db->name;
-        $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
-        push @$dbxrefs, $dbname . ':' . $xref_row->accession;
-    }
-    $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
-    return $hashref;
 }
 
-sub _chado_feature_id {
-    my ( $self, $dbrow ) = @_;
-    if ( my $dbxref = $dbrow->dbxref ) {
-        if ( my $id = $dbxref->accession ) {
-            return $id;
-        }
+sub read_subfeature {
+    my ( $self, $event, $dbrow ) = @_;
+    my $rs = $dbrow->search_related(
+        'feature_relationship_objects',
+        { 'type.name' => 'part_of' },
+        { join        => 'type' }
+    )->search_related('subject');
+    if ( $self->has_subfeature_type ) {
+        $rs = $rs->search( { 'type_2.name' => $self->subfeature_type },
+            { join => 'type' } );
     }
-    else {
-        return $dbrow->uniquename;
-    }
-}
-
-sub gff_source {
-    my ( $self, $dbrow ) = @_;
-    my $dbxref_rs
-        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
-        'dbxref',
-        { 'db.name' => 'GFF_source' },
-        { join      => 'db' }
-        );
-    if ( my $row = $dbxref_rs->first ) {
-        return $row->accession;
-    }
+    $event->response($rs);
 }
 
 1;    # Magic true value required at end of module

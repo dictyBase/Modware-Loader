@@ -1,120 +1,137 @@
-package Modware::EventHandler::FeatureWriter::GFF3;
+package Modware::EventEmitter::Feature::Chado::Overlapping;
 
 # Other modules:
 use namespace::autoclean;
 use Moose;
+use MooseX::Event '-alias' => {
+    on              => 'subscribe',
+    remove_listener => 'unsubscribe'
+};
+with 'Throwable';
+with 'Modware::Role::Command::WithOutputLogger';
 
 # Module implementation
 #
 
-has 'output' => (
-    is  => 'rw',
-    isa => 'IO::Handle'
+has_events
+    qw/write_meta_header write_header write_sequence_region read_organism/;
+has_events
+    qw/read_reference write_reference read_seq_id write_seq_id 
+    /;
+has_events qw/read_overlapping write_overlapping/;
+
+has 'resource' => ( is => 'rw', isa => 'Bio::Chado::Schema', required => 1 );
+has 'response' => (
+    is        => 'rw',
+    isa       => 'DBIx::Class::ResultSet',
+    predicate => 'has_response',
+    clearer   => 'clear_response'
 );
 
-sub write_header {
-    my ( $self, $event ) = @_;
-    $self->output->print("##gff-version\t3\n");
-}
+has 'response_id' => (
+    is        => 'rw',
+    isa       => 'Str',
+    clearer   => 'clear_response_id',
+);
 
-sub write_meta_header {
-    my ( $self, $event ) = @_;
-}
+has 'msg' => ( is => 'rw',  isa => 'Str');
 
-sub write_sequence_region {
-    my ( $self, $event, $seq_id, $dbrow ) = @_;
-    my $output = $self->output;
+sub process {
+    my ($self) = @_;
+    $self->emit('write_header');
+    $self->emit('write_meta_header');
+    $self->emit( 'read_organism' => $self->resource );
 
-    if ( my $end = $dbrow->seqlen ) {
-        $output->print("##sequence-region\t$seq_id\t1\t$end\n");
-    }
-    elsif ( my $length = $dbrow->get_column('sequence_length') ) {
-        $output->print("##sequence-region\t$seq_id\t1\t$length\n");
-    }
-    else {
-        $event->warn("$seq_id has no length defined:skipped from export");
-    }
+    my $response = $self->response;
+    $self->clear_response;
+    $self->emit( 'read_reference' => $response );
 
-}
-
-sub _dbrow2gff3hash {
-    my ( $self, $dbrow, $seq_id, $parent_id, $parent ) = @_;
-    my $hashref;
-    $hashref->{type}   = $dbrow->type->name;
-    $hashref->{score}  = undef;
-    $hashref->{seq_id} = $seq_id;
-
-    my $floc_row = $dbrow->featureloc_features->first;
-    $hashref->{start} = $floc_row->fmin + 1;
-    $hashref->{end}   = $floc_row->fmax;
-    if ( my $strand = $floc_row->strand ) {
-        $hashref->{strand} = $strand == -1 ? '-' : '+';
-    }
-    else {
-        $hashref->{strand} = undef;
+SEQUENCE_REGION:
+    while ( my $row = $response->next ) {
+        $self->emit( 'read_seq_id' => $row );
+        $self->emit(
+            'write_sequence_region' => ( $self->response_id, $row ) );
+        $self->clear_response_id;
     }
 
-    if ( $hashref->{type} eq 'CDS' ) {
-        ## -- phase for CDS
-    }
-    else {
-        $hashref->{phase} = undef;
-    }
+    $response->reset;
+REFERENCE:
+    while ( my $row = $response->next ) {
+        $self->emit( 'read_seq_id' => $row );
+        my $ref_id = $self->response_id;
+        $self->clear_response_id;
 
-    # source
-    my $dbxref_rs
-        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
-        'dbxref',
-        { 'db.name' => 'GFF_source' },
-        { join      => 'db' }
-        );
-    if ( my $row = $dbxref_rs->first ) {
-        $hashref->{source} = $row->accession;
-    }
-    else {
-        $hashref->{source} = undef;
-    }
+        $self->emit( 'write_reference' => ( $ref_id, $row ) );
+        $self->emit( 'read_overlapping' => $row );
+        if ( $self->has_response ) {
+            my $rs = $self->response;
+            $self->clear_response;
 
-    ## -- attributes
-    $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
-    if ( my $name = $dbrow->name ) {
-        $hashref->{attributes}->{Name} = [$name];
-    }
-    $hashref->{attributes}->{Parent} = [$parent_id] if $parent_id;
-    my $dbxrefs;
-    for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
-        $dbrow->secondary_dbxrefs )
-    {
-        my $dbname = $xref_row->db->name;
-        $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
-        push @$dbxrefs, $dbname . ':' . $xref_row->accession;
-    }
-    $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
-    return $hashref;
-}
+        CONTIG:
+            while ( my $orow = $rs->next ) {
+                $self->emit( write_overlapping => ( $ref_id, $crow ) );
+            }
+        }
 
-sub _chado_feature_id {
-    my ( $self, $dbrow ) = @_;
-    if ( my $dbxref = $dbrow->dbxref ) {
-        if ( my $id = $dbxref->accession ) {
-            return $id;
+        $self->emit( 'read_gene' => $row );
+        if ( $self->has_response ) {
+            my $rs = $self->response;
+            $self->clear_response;
+        GENE:
+            while ( my $grow = $rs->next ) {
+                $self->emit( 'write_gene' => ( $ref_id, $row ) );
+                $self->emit( 'read_transcript' => $grow );
+
+                if ( $self->has_response ) {
+                    my $rs2 = $self->response;
+                    $self->clear_response;
+                TRANSCRIPT:
+                    while ( my $trow = $rs2->next ) {
+                        $self->emit(
+                            'write_transcript' => ( $ref_id, $grow, $trow ) );
+
+                        $self->emit( 'read_exon' => $trow );
+                        if ( $self->has_response ) {
+                            my $rs3 = $self->response;
+                            $self->clear_response;
+                        EXON:
+                            while ( my $erow = $rs3->next ) {
+                                $self->emit(
+                                    write_exon => ( $ref_id, $trow, $erow ) );
+                            }
+                        }
+
+                        $self->emit( 'read_cds' => $trow );
+                        if ( $self->has_response ) {
+                            my $rs4 = $self->response;
+                            $self->clear_response;
+                        CDS:
+                            while ( my $cdsrow = $rs4->next ) {
+                                $self->emit(
+                                    write_cds => ( $ref_id, $trow, $cdsrow )
+                                );
+                            }
+                        }
+
+                        $self->emit( 'read_polypeptide' => $trow );
+                        if ( $self->has_response ) {
+                            my $rs5 = $self->response;
+                            $self->clear_response;
+                        POLYPEPTIDE:
+                            while ( my $prow = $rs5->next ) {
+                                $self->emit( write_polypeptide =>
+                                        ( $ref_id, $trow, $prow ) );
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-    else {
-        return $dbrow->uniquename;
-    }
-}
 
-sub gff_source {
-    my ( $self, $dbrow ) = @_;
-    my $dbxref_rs
-        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
-        'dbxref',
-        { 'db.name' => 'GFF_source' },
-        { join      => 'db' }
-        );
-    if ( my $row = $dbxref_rs->first ) {
-        return $row->accession;
+    $response->reset;
+    while ( my $row = $response->next ) {
+        $self->emit( 'write_reference_sequence' => $row );
     }
 }
 
