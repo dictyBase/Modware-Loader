@@ -1,140 +1,29 @@
-package Modware::EventEmitter::Feature::Chado::Overlapping;
+package Modware::Meta::Attribute::Trait::ClearAfterAccess;
 
-# Other modules:
+use Moose::Role;
 use namespace::autoclean;
-use Moose;
-use MooseX::Event '-alias' => {
-    on              => 'subscribe',
-    remove_listener => 'unsubscribe'
-};
-with 'Throwable';
-with 'Modware::Role::Command::WithOutputLogger';
+use List::Util qw/first/;
 
 # Module implementation
 #
 
-has_events
-    qw/write_meta_header write_header write_sequence_region read_organism/;
-has_events
-    qw/read_reference write_reference read_seq_id write_seq_id 
-    /;
-has_events qw/read_overlapping write_overlapping/;
-
-has 'resource' => ( is => 'rw', isa => 'Bio::Chado::Schema', required => 1 );
-has 'response' => (
-    is        => 'rw',
-    isa       => 'DBIx::Class::ResultSet',
-    predicate => 'has_response',
-    clearer   => 'clear_response'
-);
-
-has 'response_id' => (
-    is        => 'rw',
-    isa       => 'Str',
-    clearer   => 'clear_response_id',
-);
-
-has 'msg' => ( is => 'rw',  isa => 'Str');
-
-sub process {
+after install_accessors => sub {
     my ($self) = @_;
-    $self->emit('write_header');
-    $self->emit('write_meta_header');
-    $self->emit( 'read_organism' => $self->resource );
+    return if !$self->applied_traits;
 
-    my $response = $self->response;
-    $self->clear_response;
-    $self->emit( 'read_reference' => $response );
-
-SEQUENCE_REGION:
-    while ( my $row = $response->next ) {
-        $self->emit( 'read_seq_id' => $row );
-        $self->emit(
-            'write_sequence_region' => ( $self->response_id, $row ) );
-        $self->clear_response_id;
-    }
-
-    $response->reset;
-REFERENCE:
-    while ( my $row = $response->next ) {
-        $self->emit( 'read_seq_id' => $row );
-        my $ref_id = $self->response_id;
-        $self->clear_response_id;
-
-        $self->emit( 'write_reference' => ( $ref_id, $row ) );
-        $self->emit( 'read_overlapping' => $row );
-        if ( $self->has_response ) {
-            my $rs = $self->response;
-            $self->clear_response;
-
-        CONTIG:
-            while ( my $orow = $rs->next ) {
-                $self->emit( write_overlapping => ( $ref_id, $crow ) );
+    if ( first { $_ eq 'Modware::Meta::Attribute::Trait::ClearAfterAccess' } @{ $self->applied_traits } ) {
+        my $name = $self->name;
+        $self->associated_class->add_after_method_modifier(
+            $name,
+            sub {
+                my ($self, $value) = @_;
+                return if $value;
+                my $att = $self->meta->find_attribute_by_name($name);
+                $att->clear_value($self);
             }
-        }
-
-        $self->emit( 'read_gene' => $row );
-        if ( $self->has_response ) {
-            my $rs = $self->response;
-            $self->clear_response;
-        GENE:
-            while ( my $grow = $rs->next ) {
-                $self->emit( 'write_gene' => ( $ref_id, $row ) );
-                $self->emit( 'read_transcript' => $grow );
-
-                if ( $self->has_response ) {
-                    my $rs2 = $self->response;
-                    $self->clear_response;
-                TRANSCRIPT:
-                    while ( my $trow = $rs2->next ) {
-                        $self->emit(
-                            'write_transcript' => ( $ref_id, $grow, $trow ) );
-
-                        $self->emit( 'read_exon' => $trow );
-                        if ( $self->has_response ) {
-                            my $rs3 = $self->response;
-                            $self->clear_response;
-                        EXON:
-                            while ( my $erow = $rs3->next ) {
-                                $self->emit(
-                                    write_exon => ( $ref_id, $trow, $erow ) );
-                            }
-                        }
-
-                        $self->emit( 'read_cds' => $trow );
-                        if ( $self->has_response ) {
-                            my $rs4 = $self->response;
-                            $self->clear_response;
-                        CDS:
-                            while ( my $cdsrow = $rs4->next ) {
-                                $self->emit(
-                                    write_cds => ( $ref_id, $trow, $cdsrow )
-                                );
-                            }
-                        }
-
-                        $self->emit( 'read_polypeptide' => $trow );
-                        if ( $self->has_response ) {
-                            my $rs5 = $self->response;
-                            $self->clear_response;
-                        POLYPEPTIDE:
-                            while ( my $prow = $rs5->next ) {
-                                $self->emit( write_polypeptide =>
-                                        ( $ref_id, $trow, $prow ) );
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        );
     }
-
-    $response->reset;
-    while ( my $row = $response->next ) {
-        $self->emit( 'write_reference_sequence' => $row );
-    }
-}
-
+};
 1;    # Magic true value required at end of module
 
 __END__
