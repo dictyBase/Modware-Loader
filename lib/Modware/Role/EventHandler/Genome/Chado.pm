@@ -9,18 +9,18 @@ use Moose::Role;
 
 has 'species' => (
     is        => 'rw',
-    isa       => 'Str',
+    isa       => 'Str|Undef',
     predicate => 'has_species'
 );
 
 has 'genus' => (
     is        => 'rw',
-    isa       => 'Str',
+    isa       => 'Str|Undef',
     predicate => 'has_genus'
 );
 
 has 'organism' => (
-    isa       => 'Str',
+    isa       => 'Str|Undef',
     is        => 'rw',
     predicate => 'has_organism'
 );
