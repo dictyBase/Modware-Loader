@@ -15,11 +15,6 @@ with 'Modware::Role::Command::WithReportLogger';
 # Module implementation
 #
 
-has '_organism_result' => (
-    is  => 'rw',
-    isa => 'DBIx::Class::Row'
-);
-
 has 'species' => (
     is            => 'rw',
     isa           => 'Str',
@@ -53,73 +48,6 @@ has '+configfile' => (
 sub get_config_from_file {
     my ( $self, $file ) = @_;
     return LoadFile($file);
-}
-
-sub _chado_name {
-    my ( $self, $dbrow ) = @_;
-    if ( my $name = $dbrow->name ) {
-        return $name;
-    }
-}
-
-sub gff_source {
-    my ( $self, $dbrow ) = @_;
-    my $dbxref_rs
-        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
-        'dbxref',
-        { 'db.name' => 'GFF_source' },
-        { join      => 'db' }
-        );
-    if ( my $row = $dbxref_rs->first ) {
-        return $row->accession;
-    }
-}
-
-sub execute {
-    my ($self) = @_;
-    my $logger = $self->logger;
-
-    if ( !$self->has_species ) {
-        if ( !$self->has_genus ) {
-            if ( !$self->has_organism ) {
-                $logger->log_fatal(
-                    "at least species,  genus or common_name has to be set");
-            }
-        }
-    }
-
-    my $query;
-    $query->{species}     = $self->species  if $self->has_species;
-    $query->{genus}       = $self->genus    if $self->has_genus;
-    $query->{common_name} = $self->organism if $self->has_organism;
-
-    my $org_rs = $self->schema->resultset('Organism::Organism')->search(
-        $query,
-        {   select => [
-                qw/species genus
-                    common_name organism_id/
-            ]
-        }
-    );
-
-    if ( $org_rs->count > 1 ) {
-        my $msg
-            = "you have more than one organism being selected with the current query\n";
-        $msg .= sprintf( "Genus:%s\tSpecies:%s\tCommon name:%s\n",
-            $_->genus, $_->species, $_->common_name )
-            for $org_rs->all;
-        $msg
-            .= "Restrict your query to one organism: perhaps provide only **genus** and **species** for uniqueness";
-        $logger->log_fatal($msg);
-    }
-
-    my $dbrow = $org_rs->first;
-    if ( !$dbrow ) {
-        $logger->log_fatal(
-            "Could not find given organism  in chado database");
-    }
-    $self->_organism_result($dbrow);
-    inner();
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -6,12 +6,12 @@ use namespace::autoclean;
 use Moose;
 use Try::Tiny;
 use File::Spec::Functions;
-use GOBO::TermNode;
-use GOBO::Annotation;
-use GOBO::Writers::GAFWriter;
-use GOBO::Evidence;
-use GOBO::Gene;
-use GOBO::Graph;
+#use GOBO::TermNode;
+#use GOBO::Annotation;
+#use GOBO::Writers::GAFWriter;
+#use GOBO::Evidence;
+#use GOBO::Gene;
+#use GOBO::Graph;
 use Time::Piece;
 use Moose::Util qw/ensure_all_roles/;
 

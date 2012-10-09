@@ -2,7 +2,7 @@ package Modware::EventEmitter::Feature::Chado::Canonical;
 
 # Other modules:
 use namespace::autoclean;
-use Modware::EventHandler::Shared;
+use Modware::MooseX::ClearAfterAccess;
 use Moose;
 use MooseX::Event '-alias' => {
     on              => 'subscribe',
@@ -18,7 +18,7 @@ has_events
     qw/write_meta_header write_header write_sequence_region read_organism/;
 has_events
     qw/read_reference write_reference read_seq_id write_seq_id read_contig
-    write_contig/;
+    write_contig write_reference_sequence/;
 has_events
     qw/read_gene write_gene read_transcript write_transcript read_exon write_exon/;
 has_events qw/read_cds write_cds read_polypeptide write_polypeptide/;
@@ -28,13 +28,14 @@ has 'response' => (
     is        => 'rw',
     isa       => 'DBIx::Class::ResultSet',
     predicate => 'has_response',
-    clearer   => 'clear_response'
+    traits => [qw/ClearAfterAccess/]
+
 );
 
 has 'response_id' => (
     is        => 'rw',
     isa       => 'Str',
-    clearer   => 'clear_response_id',
+    traits => [qw/ClearAfterAccess/]
 );
 
 has 'msg' => ( is => 'rw',  isa => 'Str');
@@ -48,7 +49,6 @@ sub process {
     $self->emit( 'read_organism' => $self->resource );
 
     my $response = $self->response;
-    $self->clear_response;
     $self->emit( 'read_reference' => $response );
 
 SEQUENCE_REGION:
@@ -56,7 +56,6 @@ SEQUENCE_REGION:
         $self->emit( 'read_seq_id' => $row );
         $self->emit(
             'write_sequence_region' => ( $self->response_id, $row ) );
-        $self->clear_response_id;
     }
 
     $response->reset;
@@ -64,14 +63,11 @@ REFERENCE:
     while ( my $row = $response->next ) {
         $self->emit( 'read_seq_id' => $row );
         my $ref_id = $self->response_id;
-        $self->clear_response_id;
-
         $self->emit( 'write_reference' => ( $ref_id, $row ) );
+
         $self->emit( 'read_contig' => $row );
         if ( $self->has_response ) {
             my $rs = $self->response;
-            $self->clear_response;
-
         CONTIG:
             while ( my $crow = $rs->next ) {
                 $self->emit( write_contig => ( $ref_id, $crow ) );
@@ -81,15 +77,12 @@ REFERENCE:
         $self->emit( 'read_gene' => $row );
         if ( $self->has_response ) {
             my $rs = $self->response;
-            $self->clear_response;
         GENE:
             while ( my $grow = $rs->next ) {
                 $self->emit( 'write_gene' => ( $ref_id, $row ) );
                 $self->emit( 'read_transcript' => $grow );
-
                 if ( $self->has_response ) {
                     my $rs2 = $self->response;
-                    $self->clear_response;
                 TRANSCRIPT:
                     while ( my $trow = $rs2->next ) {
                         $self->emit(
@@ -98,7 +91,6 @@ REFERENCE:
                         $self->emit( 'read_exon' => $trow );
                         if ( $self->has_response ) {
                             my $rs3 = $self->response;
-                            $self->clear_response;
                         EXON:
                             while ( my $erow = $rs3->next ) {
                                 $self->emit(
@@ -109,7 +101,6 @@ REFERENCE:
                         $self->emit( 'read_cds' => $trow );
                         if ( $self->has_response ) {
                             my $rs4 = $self->response;
-                            $self->clear_response;
                         CDS:
                             while ( my $cdsrow = $rs4->next ) {
                                 $self->emit(
@@ -121,7 +112,6 @@ REFERENCE:
                         $self->emit( 'read_polypeptide' => $trow );
                         if ( $self->has_response ) {
                             my $rs5 = $self->response;
-                            $self->clear_response;
                         POLYPEPTIDE:
                             while ( my $prow = $rs5->next ) {
                                 $self->emit( write_polypeptide =>

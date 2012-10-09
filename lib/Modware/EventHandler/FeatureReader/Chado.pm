@@ -78,7 +78,7 @@ sub read_reference_without_mito {
         {   msg => "no reference feature found for organism "
                 . $dbrow->common_name
         }
-    );
+    )
     if !$nuclear_rs->count;
 
     $event->response($nuclear_rs);

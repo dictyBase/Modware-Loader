@@ -5,7 +5,7 @@ use namespace::autoclean;
 use Moose;
 use Bio::GFF3::LowLevel qw/gff3_format_feature/;
 
-extends qw/Modware::Export::Command::chado2gff3/;
+extends qw/Modware::Export::Command::chado2canonicalgff3/;
 
 # Other modules:
 
@@ -16,38 +16,15 @@ extends qw/Modware::Export::Command::chado2gff3/;
 has '+species'          => ( traits  => [qw/NoGetopt/] );
 has '+genus'            => ( traits  => [qw/NoGetopt/] );
 has '+organism'         => ( default => 'dicty', traits => [qw/NoGetopt/] );
-has '+tolerate_missing' => ( traits  => [qw/NoGetopt/] );
 has '+exclude_mitochondrial' => ( traits        => [qw/NoGetopt/] );
 has '+only_mitochondrial'    => ( traits        => [qw/NoGetopt/] );
-has '+extra_gene_model'      => ( documentation => 'Not implemented yet' );
 has 'reference_id'           => (
     is  => 'rw',
     isa => 'Str',
     'documentation' =>
         'reference feature name/ID/accession number. In this case,  only all of its associated features will be dumped'
 );
-has 'gene_row' =>
-    ( is => 'rw', isa => 'DBIx::Class::Row', traits => [qw/NoGetopt/] );
 
-before 'execute' => sub {
-    my ($self) = @_;
-    my $schema = $self->schema;
-    $schema->source('Sequence::Feature')->add_column(
-        'is_deleted',
-        {   data_type     => 'boolean',
-            is_nullable   => 0,
-            default_value => 'false'
-        }
-    );
-    if ( $self->reference_id ) {
-        $self->register_handler(
-            'read_reference_feature',
-            sub {
-                $self->read_single_reference_feature(@_);
-            }
-        );
-    }
-};
 
 sub read_single_reference_feature {
     my ( $self, $dbrow, $type ) = @_;

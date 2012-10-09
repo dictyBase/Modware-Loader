@@ -3,6 +3,7 @@ package Modware::EventEmitter::Feature::Chado;
 # Other modules:
 use namespace::autoclean;
 use Moose;
+use Modware::MooseX::ClearAfterAccess;
 use MooseX::Event '-alias' => {
     on              => 'subscribe',
     remove_listener => 'unsubscribe'
@@ -13,10 +14,8 @@ with 'Modware::Role::Command::WithOutputLogger';
 # Module implementation
 #
 
-has_events
-    qw/write_meta_header write_header write_sequence_region read_organism/;
-has_events qw/read_reference write_reference read_seq_id write_seq_id
-    /;
+has_events qw/write_meta_header write_header read_organism/;
+has_events qw/read_reference read_seq_id/;
 has_events qw/read_feature read_subfeature write_feature write_subfeature/;
 
 has 'resource' => ( is => 'rw', isa => 'Bio::Chado::Schema', required => 1 );
@@ -24,13 +23,13 @@ has 'response' => (
     is        => 'rw',
     isa       => 'DBIx::Class::ResultSet',
     predicate => 'has_response',
-    clearer   => 'clear_response'
+    traits => [qw/ClearAfterAccess/]
 );
 
 has 'response_id' => (
     is      => 'rw',
     isa     => 'Str',
-    clearer => 'clear_response_id',
+    traits => [qw/ClearAfterAccess/]
 );
 
 has 'msg' => ( is => 'rw', isa => 'Str' );
@@ -42,7 +41,6 @@ sub process {
     $self->emit( 'read_organism' => $self->resource );
 
     my $response = $self->response;
-    $self->clear_response;
     $self->emit( 'read_reference' => $response );
 
 SEQUENCE_REGION:
@@ -50,39 +48,29 @@ SEQUENCE_REGION:
         $self->emit( 'read_seq_id' => $row );
         $self->emit(
             'write_sequence_region' => ( $self->response_id, $row ) );
-        $self->clear_response_id;
     }
 
     $response->reset;
 REFERENCE:
     while ( my $row = $response->next ) {
         $self->emit( 'read_seq_id' => $row );
-        my $ref_id = $self->response_id;
-        $self->clear_response_id;
-
-        $self->emit( 'write_reference' => ( $ref_id, $row ) );
+        $self->emit( 'write_reference' => ( $self->response_id, $row ) );
         $self->emit( 'read_feature' => $row );
         next REFERENCE if !$self->has_response;
         my $rs = $self->response;
-        $self->clear_response;
 
     FEATURE:
         while ( my $frow = $rs->next ) {
             $self->emit( 'write_feature' => ( $ref_id, $frow ) );
-
             $self->emit( 'read_subfeature' => $frow );
             next FEATURE if !$self->has_response;
 
             my $rs2 = $self->response;
-            $self->clear_response;
-
             while ( my $sfrow = $rs2->next ) {
                 $self->emit(
                     'write_subfeature' => ( $ref_id, $frow, $sfrow ) );
             }
-
         }
-
     }
 }
 
