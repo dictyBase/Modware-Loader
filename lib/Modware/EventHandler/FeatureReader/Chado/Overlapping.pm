@@ -13,6 +13,8 @@ has 'feature_type' => ( is => 'rw', isa => 'Str', required => 1 );
 has 'subfeature_type' => (
     is        => 'rw',
     isa       => 'Str',
+    default => 'match_part', 
+    lazy => 1, 
     predicate => 'has_subfeature_type'
 );
 

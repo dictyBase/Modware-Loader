@@ -21,24 +21,6 @@ has '_source_stack' => (
     }
 );
 
-sub read_contig {
-    my ( $self, $event, $dbrow ) = @_;
-    my $rs
-        = $dbrow->search_related( 'featureloc_srcfeatures', {} )
-        ->search_related(
-        'feature',
-        { 'type.name' => 'contig' },
-        { join        => 'type' }
-        );
-    $event->response($rs);
-}
-
-sub read_gene {
-    my ( $self, $event, $dbrow ) = @_;
-    my $rs = $self->_children_dbrows( $dbrow, 'part_of', 'gene' );
-    $event->response($rs);
-}
-
 sub read_transcript {
     my ( $self, $event, $dbrow ) = @_;
     my $rs = $self->_children_dbrows( $dbrow, 'part_of', '%RNA' );

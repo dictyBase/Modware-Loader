@@ -54,21 +54,22 @@ SEQUENCE_REGION:
 REFERENCE:
     while ( my $row = $response->next ) {
         $self->emit( 'read_seq_id' => $row );
-        $self->emit( 'write_reference' => ( $self->response_id, $row ) );
+        my $seq_id = $self->response_id;
+        $self->emit( 'write_reference' => ( $seq_id, $row ) );
         $self->emit( 'read_feature' => $row );
         next REFERENCE if !$self->has_response;
         my $rs = $self->response;
 
     FEATURE:
         while ( my $frow = $rs->next ) {
-            $self->emit( 'write_feature' => ( $ref_id, $frow ) );
+            $self->emit( 'write_feature' => ( $seq_id, $frow ) );
             $self->emit( 'read_subfeature' => $frow );
             next FEATURE if !$self->has_response;
 
             my $rs2 = $self->response;
             while ( my $sfrow = $rs2->next ) {
                 $self->emit(
-                    'write_subfeature' => ( $ref_id, $frow, $sfrow ) );
+                    'write_subfeature' => ( $seq_id, $frow, $sfrow ) );
             }
         }
     }

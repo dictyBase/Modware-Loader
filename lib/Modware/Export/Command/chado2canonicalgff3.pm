@@ -88,12 +88,12 @@ sub execute {
             sub { $write_handler->write_reference_sequence(@_) } );
 
     if ( $self->exclude_mitochondrial ) {
-        $event->on( 'read_reference_feature' =>
+        $event->on( 'read_reference' =>
                 sub { $handler->read_reference_without_mito(@_) } );
     }
     if ( $self->only_mitochondrial ) {
         $self->event(
-            'read_reference_feature' => sub {
+            'read_reference' => sub {
                 $handler->read_mito_reference_feature(@_);
             }
         );

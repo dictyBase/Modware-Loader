@@ -1,141 +1,142 @@
-package Modware::EventHandler::FeatureReader::Chado;
+package Modware::EventHandler::FeatureWriter::GFF3::Alignment;
 
 # Other modules:
 use namespace::autoclean;
 use Moose;
+use Bio::GFF3::LowLevel qw/gff3_format_feature/;
+extends 'Modware::EventHandler::FeatureWriter::GFF3';
 
 # Module implementation
 #
-has 'reference_type' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => 'supercontig',
-    lazy    => 1
-);
 
+has 'write_aligned_parts' =>
+    ( is => 'rw', isa => 'Bool', lazy => 1, default => 1 );
 
-sub read_seq_id_by_name {
-    my ( $self, $event, $dbrow ) = @_;
-    if ( my $name = $dbrow->name ) {
-        $event->response_id($name);
+sub write_feature {
+    my ( $self, $event, $seq_id, $dbrow ) = @_;
+
+    my $output = $self->output;
+    my $hashref;
+    $hashref->{seq_id} = $seq_id;
+    $hashref->{source} = $self->gff_source($dbrow) || undef;
+
+    my $type = $dbrow->type->name;
+    $type = $type . '_match' if $type !~ /match/;
+    $hashref->{type} = $type;
+
+    my $floc_rs = $dbrow->featureloc_features( { rank => 0 } );
+    my $floc_row;
+    if ( $floc_row = $floc_rs->first ) {
+        $hashref->{start}  = $floc_row->fmin + 1;
+        $hashref->{end}    = $floc_row->fmax;
+        $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
+    }
+    else {
+        $self->logger->log(
+            "No feature location relative to genome is found: Skipped from output"
+        );
         return;
     }
-}
+    $hashref->{phase} = undef;
 
-sub read_reference {
-    my ( $self, $event, $dbrow ) = @_;
-    my $reference_rs = $dbrow->search_related(
-        'features',
-        { 'type.name' => $self->reference_type },
-        {   join     => 'type',
-            prefetch => 'dbxref',
-            '+select' =>
-                [ { LENGTH => 'me.residues', -as => 'sequence_length' } ],
-            cache => 1
-        }
-    );
-    if ( !$reference_rs->count ) {
-        $event->throw( "no reference feature(s) found for organism ",
-            $dbrow->common_name );
+    my $analysis_rs = $dbrow->search_related( 'analysisfeatures', {} );
+    if ( my $row = $analysis_rs->first ) {
+        $hashref->{score} = $row->significance;
     }
-    $event->response($reference_rs);
-}
-
-sub read_reference_without_mito {
-    my ( $self, $event, $dbrow ) = @_;
-    my $type = $self->reference_type;
-
-    my $mito_rs = $dbrow->search_related(
-        'features',
-        {   'type.name'   => $type,
-            'type_2.name' => 'mitochondrial_DNA',
-            'cv.name'     => 'sequence'
-        },
-        { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
-    );
-
-    my $nuclear_rs;
-    if ( $mito_rs->count ) {    ## -- mitochondrial genome is present
-        $nuclear_rs = $dbrow->search_related(
-            'features',
-            {   'feature_id' => {
-                    -not_in => $mito_rs->get_column('feature_id')->as_query
-                },
-                'type.name' => $type
-            },
-            { join => 'type' }
-        );
-    }
-    else {                      # no mito genome
-        $nuclear_rs = $dbrow->search_related(
-            'features',
-            { 'type.name' => $type },
-            { join        => 'type' }
-        );
+    else {
+        $hashref->{score} = undef;
     }
 
-    $event->throw(
-        {   msg => "no reference feature found for organism "
-                . $dbrow->common_name
-        }
-    )
-    if !$nuclear_rs->count;
+    my $id = $self->_chado_feature_id($dbrow);
+    $hashref->{attributes}->{ID} = [$id];
+    if ( my $name = $dbrow->name ) {
+        $hashref->{attributes}->{Name} = [$name];
+    }
 
-    $event->response($nuclear_rs);
+    if ( $self->write_aligned_parts )
+    {    ## -- target attribute will be added in the feature parts
+        $output->print( gff3_format_feature($hashref) );
+        return;
+    }
 
-}
-
-sub read_mito_reference {
-    my ( $self, $event, $dbrow ) = @_;
-    my $rs = $dbrow->search_related(
-        'features',
-        {   'type.name'   => $self->reference_type,
-            'type_2.name' => 'mitochondrial_DNA',
-            'cv.name'     => 'sequence'
-        },
-        { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
-    );
-    $event->throw(
-        {   msg => "no mitochondrial reference feature(s) found for organism "
-                . $dbrow->common_name
-        }
-    ) if !$rs->count;
-
-    $event->response($rs);
-}
-
-sub read_seq_id {
-    my ( $self, $event, $dbrow ) = @_;
-    my $seq_id = $self->_chado_feature_id($dbrow);
-    $event->response_id($seq_id);
-}
-
-sub _chado_feature_id {
-    my ( $self, $dbrow ) = @_;
-    if ( my $dbxref = $dbrow->dbxref ) {
-        if ( my $id = $dbxref->accession ) {
-            return $id;
+    my $target = $id;
+    my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
+    if ( my $row = $floc2_rs->next ) {
+        $target .= "\t" . ( $row->fmin + 1 ) . "\t" . $row->fmax;
+        if ( my $strand = $row->strand ) {
+            $strand = $strand == -1 ? '-' : '+';
+            $target .= "\t$strand";
         }
     }
     else {
-        return $dbrow->uniquename;
+        $event->logger->warn(
+            "No feature location relative to itself(query) is found");
+        $event->logger->warn("Skipped target attribute from output");
+        $output->print( gff3_format_feature($hashref) );
+        return;
+
     }
+    $hashref->{attributes}->{Target} = [$target];
+
+    if ( my $gap_str = $floc_row->residue_info ) {
+        $hashref->{attributes}->{Gap} = [$gap_str];
+    }
+    $output->print( gff3_format_feature($hashref) );
 }
 
-sub _children_dbrows {
-    my ( $self, $parent_row, $relation, $type ) = @_;
-    $type = { -like => $type } if $type =~ /^%/;
-    return $parent_row->search_related(
-        'feature_relationship_objects',
-        { 'type.name' => $relation },
-        { join        => 'type' }
-        )->search_related(
-        'subject',
-        { 'type_2.name' => $type },
-        { join          => 'type' }
+sub write_subfeature {
+    my ( $self, $event, $seq_id, $parent, $dbrow ) = @_;
+    my $output    = $self->output;
+    my $source    = $self->gff_source($parent) || undef;
+    my $type      = $dbrow->type->name;
+    my $parent_id = $self->_chado_feature_id($parent);
+
+    my $hashref;
+    $hashref->{seq_id} = $seq_id;
+    $hashref->{type}   = $type;
+    $hashref->{source} = $source;
+
+    my $floc_rs = $dbrow->featureloc_features( { rank => 0 },
+        { order_by => { -asc => 'fmin' } } );
+    my $floc_row;
+    if ( $floc_row = $floc_rs->first ) {
+        $hashref->{start}  = $floc_row->fmin + 1;
+        $hashref->{end}    = $floc_row->fmax;
+        $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
+    }
+    else {
+        $event->logger->warn(
+            "No feature location relative to genome is found: Skipped from output"
         );
-}
+        return;
+    }
+    $hashref->{phase}                = undef;
+    $hashref->{attributes}->{ID}     = [ $self->_chado_feature_id($dbrow) ];
+    $hashref->{attributes}->{Parent} = [$parent_id];
 
+    my $target = $parent_id;
+    my $floc2_rs = $dbrow->featureloc_features( { rank => 1 } );
+    if ( my $row = $floc2_rs->next ) {
+        $target .= "\t" . ( $row->fmin + 1 ) . "\t" . $row->fmax;
+        if ( my $strand = $row->strand ) {
+            $strand = $strand == -1 ? '-' : '+';
+            $target .= "\t$strand";
+        }
+    }
+    else {
+        $event->logger->warn(
+            "No feature location relative to itself(query) is found");
+        $output->print( gff3_format_feature($hashref) );
+        return;
+    }
+    $hashref->{attributes}->{Target} = [$target];
+
+    if ( my $gap_str = $floc_row->residue_info ) {
+        $hashref->{attributes}->{Gap} = [$gap_str];
+    }
+    $output->print( gff3_format_feature($hashref) );
+
+}
 
 1;    # Magic true value required at end of module
 

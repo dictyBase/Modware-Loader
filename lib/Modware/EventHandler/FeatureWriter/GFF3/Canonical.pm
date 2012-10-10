@@ -1,141 +1,108 @@
-package Modware::EventHandler::FeatureReader::Chado;
+package Modware::EventHandler::FeatureWriter::GFF3::Canonical;
 
 # Other modules:
 use namespace::autoclean;
 use Moose;
+use Bio::GFF3::LowLevel qw/gff3_format_feature/;
+extends 'Modware::EventHandler::FeatureWriter::GFF3';
 
 # Module implementation
 #
-has 'reference_type' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => 'supercontig',
-    lazy    => 1
-);
 
+sub write_reference {
+    my ( $self, $event, $seq_id, $dbrow ) = @_;
+    my $output = $self->output;
 
-sub read_seq_id_by_name {
-    my ( $self, $event, $dbrow ) = @_;
-    if ( my $name = $dbrow->name ) {
-        $event->response_id($name);
+    my $start = 1;
+
+    my $hashref;
+    my $end
+        = $dbrow->seqlen
+        ? $dbrow->seqlen
+        : $dbrow->get_column('sequence_length');
+    if ( !$end ) {
+
+        # unable to figure out end location of reference feature,  abort
+        $event->logger->warn(
+            "$seq_id has no length defined:skipped from export");
         return;
     }
-}
 
-sub read_reference {
-    my ( $self, $event, $dbrow ) = @_;
-    my $reference_rs = $dbrow->search_related(
-        'features',
-        { 'type.name' => $self->reference_type },
-        {   join     => 'type',
-            prefetch => 'dbxref',
-            '+select' =>
-                [ { LENGTH => 'me.residues', -as => 'sequence_length' } ],
-            cache => 1
-        }
-    );
-    if ( !$reference_rs->count ) {
-        $event->throw( "no reference feature(s) found for organism ",
-            $dbrow->common_name );
-    }
-    $event->response($reference_rs);
-}
+    $hashref->{type}   = $dbrow->type->name;
+    $hashref->{score}  = undef;
+    $hashref->{seq_id} = $seq_id;
+    $hashref->{start}  = 1;
+    $hashref->{end}    = $end;
+    $hashref->{strand} = undef;
+    $hashref->{phase}  = undef;
 
-sub read_reference_without_mito {
-    my ( $self, $event, $dbrow ) = @_;
-    my $type = $self->reference_type;
-
-    my $mito_rs = $dbrow->search_related(
-        'features',
-        {   'type.name'   => $type,
-            'type_2.name' => 'mitochondrial_DNA',
-            'cv.name'     => 'sequence'
-        },
-        { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
-    );
-
-    my $nuclear_rs;
-    if ( $mito_rs->count ) {    ## -- mitochondrial genome is present
-        $nuclear_rs = $dbrow->search_related(
-            'features',
-            {   'feature_id' => {
-                    -not_in => $mito_rs->get_column('feature_id')->as_query
-                },
-                'type.name' => $type
-            },
-            { join => 'type' }
+    my $dbxref_rs
+        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
+        'dbxref',
+        { 'db.name' => 'GFF_source' },
+        { join      => 'db' }
         );
-    }
-    else {                      # no mito genome
-        $nuclear_rs = $dbrow->search_related(
-            'features',
-            { 'type.name' => $type },
-            { join        => 'type' }
-        );
-    }
 
-    $event->throw(
-        {   msg => "no reference feature found for organism "
-                . $dbrow->common_name
-        }
-    )
-    if !$nuclear_rs->count;
-
-    $event->response($nuclear_rs);
-
-}
-
-sub read_mito_reference {
-    my ( $self, $event, $dbrow ) = @_;
-    my $rs = $dbrow->search_related(
-        'features',
-        {   'type.name'   => $self->reference_type,
-            'type_2.name' => 'mitochondrial_DNA',
-            'cv.name'     => 'sequence'
-        },
-        { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
-    );
-    $event->throw(
-        {   msg => "no mitochondrial reference feature(s) found for organism "
-                . $dbrow->common_name
-        }
-    ) if !$rs->count;
-
-    $event->response($rs);
-}
-
-sub read_seq_id {
-    my ( $self, $event, $dbrow ) = @_;
-    my $seq_id = $self->_chado_feature_id($dbrow);
-    $event->response_id($seq_id);
-}
-
-sub _chado_feature_id {
-    my ( $self, $dbrow ) = @_;
-    if ( my $dbxref = $dbrow->dbxref ) {
-        if ( my $id = $dbxref->accession ) {
-            return $id;
-        }
+    if ( my $row = $dbxref_rs->first ) {
+        $hashref->{source} = $row->accession;
     }
     else {
-        return $dbrow->uniquename;
+        $hashref->{source} = undef;
     }
+
+    ## -- attributes
+    $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
+    if ( my $name = $dbrow->name ) {
+        $hashref->{attributes}->{Name} = [$name];
+    }
+
+    my $dbxrefs;
+    for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
+        $dbrow->secondary_dbxrefs )
+    {
+        push @$dbxrefs, $xref_row->db->name . ':' . $xref_row->accession;
+    }
+    $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
+    $output->print( gff3_format_feature($hashref) );
 }
 
-sub _children_dbrows {
-    my ( $self, $parent_row, $relation, $type ) = @_;
-    $type = { -like => $type } if $type =~ /^%/;
-    return $parent_row->search_related(
-        'feature_relationship_objects',
-        { 'type.name' => $relation },
-        { join        => 'type' }
-        )->search_related(
-        'subject',
-        { 'type_2.name' => $type },
-        { join          => 'type' }
-        );
+sub write_contig {
+    my ( $self, $event, $seq_id, $dbrow ) = @_;
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    $self->output->print( gff3_format_feature($hash) );
 }
 
+sub write_gene {
+    my ( $self, $event, $seq_id, $dbrow ) = @_;
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    $self->output->print( gff3_format_feature($hash) );
+}
+
+sub write_transcript {
+    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
+    my $gene_id = $self->_chado_feature_id($parent_dbrow);
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
+    $self->output->print( gff3_format_feature($hash) );
+}
+
+sub write_polypeptide {
+}
+
+sub write_cds {
+}
+
+sub write_reference_sequence {
+    my ( $self, $event, $seq_id, $dbrow ) = @_;
+    ( my $seq = $dbrow->residues ) =~ s/(\S{1,60})/$1\n/g;
+    $self->output->print("###\n##FASTA\n>$seq_id\n$seq\n");
+}
+
+sub write_exon {
+    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
+    my $trans_id = $self->_chado_feature_id($parent_dbrow);
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $trans_id );
+    $self->output->print( gff3_format_feature($hash) );
+}
 
 1;    # Magic true value required at end of module
 

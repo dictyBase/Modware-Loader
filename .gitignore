@@ -5,7 +5,6 @@ Modware-*
 !modware-transform
 !modware-load
 locallib/
-*gff3
 data/
 config/
 log/
