@@ -8,7 +8,6 @@ use MooseX::Event '-alias' => {
     on              => 'subscribe',
     remove_listener => 'unsubscribe'
 };
-with 'Throwable';
 with 'Modware::Role::Command::WithOutputLogger';
 
 # Module implementation
@@ -26,7 +25,7 @@ has_events qw/read_cds write_cds read_polypeptide write_polypeptide/;
 has 'resource' => ( is => 'rw', isa => 'Bio::Chado::Schema', required => 1 );
 has 'response' => (
     is        => 'rw',
-    isa       => 'DBIx::Class::ResultSet',
+    isa       => 'Object',
     predicate => 'has_response',
     traits => [qw/ClearAfterAccess/]
 
@@ -38,8 +37,6 @@ has 'response_id' => (
     traits => [qw/ClearAfterAccess/]
 );
 
-has 'msg' => ( is => 'rw',  isa => 'Str');
-
 sub process {
     my ($self) = @_;
     my $logger = $self->output_logger;
@@ -48,8 +45,8 @@ sub process {
     $self->emit('write_meta_header');
     $self->emit( 'read_organism' => $self->resource );
 
+    $self->emit( 'read_reference' => $self->response );
     my $response = $self->response;
-    $self->emit( 'read_reference' => $response );
 
 SEQUENCE_REGION:
     while ( my $row = $response->next ) {
@@ -79,7 +76,7 @@ REFERENCE:
             my $rs = $self->response;
         GENE:
             while ( my $grow = $rs->next ) {
-                $self->emit( 'write_gene' => ( $ref_id, $row ) );
+                $self->emit( 'write_gene' => ( $ref_id, $grow ) );
                 $self->emit( 'read_transcript' => $grow );
                 if ( $self->has_response ) {
                     my $rs2 = $self->response;
@@ -126,8 +123,15 @@ REFERENCE:
 
     $response->reset;
     while ( my $row = $response->next ) {
-        $self->emit( 'write_reference_sequence' => $row );
+        $self->emit( 'read_seq_id' => $row );
+        my $ref_id = $self->response_id;
+        $self->emit( 'write_reference_sequence' => ($ref_id ,$row) );
     }
+}
+
+sub throw {
+	my ($self, $msg) = @_;
+	$self->output_logger->logcroak($msg);
 }
 
 1;    # Magic true value required at end of module

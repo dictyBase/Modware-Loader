@@ -6,6 +6,7 @@ use namespace::autoclean;
 use Moose;
 use Modware::EventEmitter::Feature::Chado::Canonical;
 use Modware::EventHandler::FeatureReader::Chado::Canonical;
+use Modware::EventHandler::FeatureWriter::GFF3::Canonical;
 extends qw/Modware::Export::Chado/;
 
 # Module implementation
@@ -60,11 +61,12 @@ sub execute {
 
     my $handler
         = Modware::EventHandler::FeatureReader::Chado::Canonical->new(
-        species        => $self->species,
-        genus          => $self->genus,
-        organism       => $self->organism,
         reference_type => $self->reference_type
         );
+	$handler->species($self->species) if $self->species;
+	$handler->genus($self->genus) if $self->genus;
+	$handler->common_name($self->organism) if $self->organism;
+
     my $write_handler
         = Modware::EventHandler::FeatureWriter::GFF3::Canonical->new(
         output => $self->output_handler );
@@ -96,9 +98,8 @@ sub execute {
             }
         );
     }
-    $self->process;
+    $event->process;
 }
-
 
 __PACKAGE__->meta->make_immutable;
 

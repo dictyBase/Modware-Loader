@@ -3,36 +3,35 @@ package Modware::Role::EventHandler::Genome::Chado;
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
+use Data::Dumper;
 
 # Module implementation
 #
 
 has 'species' => (
     is        => 'rw',
-    isa       => 'Str|Undef',
+    isa       => 'Str',
     predicate => 'has_species'
 );
 
 has 'genus' => (
     is        => 'rw',
-    isa       => 'Str|Undef',
+    isa       => 'Str',
     predicate => 'has_genus'
 );
 
-has 'organism' => (
-    isa       => 'Str|Undef',
+has 'common_name' => (
+    isa       => 'Str',
     is        => 'rw',
-    predicate => 'has_organism'
+    predicate => 'has_common_name'
 );
 
 
 sub read_organism {
     my ( $self, $event, $schema ) = @_;
-    my $logger = $self->output_logger;
-
     if ( !$self->has_species ) {
         if ( !$self->has_genus ) {
-            if ( !$self->has_organism ) {
+            if ( !$self->common_name ) {
                 $event->throw(
                     {   msg =>
                             "at least species,  genus or common_name has to be set"
@@ -43,7 +42,7 @@ sub read_organism {
     }
 
     my $query;
-    for my $opt (qw/species genus organism/) {
+    for my $opt (qw/species genus common_name/) {
         my $check = 'has_' . $opt;
         $query->{$opt} = $self->$opt if $self->$check;
     }
@@ -57,7 +56,9 @@ sub read_organism {
         }
     );
 
-    if ( $org_rs->count > 1 ) {
+    my $count = $org_rs->count;
+    $event->throw('!!!! Could not find the organism !!!!') if !$count;
+    if ( $count > 1 ) {
         my $msg
             = "you have more than one organism being selected with the current query\n";
         $msg .= sprintf( "Genus:%s\tSpecies:%s\tCommon name:%s\n",
@@ -65,8 +66,9 @@ sub read_organism {
             for $org_rs->all;
         $msg
             .= "Restrict your query to one organism: perhaps provide only **genus** and **species** for uniqueness";
-        $event->throw( { msg => $msg } );
+        $event->throw(  $msg  );
     }
+
     $event->response( $org_rs->first );
 }
 
