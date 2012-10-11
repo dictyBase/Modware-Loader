@@ -37,16 +37,24 @@ has 'msg' => ( is => 'rw', isa => 'Str' );
 
 sub process {
     my ($self) = @_;
+    $self->use_extended_layout(1);
+    my $logger = $self->logger;
     $self->emit('write_header');
     $self->emit('write_meta_header');
+
+    $logger->debug('read_organism event');
     $self->emit( 'read_organism' => $self->resource );
 
+    $logger->debug('read_reference event');
     $self->emit( 'read_reference' => $self->response );
     my $response = $self->response;
+    $logger->debug('finished read_reference event');
 
 SEQUENCE_REGION:
     while ( my $row = $response->next ) {
+        $logger->debug('read_seq_id event');
         $self->emit( 'read_seq_id' => $row );
+        $logger->debug('write_sequence_region event');
         $self->emit(
             'write_sequence_region' => ( $self->response_id, $row ) );
     }
@@ -54,21 +62,30 @@ SEQUENCE_REGION:
     $response->reset;
 REFERENCE:
     while ( my $row = $response->next ) {
+        $logger->debug('read_seq_id event');
         $self->emit( 'read_seq_id' => $row );
         my $seq_id = $self->response_id;
+        $logger->debug('write_reference event');
         $self->emit( 'write_reference' => ( $seq_id, $row ) );
+        $logger->debug('read_feature event');
         $self->emit( 'read_feature' => $row );
         next REFERENCE if !$self->has_response;
         my $rs = $self->response;
+        $logger->debug('finished read_feature event');
 
     FEATURE:
         while ( my $frow = $rs->next ) {
+            $logger->debug('write_feature event');
             $self->emit( 'write_feature' => ( $seq_id, $frow ) );
+            $logger->debug('read_subfeature event');
             $self->emit( 'read_subfeature' => $frow );
             next FEATURE if !$self->has_response;
 
             my $rs2 = $self->response;
+            $logger->debug('finished read_subfeature event');
+
             while ( my $sfrow = $rs2->next ) {
+               $logger->debug('write_subfeature event');
                 $self->emit(
                     'write_subfeature' => ( $seq_id, $frow, $sfrow ) );
             }
