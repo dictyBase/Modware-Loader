@@ -45,7 +45,7 @@ has 'log_level' => (
     is            => 'rw',
     isa           => enum(qw/debug error fatal info warn/),
     lazy          => 1,
-    default       => 'debug',
+    default       => 'error',
     documentation => 'Log level of the logger,  default is error'
 );
 
