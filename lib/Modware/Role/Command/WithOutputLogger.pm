@@ -8,6 +8,7 @@ use Log::Log4perl::Appender;
 use Log::Log4perl::Level;
 use Log::Log4perl::Layout::SimpleLayout;
 use Log::Log4perl::Layout::PatternLayout;
+use Log::Log4perl::Level;
 
 # Module implementation
 #
@@ -16,11 +17,11 @@ has 'extended_logger_layout' => (
     is      => 'ro',
     isa     => 'Str',
     traits  => [qw/NoGetopt/],
-    default => '[%d{MM-dd-yyyy hh:mm}] %p > %F{1}:%L - %m%n', 
+    default => '[%d{MM-dd-yyyy hh:mm:ss}] %p > %F{1}:%L - %m%n', 
     lazy => 1
 );
 
-has 'use_extented_layout' => ( is => 'rw',  isa => 'Bool',  default => 0);
+has 'use_extended_layout' => ( is => 'rw',  isa => 'Bool',  default => 0);
 
 has 'output_logger' => (
     is         => 'rw',
@@ -40,6 +41,15 @@ has 'logger' => (
     }
 );
 
+
+has 'log_level' => (
+    is            => 'rw',
+    isa           => enum(qw/debug error fatal info warn/),
+    lazy          => 1,
+    default       => 'error',
+    documentation => 'Log level of the logger,  default is error'
+);
+
 sub _build_output_logger {
     my ($self) = @_;
 
@@ -55,7 +65,8 @@ sub _build_output_logger {
 
     my $log = Log::Log4perl->get_logger(__PACKAGE__);
     $log->add_appender($appender);
-    $log->level($DEBUG);
+    my $numval = Log::Log4perl::Level::to_priority( uc $self->log_level );
+    $log->level($numval);
     return $log;
 }
 
