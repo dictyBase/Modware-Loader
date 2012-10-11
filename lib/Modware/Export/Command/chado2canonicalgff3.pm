@@ -92,9 +92,9 @@ sub execute {
                 sub { $handler->read_reference_without_mito(@_) } );
     }
     if ( $self->only_mitochondrial ) {
-        $self->event(
+        $event->on(
             'read_reference' => sub {
-                $handler->read_mito_reference_feature(@_);
+                $handler->read_mito_reference(@_);
             }
         );
     }
