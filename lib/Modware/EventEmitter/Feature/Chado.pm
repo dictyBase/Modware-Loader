@@ -41,8 +41,8 @@ sub process {
     $self->emit('write_meta_header');
     $self->emit( 'read_organism' => $self->resource );
 
+    $self->emit( 'read_reference' => $self->response );
     my $response = $self->response;
-    $self->emit( 'read_reference' => $response );
 
 SEQUENCE_REGION:
     while ( my $row = $response->next ) {
