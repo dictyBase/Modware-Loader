@@ -8,6 +8,7 @@ use MooseX::Event '-alias' => {
     on              => 'subscribe',
     remove_listener => 'unsubscribe'
 };
+use Modware::Load::Types qw/DbObject/;
 with 'Throwable';
 with 'Modware::Role::Command::WithOutputLogger';
 
@@ -21,7 +22,7 @@ has_events qw/read_feature read_subfeature write_feature write_subfeature/;
 has 'resource' => ( is => 'rw', isa => 'Bio::Chado::Schema', required => 1 );
 has 'response' => (
     is        => 'rw',
-    isa       => 'DBIx::Class::ResultSet',
+    isa       => DbObject, 
     predicate => 'has_response',
     traits => [qw/ClearAfterAccess/]
 );
