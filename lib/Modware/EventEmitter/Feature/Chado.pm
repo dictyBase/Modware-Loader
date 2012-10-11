@@ -16,7 +16,7 @@ with 'Modware::Role::Command::WithOutputLogger';
 #
 
 has_events qw/write_meta_header write_header read_organism write_sequence_region/;
-has_events qw/read_reference read_seq_id/;
+has_events qw/read_reference read_seq_id write_reference/;
 has_events qw/read_feature read_subfeature write_feature write_subfeature/;
 
 has 'resource' => ( is => 'rw', isa => 'Bio::Chado::Schema', required => 1 );
