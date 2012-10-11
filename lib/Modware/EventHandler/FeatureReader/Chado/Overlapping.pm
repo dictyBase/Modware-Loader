@@ -10,13 +10,6 @@ with 'Modware::Role::EventHandler::Genome::Chado';
 #
 
 has 'feature_type' => ( is => 'rw', isa => 'Str', required => 1 );
-has 'subfeature_type' => (
-    is        => 'rw',
-    isa       => 'Str',
-    default => 'match_part', 
-    lazy => 1, 
-    predicate => 'has_subfeature_type'
-);
 
 sub read_feature {
     my ( $self, $event, $dbrow ) = @_;
@@ -38,10 +31,6 @@ sub read_subfeature {
         { 'type.name' => 'part_of' },
         { join        => 'type' }
     )->search_related('subject');
-    if ( $self->has_subfeature_type ) {
-        $rs = $rs->search( { 'type_2.name' => $self->subfeature_type },
-            { join => 'type' } );
-    }
     $event->response($rs);
 }
 
