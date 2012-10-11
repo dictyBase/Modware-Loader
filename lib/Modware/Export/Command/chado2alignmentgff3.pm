@@ -6,7 +6,7 @@ use namespace::autoclean;
 use Moose;
 use Modware::EventEmitter::Feature::Chado;
 use Modware::EventHandler::FeatureReader::Chado::Overlapping;
-use Modware::EventHandler::FeatureWriter::GFF3::Canonical;
+use Modware::EventHandler::FeatureWriter::GFF3::Alignment;
 extends qw/Modware::Export::Chado/;
 
 # Module implementation
@@ -72,7 +72,7 @@ sub execute {
         my $read  = 'read_' . $ftype;
         my $write = 'write_' . $ftype;
         $event->on( $read  => sub { $read_handler->$read(@_) } );
-        $event->on( $write => sub { $read_handler->$write(@_) } );
+        $event->on( $write => sub { $write_handler->$write(@_) } );
     }
     $event->process;
 }
