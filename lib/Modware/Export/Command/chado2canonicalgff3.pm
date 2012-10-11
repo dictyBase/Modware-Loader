@@ -12,6 +12,8 @@ extends qw/Modware::Export::Chado/;
 # Module implementation
 #
 
+has '+input' => (traits => [qw/NoGetopt/]);
+
 has 'write_sequence' => (
     is      => 'rw',
     isa     => 'Bool',
