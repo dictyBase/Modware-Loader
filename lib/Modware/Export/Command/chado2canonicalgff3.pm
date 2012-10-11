@@ -61,11 +61,10 @@ sub execute {
 
     my $handler
         = Modware::EventHandler::FeatureReader::Chado::Canonical->new(
-        reference_type => $self->reference_type
-        );
-	$handler->species($self->species) if $self->species;
-	$handler->genus($self->genus) if $self->genus;
-	$handler->common_name($self->organism) if $self->organism;
+        reference_type => $self->reference_type );
+    $handler->species( $self->species )      if $self->species;
+    $handler->genus( $self->genus )          if $self->genus;
+    $handler->common_name( $self->organism ) if $self->organism;
 
     my $write_handler
         = Modware::EventHandler::FeatureWriter::GFF3::Canonical->new(
@@ -87,6 +86,10 @@ sub execute {
     $event->on( 'write_reference_sequence' =>
             sub { $write_handler->write_reference_sequence(@_) } );
 
+    if ( $self->feature_name ) {
+        $event->on( 'read_seq_id' => sub { $handler->read_seq_id_by_name(@_) }
+        );
+    }
     if ( $self->exclude_mitochondrial ) {
         $event->on( 'read_reference' =>
                 sub { $handler->read_reference_without_mito(@_) } );
@@ -109,5 +112,5 @@ __END__
 
 =head1 NAME
 
-Modware::Export::Command::chado2canonicalgff3 -  Export GFF3 of canonical gene models from chado database
+Modware::Export::Command::chado2canonicalgff3 -  Export canonical gene models from chado database in GFF3 format
 

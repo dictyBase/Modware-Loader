@@ -33,7 +33,7 @@ has 'reference_type' => (
 
 has 'feature_type' => (
     is            => 'rw',
-    isa           => 'Str', 
+    isa           => 'Str',
     required      => 1,
     documentation => 'SO type of alignment features to be exported'
 );
@@ -59,6 +59,11 @@ sub execute {
 
     $event->on( 'read_reference' => sub { $read_handler->read_reference(@_) }
     );
+    $event->on( 'read_seq_id' => sub { $read_handler->read_seq_id(@_) } );
+    $event->on(
+        'read_seq_id' => sub { $read_handler->read_seq_id_by_name(@_) } )
+        if $self->feature_name;
+
     $event->on( 'read_organism' => sub { $read_handler->read_organism(@_) } );
     $event->on( 'write_header'  => sub { $write_handler->write_header(@_) } );
     for my $ftype (qw/feature subfeature/) {
@@ -78,6 +83,5 @@ __END__
 
 =head1 NAME
 
-Modware::Export::Command::chado2alignmentgff3 -  Export alignment from chado database in
-GFF3 format
+Modware::Export::Command::chado2alignmentgff3 -  Export alignment from chado database in GFF3 format
 
