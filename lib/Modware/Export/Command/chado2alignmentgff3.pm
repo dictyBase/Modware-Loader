@@ -12,7 +12,14 @@ extends qw/Modware::Export::Chado/;
 # Module implementation
 #
 
-has '+input' => (traits => [qw/NoGetopt/]);
+has '+input' => ( traits => [qw/NoGetopt/] );
+has 'write_sequence_region' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'write sequence region header in GFF3 output,  default if off'
+);
 
 has 'feature_name' => (
     is      => 'rw',
@@ -42,7 +49,6 @@ has 'feature_type' => (
 
 sub execute {
     my ($self) = @_;
-    my $logger = $self->logger;
 
     my $read_handler
         = Modware::EventHandler::FeatureReader::Chado::Overlapping->new(
@@ -65,6 +71,9 @@ sub execute {
     $event->on(
         'read_seq_id' => sub { $read_handler->read_seq_id_by_name(@_) } )
         if $self->feature_name;
+    $event->on( 'write_sequence_region' =>
+            sub { $write_handler->write_sequence_region(@_) } )
+        if $self->write_sequence_region;
 
     $event->on( 'read_organism' => sub { $read_handler->read_organism(@_) } );
     $event->on( 'write_header'  => sub { $write_handler->write_header(@_) } );
@@ -74,7 +83,7 @@ sub execute {
         $event->on( $read  => sub { $read_handler->$read(@_) } );
         $event->on( $write => sub { $write_handler->$write(@_) } );
     }
-    $event->process;
+    $event->process($self->log_level);
 }
 
 __PACKAGE__->meta->make_immutable;
