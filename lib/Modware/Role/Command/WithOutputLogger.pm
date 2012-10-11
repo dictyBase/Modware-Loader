@@ -9,6 +9,7 @@ use Log::Log4perl::Level;
 use Log::Log4perl::Layout::SimpleLayout;
 use Log::Log4perl::Layout::PatternLayout;
 use Log::Log4perl::Level;
+use Moose::Util::TypeConstraints;
 
 # Module implementation
 #
@@ -40,7 +41,6 @@ has 'logger' => (
     	return $self->output_logger;
     }
 );
-
 
 has 'log_level' => (
     is            => 'rw',
