@@ -32,7 +32,7 @@ sub write_feature {
         $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
     }
     else {
-        $self->logger->log(
+        $event->output_logger->log(
             "No feature location relative to genome is found: Skipped from output"
         );
         return;
@@ -69,9 +69,9 @@ sub write_feature {
         }
     }
     else {
-        $event->logger->warn(
+        $event->output_logger->warn(
             "No feature location relative to itself(query) is found");
-        $event->logger->warn("Skipped target attribute from output");
+        $event->output_logger->warn("Skipped target attribute from output");
         $output->print( gff3_format_feature($hashref) );
         return;
 
@@ -88,12 +88,11 @@ sub write_subfeature {
     my ( $self, $event, $seq_id, $parent, $dbrow ) = @_;
     my $output    = $self->output;
     my $source    = $self->gff_source($parent) || undef;
-    my $type      = $dbrow->type->name;
     my $parent_id = $self->_chado_feature_id($parent);
 
     my $hashref;
     $hashref->{seq_id} = $seq_id;
-    $hashref->{type}   = $type;
+    $hashref->{type}   = 'match_part';
     $hashref->{source} = $source;
 
     my $floc_rs = $dbrow->featureloc_features( { rank => 0 },
@@ -105,7 +104,7 @@ sub write_subfeature {
         $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
     }
     else {
-        $event->logger->warn(
+        $event->output_logger->warn(
             "No feature location relative to genome is found: Skipped from output"
         );
         return;
@@ -124,7 +123,7 @@ sub write_subfeature {
         }
     }
     else {
-        $event->logger->warn(
+        $event->output_logger->warn(
             "No feature location relative to itself(query) is found");
         $output->print( gff3_format_feature($hashref) );
         return;
