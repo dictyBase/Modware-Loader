@@ -45,7 +45,8 @@ sub execute {
     my $read_handler
         = Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty->new(
         reference_type => 'chromosome',
-        common_name    => 'dicty'
+        common_name    => 'dicty', 
+        source => 'Sequencing Center'
         );
 
     my $write_handler

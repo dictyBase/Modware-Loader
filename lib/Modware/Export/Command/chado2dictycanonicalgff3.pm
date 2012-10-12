@@ -74,7 +74,7 @@ sub execute {
     if ( $self->reference_id ) {
         $read_handler->reference_id( $self->reference_id );
         $event->on( 'read_reference' =>
-                sub { $read_handler->read_referernce_by_id(@_) } );
+                sub { $read_handler->read_reference_by_id(@_) } );
     }
 
     $event->on( 'read_organism' => sub { $read_handler->read_organism(@_) } );
