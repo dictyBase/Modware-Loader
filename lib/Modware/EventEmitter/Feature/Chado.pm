@@ -9,8 +9,7 @@ use MooseX::Event '-alias' => {
     remove_listener => 'unsubscribe'
 };
 use Modware::Load::Types qw/DbObject/;
-with 'Throwable';
-with 'Modware::Role::Command::WithOutputLogger';
+with 'Modware::Role::Loggable';
 
 # Module implementation
 #
