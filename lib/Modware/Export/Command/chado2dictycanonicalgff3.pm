@@ -52,6 +52,15 @@ sub execute {
         = Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty->new(
         output => $self->output_handler );
 
+    my $source = $self->schema->source('Sequence::Feature');
+    $source->remove_column('is_obsolete');
+    $source->add_column(
+        'is_deleted' => {
+            data_type     => 'boolean',
+            is_nullable   => 0,
+            default_value => 'false'
+        }
+    );
     my $event = Modware::EventEmitter::Feature::Chado::Canonical->new(
         resource => $self->schema );
 
@@ -61,10 +70,11 @@ sub execute {
         $event->on( $read_api  => sub { $read_handler->$read_api(@_) } );
         $event->on( $write_api => sub { $write_handler->$write_api(@_) } );
     }
-    
-    if ($self->reference_id) {
-    	$read_handler->reference_id($self->reference_id);
-    	$event->on('read_reference' => sub {$read_handler->read_referernce_by_id(@_)});
+
+    if ( $self->reference_id ) {
+        $read_handler->reference_id( $self->reference_id );
+        $event->on( 'read_reference' =>
+                sub { $read_handler->read_referernce_by_id(@_) } );
     }
 
     $event->on( 'read_organism' => sub { $read_handler->read_organism(@_) } );
@@ -75,13 +85,11 @@ sub execute {
             sub { $write_handler->write_reference_sequence(@_) } );
 
     if ( $self->feature_name ) {
-        $event->on( 'read_seq_id' => sub { $read_handler->read_seq_id_by_name(@_) }
-        );
+        $event->on(
+            'read_seq_id' => sub { $read_handler->read_seq_id_by_name(@_) } );
     }
-    $event->process($self->log_level);
+    $event->process( $self->log_level );
 }
-
-
 
 1;    # Magic true value required at end of module
 
