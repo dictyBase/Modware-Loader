@@ -1,6 +1,5 @@
 package Modware::EventHandler::FeatureReader::Chado::Canonical;
 
-
 # Other modules:
 use namespace::autoclean;
 use Moose;
@@ -9,7 +8,6 @@ with 'Modware::Role::EventHandler::Genome::Chado';
 
 # Module implementation
 #
-
 
 sub read_contig {
     my ( $self, $event, $dbrow ) = @_;
@@ -31,6 +29,7 @@ sub read_gene {
 
 sub read_transcript {
     my ( $self, $event, $dbrow ) = @_;
+
     my $rs = $self->_children_dbrows( $dbrow, 'part_of', '%RNA' );
     $event->response($rs);
 }
@@ -48,7 +47,6 @@ sub read_polypeptide {
 sub read_cds {
     my ( $self, $event, $dbrow ) = @_;
 }
-
 
 1;    # Magic true value required at end of module
 

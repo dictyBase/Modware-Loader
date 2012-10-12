@@ -27,30 +27,38 @@ has 'response' => (
     is        => 'rw',
     isa       => 'Object',
     predicate => 'has_response',
-    traits => [qw/ClearAfterAccess/]
+    traits    => [qw/ClearAfterAccess/]
 
 );
 
 has 'response_id' => (
-    is        => 'rw',
-    isa       => 'Str',
+    is     => 'rw',
+    isa    => 'Str',
     traits => [qw/ClearAfterAccess/]
 );
 
 sub process {
-    my ($self) = @_;
-    my $logger = $self->output_logger;
+    my ( $self, $log_level ) = @_;
+    $self->log_level($log_level) if $log_level;
+    $self->use_extended_layout(1);
+    my $logger = $self->logger;
 
     $self->emit('write_header');
     $self->emit('write_meta_header');
+
+    $logger->debug('read_organism event');
     $self->emit( 'read_organism' => $self->resource );
 
+    $logger->debug('read_reference event');
     $self->emit( 'read_reference' => $self->response );
     my $response = $self->response;
 
+    $logger->debug('going to loop through each reference');
 SEQUENCE_REGION:
     while ( my $row = $response->next ) {
+        $logger->debug('read_seq_id event');
         $self->emit( 'read_seq_id' => $row );
+        $logger->debug('write_sequence_region event');
         $self->emit(
             'write_sequence_region' => ( $self->response_id, $row ) );
     }
@@ -58,43 +66,59 @@ SEQUENCE_REGION:
     $response->reset;
 REFERENCE:
     while ( my $row = $response->next ) {
+        $logger->debug('read_seq_id event');
         $self->emit( 'read_seq_id' => $row );
+
         my $ref_id = $self->response_id;
+        $logger->debug('write_reference event');
         $self->emit( 'write_reference' => ( $ref_id, $row ) );
 
+        $logger->debug('read_contig event');
         $self->emit( 'read_contig' => $row );
         if ( $self->has_response ) {
             my $rs = $self->response;
         CONTIG:
             while ( my $crow = $rs->next ) {
+                $logger->debug('write_contig event');
                 $self->emit( write_contig => ( $ref_id, $crow ) );
             }
         }
 
+        $logger->debug('read_gene event');
         $self->emit( 'read_gene' => $row );
         if ( $self->has_response ) {
             my $rs = $self->response;
         GENE:
             while ( my $grow = $rs->next ) {
+                $logger->debug('write_gene event');
                 $self->emit( 'write_gene' => ( $ref_id, $grow ) );
+
+                $logger->debug('before read_transcript event');
                 $self->emit( 'read_transcript' => $grow );
+                $logger->debug('after read_transcript event');
                 if ( $self->has_response ) {
                     my $rs2 = $self->response;
                 TRANSCRIPT:
+                    $logger->debug('before loop write_transcript event');
                     while ( my $trow = $rs2->next ) {
+                        $logger->debug('before write_transcript event');
                         $self->emit(
                             'write_transcript' => ( $ref_id, $grow, $trow ) );
+                        $logger->debug('after write_transcript event');
 
                         $self->emit( 'read_exon' => $trow );
+                        $logger->debug('read_exon event');
                         if ( $self->has_response ) {
                             my $rs3 = $self->response;
                         EXON:
                             while ( my $erow = $rs3->next ) {
+                                $logger->debug('write_exon event');
                                 $self->emit(
                                     write_exon => ( $ref_id, $trow, $erow ) );
                             }
                         }
 
+                        $logger->debug('read_cds event');
                         $self->emit( 'read_cds' => $trow );
                         if ( $self->has_response ) {
                             my $rs4 = $self->response;
@@ -106,6 +130,7 @@ REFERENCE:
                             }
                         }
 
+                        $logger->debug('read_polypeptide event');
                         $self->emit( 'read_polypeptide' => $trow );
                         if ( $self->has_response ) {
                             my $rs5 = $self->response;
@@ -125,13 +150,15 @@ REFERENCE:
     while ( my $row = $response->next ) {
         $self->emit( 'read_seq_id' => $row );
         my $ref_id = $self->response_id;
-        $self->emit( 'write_reference_sequence' => ($ref_id ,$row) );
+        $logger->debug('write_sequence event');
+        $self->emit( 'write_reference_sequence' => ( $ref_id, $row ) );
     }
+    $logger->debug('done firing events');
 }
 
 sub throw {
-	my ($self, $msg) = @_;
-	$self->output_logger->logcroak($msg);
+    my ( $self, $msg ) = @_;
+    $self->output_logger->logcroak($msg);
 }
 
 1;    # Magic true value required at end of module
@@ -221,7 +248,7 @@ classes provided by the module.
 =head1 DIAGNOSTICS
 
 =for author to fill in:
-List every single error and warning message that the module can
+List every single error and debuging message that the module can
 generate (even the ones that will "never happen"), with a full
 explanation of each problem, one or more likely causes, and any
 suggested remedies.

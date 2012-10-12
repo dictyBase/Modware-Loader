@@ -39,7 +39,7 @@ sub process {
 
     $self->log_level($log_level) if $log_level;
     $self->use_extended_layout(1);
-    my $logger = $self->logger;
+    my $logger = $self->output_logger;
 
     $self->emit('write_header');
     $self->emit('write_meta_header');

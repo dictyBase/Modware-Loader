@@ -9,10 +9,10 @@ extends 'Modware::EventHandler::FeatureReader::Chado::Canonical';
 #
 
 has 'source' => (
-	is => 'rw', 
-	isa => 'Str', 
-	lazy => 1, 
-	default => 'dictyBase Curator'
+    is      => 'rw',
+    isa     => 'Str',
+    lazy    => 1,
+    default => 'dictyBase Curator'
 );
 
 sub read_reference_by_id {
@@ -60,7 +60,7 @@ sub read_transcript {
         )->search_related(
         'subject',
         { 'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ] },
-        { join          => 'type' }
+        { join          => 'type'}
         );
 
     my $rs;
