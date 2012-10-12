@@ -8,6 +8,13 @@ extends 'Modware::EventHandler::FeatureReader::Chado::Canonical';
 # Module implementation
 #
 
+has 'source' => (
+	is => 'rw', 
+	isa => 'Str', 
+	lazy => 1, 
+	default => 'dictyBase Curator'
+);
+
 sub read_reference_by_id {
     my ( $self, $event, $dbrow ) = @_;
     my $reference_rs = $dbrow->search_related(
@@ -63,7 +70,7 @@ sub read_transcript {
     else {
         $rs = $trans_rs->search(
             {   'db.name'          => 'GFF_source',
-                'dbxref.accession' => 'dictyBase Curator'
+                'dbxref.accession' => $self->source
             },
             { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
         );
