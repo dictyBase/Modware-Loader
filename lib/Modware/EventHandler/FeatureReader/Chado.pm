@@ -13,6 +13,7 @@ has 'reference_type' => (
     lazy    => 1
 );
 
+has 'reference_id' => ( is => 'rw', isa => 'Str' );
 
 sub read_seq_id_by_name {
     my ( $self, $event, $dbrow ) = @_;
@@ -20,6 +21,30 @@ sub read_seq_id_by_name {
         $event->response_id($name);
         return;
     }
+}
+
+sub read_reference_by_id {
+    my ( $self, $event, $dbrow ) = @_;
+    my $reference_rs = $dbrow->search_related(
+        'features',
+        {   -or => [
+                'me.name'          => $self->reference_id,
+                'me.uniquename'    => $self->reference_id,
+                'dbxref.accession' => $self->reference_id
+            ],
+            'type.name' => $self->reference_type
+        },
+        {   join => [qw/type dbxref/],
+            '+select' =>
+                [ { LENGTH => 'me.residues', -as => 'sequence_length' } ],
+            cache => 1
+        }
+    );
+    if ( !$reference_rs->count ) {
+        $event->throw( "no reference feature(s) found for organism ",
+            $dbrow->common_name );
+    }
+    $event->response($reference_rs);
 }
 
 sub read_reference {
@@ -78,8 +103,7 @@ sub read_reference_without_mito {
         {   msg => "no reference feature found for organism "
                 . $dbrow->common_name
         }
-    )
-    if !$nuclear_rs->count;
+    ) if !$nuclear_rs->count;
 
     $event->response($nuclear_rs);
 
@@ -135,7 +159,6 @@ sub _children_dbrows {
         { join          => 'type' }
         );
 }
-
 
 1;    # Magic true value required at end of module
 
