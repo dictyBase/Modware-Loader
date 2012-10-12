@@ -1,12 +1,36 @@
 package Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
 
-    # Other modules:
+# Other modules:
 use namespace::autoclean;
 use Moose;
 extends 'Modware::EventHandler::FeatureReader::Chado::Canonical';
 
 # Module implementation
 #
+
+sub read_reference_by_id {
+    my ( $self, $event, $dbrow ) = @_;
+    my $reference_rs = $dbrow->search_related(
+        'features',
+        {   -or => [
+                'me.name'          => $self->reference_id,
+                'me.uniquename'    => $self->reference_id,
+                'dbxref.accession' => $self->reference_id
+            ],
+            'type.name' => $self->reference_type
+        },
+        {   join => [qw/type dbxref/],
+            '+select' =>
+                [ { LENGTH => 'me.residues', -as => 'sequence_length' } ],
+            cache => 1
+        }
+    );
+    if ( !$reference_rs->count ) {
+        $event->throw( "no reference feature(s) found for organism ",
+            $dbrow->common_name );
+    }
+    $event->response($reference_rs);
+}
 
 sub read_gene {
     my ( $self, $event, $dbrow ) = @_;
@@ -49,7 +73,7 @@ sub read_transcript {
 
 sub read_exon {
     my ( $self, $event, $dbrow ) = @_;
-    $event->response(
+    my $rs = 
         $dbrow->search_related(
             'feature_relationship_objects',
             { 'type.name' => 'part_of' },
@@ -58,8 +82,8 @@ sub read_exon {
             'subject',
             { 'type_2.name' => [qw/exon pseudogenic_exon/] },
             { join          => 'type' }
-            )
-    );
+            );
+            $event->response($rs);
 }
 
 1;    # Magic true value required at end of module
