@@ -1,48 +1,85 @@
-package Modware::EventHandler::FeatureWriter::GFF3::Canonical;
+package Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
 
 # Other modules:
-use namespace::autoclean;
+use namespace;
 use Moose;
-use Bio::GFF3::LowLevel qw/gff3_format_feature/;
-extends 'Modware::EventHandler::FeatureWriter::GFF3';
+extends 'Modware::EventHandler::FeatureWriter::GFF3::Canonical';
 
 # Module implementation
 #
+sub write_gene {
+   return;
+}
 
-sub write_reference {
-    my ( $self, $event, $seq_id, $dbrow ) = @_;
-    my $output = $self->output;
+sub write_transcript {
+    my ( $self, $event,  $seq_id,  $parent_dbrow, $dbrow ) = @_;
+    my $gene_id = $self->_chado_feature_id($parent_dbrow);
+    if ( $dbrow->type->name eq 'pseudogene' ) {
 
-    my $start = 1;
-
-    my $hashref;
-    my $end
-        = $dbrow->seqlen
-        ? $dbrow->seqlen
-        : $dbrow->get_column('sequence_length');
-    if ( !$end ) {
-
-        # unable to figure out end location of reference feature,  abort
-        $event->logger->warn(
-            "$seq_id has no length defined:skipped from export");
-        return;
+        # dicty pseudogene gene model have to be SO complaint
+        # it writes gene and transcript feature
+        my $pseudogene_hash
+            = $self->pseudorow2gff3hash( $parent_dbrow, $seq_id, '',
+            'pseudogene' );
+        my $trans_hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $gene_id,
+            'pseudogenic_transcript' );
+        $output->print( gff3_format_feature($pseudogene_hash) );
+        $output->print( gff3_format_feature($trans_hash) );
     }
+    else {
 
-    $hashref->{type}   = $dbrow->type->name;
-    $hashref->{score}  = undef;
+        #write the cached gene
+        my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $seq_id );
+        return if not defined $gene_hash;
+        $output->print( gff3_format_feature($gene_hash) );
+
+        #transcript
+        my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
+        $output->print( gff3_format_feature($trans_hash) );
+    }
+}
+
+sub write_exon {
+    my ( $self, $event,  $seq_id,  $parent_dbrow, $dbrow ) = @_;
+    my $rs = $self->schema->resultset('Sequence::Feature')
+        ->search( { 'dbxref.accession' => $trans_id }, { join => 'dbxref' } );
+
+    my $hash;
+    if ( $rs->first->type->name eq 'pseudogene' ) {
+        $hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $trans_id,
+            'pseudogenic_exon' );
+    }
+    else {
+        $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $trans_id );
+    }
+    $output->print( gff3_format_feature($hash) );
+}
+
+sub pseudorow2gff3hash {
+    my ( $self, $dbrow, $seq_id, $parent_id, $type ) = @_;
+    my $hashref;
+    $hashref->{type}   = $type;
     $hashref->{seq_id} = $seq_id;
-    $hashref->{start}  = 1;
-    $hashref->{end}    = $end;
-    $hashref->{strand} = undef;
+    $hashref->{score}  = undef;
     $hashref->{phase}  = undef;
 
+    my $floc_row = $dbrow->featureloc_features->first;
+    $hashref->{start} = $floc_row->fmin + 1;
+    $hashref->{end}   = $floc_row->fmax;
+    if ( my $strand = $floc_row->strand ) {
+        $hashref->{strand} = $strand == -1 ? '-' : '+';
+    }
+    else {
+        $hashref->{strand} = undef;
+    }
+
+    # source
     my $dbxref_rs
         = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
         'dbxref',
         { 'db.name' => 'GFF_source' },
         { join      => 'db' }
         );
-
     if ( my $row = $dbxref_rs->first ) {
         $hashref->{source} = $row->accession;
     }
@@ -55,54 +92,19 @@ sub write_reference {
     if ( my $name = $dbrow->name ) {
         $hashref->{attributes}->{Name} = [$name];
     }
-
+    $hashref->{attributes}->{Parent} = [$parent_id] if $parent_id;
     my $dbxrefs;
     for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
         $dbrow->secondary_dbxrefs )
     {
-        push @$dbxrefs, $xref_row->db->name . ':' . $xref_row->accession;
+        my $dbname = $xref_row->db->name;
+        $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
+        push @$dbxrefs, $dbname . ':' . $xref_row->accession;
     }
     $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
-    $output->print( gff3_format_feature($hashref) );
+    return $hashref;
 }
 
-sub write_contig {
-    my ( $self, $event, $seq_id, $dbrow ) = @_;
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
-    $self->output->print( gff3_format_feature($hash) );
-}
-
-sub write_gene {
-    my ( $self, $event, $seq_id, $dbrow ) = @_;
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
-    $self->output->print( gff3_format_feature($hash) );
-}
-
-sub write_transcript {
-    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
-    my $gene_id = $self->_chado_feature_id($parent_dbrow);
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
-    $self->output->print( gff3_format_feature($hash) );
-}
-
-sub write_polypeptide {
-}
-
-sub write_cds {
-}
-
-sub write_reference_sequence {
-    my ( $self, $event, $seq_id, $dbrow ) = @_;
-    ( my $seq = $dbrow->residues ) =~ s/(\S{1,60})/$1\n/g;
-    $self->output->print("###\n##FASTA\n>$seq_id\n$seq\n");
-}
-
-sub write_exon {
-    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
-    my $trans_id = $self->_chado_feature_id($parent_dbrow);
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $trans_id );
-    $self->output->print( gff3_format_feature($hash) );
-}
 
 __PACKAGE__->meta->make_immutable;
 

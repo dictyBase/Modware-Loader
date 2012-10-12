@@ -3,9 +3,11 @@ package Modware::Export::Command::chado2dictygff3;
 use strict;
 use namespace::autoclean;
 use Moose;
-use Bio::GFF3::LowLevel qw/gff3_format_feature/;
+use Modware::EventEmitter::Feature::Chado::Canonical;
+use Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
+use Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
 
-extends qw/Modware::Export::Command::chado2canonicalgff3/;
+extends qw/Modware::Export::Chado/;
 
 # Other modules:
 
@@ -13,178 +15,73 @@ extends qw/Modware::Export::Command::chado2canonicalgff3/;
 #
 
 # this is specific for dicty,  no need to expose them in command line
-has '+species'          => ( traits  => [qw/NoGetopt/] );
-has '+genus'            => ( traits  => [qw/NoGetopt/] );
-has '+organism'         => ( default => 'dicty', traits => [qw/NoGetopt/] );
-has '+exclude_mitochondrial' => ( traits        => [qw/NoGetopt/] );
-has '+only_mitochondrial'    => ( traits        => [qw/NoGetopt/] );
-has 'reference_id'           => (
+has '+species'  => ( traits  => [qw/NoGetopt/] );
+has '+genus'    => ( traits  => [qw/NoGetopt/] );
+has '+organism' => ( default => 'dicty', traits => [qw/NoGetopt/] );
+has '+input'    => ( traits  => [qw/NoGetopt/] );
+has 'reference_id' => (
     is  => 'rw',
     isa => 'Str',
     'documentation' =>
         'reference feature name/ID/accession number. In this case,  only all of its associated features will be dumped'
 );
+has 'write_sequence' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 1,
+    documentation =>
+        'To write the fasta sequence(s) of reference feature(s),  default is true'
+);
+has 'feature_name' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'Output feature name instead of sequence id in the seq_id field,  default is off.'
+);
 
-
-sub read_single_reference_feature {
-    my ( $self, $dbrow, $type ) = @_;
-    return $dbrow->search_related(
-        'features',
-        {   -or => [
-                'me.name'          => $self->reference_id,
-                'me.uniquename'    => $self->reference_id,
-                'dbxref.accession' => $self->reference_id
-            ],
-            'type.name' => $type
-        },
-        {   join => [qw/type dbxref/],
-            '+select' =>
-                [ { LENGTH => 'me.residues', -as => 'sequence_length' } ],
-            cache => 1
-        }
-    );
-}
-
-sub read_gene_feature {
-    my ( $self, $dbrow ) = @_;
-    return $dbrow->search_related( 'featureloc_srcfeatures', {} )
-        ->search_related(
-        'feature',
-        { 'type.name' => 'gene', 'feature.is_deleted' => 0 },
-        { join        => 'type' }
+sub execute {
+    my ($self) = @_;
+    my $read_handler
+        = Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty->new(
+        reference_type => 'chromosome',
+        common_name    => 'dicty'
         );
-}
 
-sub write_gene_feature {
-    my ( $self, $dbrow ) = @_;
-    $self->gene_row($dbrow);
-}
+    my $write_handler
+        = Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty->new(
+        output => $self->output_handler );
 
-sub read_transcript_feature {
-    my ( $self, $gene_dbrow ) = @_;
-    my $trans_rs = $gene_dbrow->search_related(
-        'feature_relationship_objects',
-        { 'type.name' => 'part_of' },
-        { join        => 'type' }
-        )->search_related(
-        'subject',
-        { 'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ] },
-        { join          => 'type' }
+    my $event = Modware::EventEmitter::Feature::Chado::Canonical->new(
+        resource => $self->schema );
+
+    for my $name (qw/reference seq_id contig gene transcript exon/) {
+        my $read_api  = 'read_' . $name;
+        my $write_api = 'write_' . $name;
+        $event->on( $read_api  => sub { $read_handler->$read_api(@_) } );
+        $event->on( $write_api => sub { $write_handler->$write_api(@_) } );
+    }
+    
+    if ($self->reference_id) {
+    	$read_handler->reference_id($self->reference_id);
+    	$event->on('read_reference' => sub {$read_handler->read_referernce_by_id(@_)});
+    }
+
+    $event->on( 'read_organism' => sub { $read_handler->read_organism(@_) } );
+    $event->on( 'write_header'  => sub { $write_handler->write_header(@_) } );
+    $event->on( 'write_sequence_region' =>
+            sub { $write_handler->write_sequence_region(@_) } );
+    $event->on( 'write_reference_sequence' =>
+            sub { $write_handler->write_reference_sequence(@_) } );
+
+    if ( $self->feature_name ) {
+        $event->on( 'read_seq_id' => sub { $read_handler->read_seq_id_by_name(@_) }
         );
-    return $trans_rs->all if $trans_rs->count == 1;
-    return $trans_rs->search(
-        {   'db.name'          => 'GFF_source',
-            'dbxref.accession' => 'dictyBase Curator'
-        },
-        { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
-    );
+    }
+    $event->process($self->log_level);
 }
 
-sub write_transcript_feature {
-    my ( $self, $dbrow, $seq_id, $gene_id, $output ) = @_;
-    if ( $dbrow->type->name eq 'pseudogene' ) {
 
-        # dicty pseudogene gene model have to be SO complaint
-        # it writes gene and transcript feature
-        my $pseudogene_hash
-            = $self->pseudorow2gff3hash( $self->gene_row, $seq_id, '',
-            'pseudogene' );
-        my $trans_hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $gene_id,
-            'pseudogenic_transcript' );
-        $output->print( gff3_format_feature($pseudogene_hash) );
-        $output->print( gff3_format_feature($trans_hash) );
-    }
-    else {
-
-        #write the cached gene
-        my $gene_hash = $self->_dbrow2gff3hash( $self->gene_row, $seq_id );
-        return if not defined $gene_hash;
-        $output->print( gff3_format_feature($gene_hash) );
-
-        #transcript
-        my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
-        $output->print( gff3_format_feature($trans_hash) );
-    }
-}
-
-sub write_exon_feature {
-    my ( $self, $dbrow, $seq_id, $trans_id, $output ) = @_;
-    my $rs = $self->schema->resultset('Sequence::Feature')
-        ->search( { 'dbxref.accession' => $trans_id }, { join => 'dbxref' } );
-
-    my $hash;
-    if ( $rs->first->type->name eq 'pseudogene' ) {
-        $hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $trans_id,
-            'pseudogenic_exon' );
-    }
-    else {
-        $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $trans_id );
-    }
-    $output->print( gff3_format_feature($hash) );
-}
-
-sub pseudorow2gff3hash {
-    my ( $self, $dbrow, $seq_id, $parent_id, $type ) = @_;
-    my $hashref;
-    $hashref->{type}   = $type;
-    $hashref->{seq_id} = $seq_id;
-    $hashref->{score}  = undef;
-    $hashref->{phase}  = undef;
-
-    my $floc_row = $dbrow->featureloc_features->first;
-    $hashref->{start} = $floc_row->fmin + 1;
-    $hashref->{end}   = $floc_row->fmax;
-    if ( my $strand = $floc_row->strand ) {
-        $hashref->{strand} = $strand == -1 ? '-' : '+';
-    }
-    else {
-        $hashref->{strand} = undef;
-    }
-
-    # source
-    my $dbxref_rs
-        = $dbrow->search_related( 'feature_dbxrefs', {} )->search_related(
-        'dbxref',
-        { 'db.name' => 'GFF_source' },
-        { join      => 'db' }
-        );
-    if ( my $row = $dbxref_rs->first ) {
-        $hashref->{source} = $row->accession;
-    }
-    else {
-        $hashref->{source} = undef;
-    }
-
-    ## -- attributes
-    $hashref->{attributes}->{ID} = [ $self->_chado_feature_id($dbrow) ];
-    if ( my $name = $dbrow->name ) {
-        $hashref->{attributes}->{Name} = [$name];
-    }
-    $hashref->{attributes}->{Parent} = [$parent_id] if $parent_id;
-    my $dbxrefs;
-    for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
-        $dbrow->secondary_dbxrefs )
-    {
-        my $dbname = $xref_row->db->name;
-        $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
-        push @$dbxrefs, $dbname . ':' . $xref_row->accession;
-    }
-    $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
-    return $hashref;
-}
-
-sub read_exon_feature {
-    my ( $self, $dbrow ) = @_;
-    return $dbrow->search_related(
-        'feature_relationship_objects',
-        { 'type.name' => 'part_of' },
-        { join        => 'type' }
-        )->search_related(
-        'subject',
-        { 'type_2.name' => [qw/exon pseudogenic_exon/] },
-        { join          => 'type' }
-        );
-}
 
 1;    # Magic true value required at end of module
 
