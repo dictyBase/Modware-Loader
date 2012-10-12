@@ -1,4 +1,4 @@
-package Modware::Export::Command::chado2dictygff3;
+package Modware::Export::Command::chado2dictycanonicalgff3;
 
 use strict;
 use namespace::autoclean;
@@ -89,6 +89,6 @@ __END__
 
 =head1 NAME
 
-Modware::Export::Command::chado2dictygff3 - Export GFF3 for Dictyostelium discoideum
+Modware::Export::Command::chado2dictygff3 - Export GFF3 with canonical gene model for Dictyostelium discoideum
 
 
