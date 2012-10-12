@@ -98,6 +98,6 @@ __END__
 
 =head1 NAME
 
-Modware::Export::Command::chado2dictycanonicalgff3 - Export GFF3 with canonical gene models for Dictyostelium discoideum
+Modware::Export::Command::chado2dictynoncanonicalgff3 - Export GFF3 with sequencing center gene models of Dictyostelium discoideum
 
 

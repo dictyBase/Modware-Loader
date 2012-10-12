@@ -6,7 +6,6 @@ use Moose;
 use Modware::EventEmitter::Feature::Chado::Canonical;
 use Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
 use Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
-
 extends qw/Modware::Export::Chado/;
 
 # Other modules:
@@ -97,6 +96,6 @@ __END__
 
 =head1 NAME
 
-Modware::Export::Command::chado2dictycanonicalgff3 - Export GFF3 with canonical gene models for Dictyostelium discoideum
+Modware::Export::Command::chado2dictycanonicalgff3 - Export GFF3 with canonical gene models of Dictyostelium discoideum
 
 

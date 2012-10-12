@@ -93,6 +93,8 @@ sub read_exon {
             $event->response($rs);
 }
 
+__PACKAGE__->meta->make_immutable;
+
 1;    # Magic true value required at end of module
 
 __END__

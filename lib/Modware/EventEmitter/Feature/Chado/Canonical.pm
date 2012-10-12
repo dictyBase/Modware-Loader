@@ -8,7 +8,7 @@ use MooseX::Event '-alias' => {
     on              => 'subscribe',
     remove_listener => 'unsubscribe'
 };
-with 'Modware::Role::Command::WithOutputLogger';
+with 'Modware::Role::Loggable';
 
 # Module implementation
 #
