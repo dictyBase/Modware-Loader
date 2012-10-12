@@ -3,6 +3,7 @@ package Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
 # Other modules:
 use namespace::autoclean;
 use Moose;
+use Bio::GFF3::LowLevel qw/gff3_format_feature/;
 extends 'Modware::EventHandler::FeatureWriter::GFF3::Canonical';
 
 # Module implementation
@@ -44,11 +45,8 @@ sub write_exon {
     my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
     my $output   = $self->output;
     my $trans_id = $self->_chado_feature_id($parent_dbrow);
-    my $rs       = $self->schema->resultset('Sequence::Feature')
-        ->search( { 'dbxref.accession' => $trans_id }, { join => 'dbxref' } );
-
     my $hash;
-    if ( $rs->first->type->name eq 'pseudogene' ) {
+    if ( $parent_dbrow->type->name eq 'pseudogene' ) {
         $hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $trans_id,
             'pseudogenic_exon' );
     }
