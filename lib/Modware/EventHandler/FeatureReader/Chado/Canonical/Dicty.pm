@@ -1,7 +1,7 @@
-package Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty
+package Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
 
     # Other modules:
-    use namespace::autoclean;
+use namespace::autoclean;
 use Moose;
 extends 'Modware::EventHandler::FeatureReader::Chado::Canonical';
 

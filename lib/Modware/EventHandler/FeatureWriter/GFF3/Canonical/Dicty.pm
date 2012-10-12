@@ -1,18 +1,19 @@
 package Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
 
 # Other modules:
-use namespace;
+use namespace::autoclean;
 use Moose;
 extends 'Modware::EventHandler::FeatureWriter::GFF3::Canonical';
 
 # Module implementation
 #
 sub write_gene {
-   return;
+    return;
 }
 
 sub write_transcript {
-    my ( $self, $event,  $seq_id,  $parent_dbrow, $dbrow ) = @_;
+    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
+    my $output  = $self->output;
     my $gene_id = $self->_chado_feature_id($parent_dbrow);
     if ( $dbrow->type->name eq 'pseudogene' ) {
 
@@ -40,8 +41,10 @@ sub write_transcript {
 }
 
 sub write_exon {
-    my ( $self, $event,  $seq_id,  $parent_dbrow, $dbrow ) = @_;
-    my $rs = $self->schema->resultset('Sequence::Feature')
+    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
+    my $output   = $self->output;
+    my $trans_id = $self->_chado_feature_id($parent_dbrow);
+    my $rs       = $self->schema->resultset('Sequence::Feature')
         ->search( { 'dbxref.accession' => $trans_id }, { join => 'dbxref' } );
 
     my $hash;
@@ -104,7 +107,6 @@ sub pseudorow2gff3hash {
     $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
     return $hashref;
 }
-
 
 __PACKAGE__->meta->make_immutable;
 
