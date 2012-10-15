@@ -47,6 +47,18 @@ has 'feature_type' => (
     documentation => 'SO type of alignment features to be exported'
 );
 
+has 'match_type' => (
+    is      => 'rw',
+    isa     => 'Str',
+    lazy    => 1,
+    default => sub {
+        my ($self) = @_;
+        return $self->feature_type . '_match';
+    },
+    documentation =>
+        'SO type of alignment feature that will be exported in GFF3, *_match* is appended to the feature_type by default.'
+);
+
 sub execute {
     my ($self) = @_;
 
@@ -61,7 +73,9 @@ sub execute {
 
     my $write_handler
         = Modware::EventHandler::FeatureWriter::GFF3::Alignment->new(
-        output => $self->output_handler );
+        output     => $self->output_handler,
+        match_type => $self->match_type
+        );
     my $event = Modware::EventEmitter::Feature::Chado->new(
         resource => $self->schema );
 
@@ -83,7 +97,7 @@ sub execute {
         $event->on( $read  => sub { $read_handler->$read(@_) } );
         $event->on( $write => sub { $write_handler->$write(@_) } );
     }
-    $event->process($self->log_level);
+    $event->process( $self->log_level );
 }
 
 __PACKAGE__->meta->make_immutable;

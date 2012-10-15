@@ -12,6 +12,10 @@ extends 'Modware::EventHandler::FeatureWriter::GFF3';
 has 'write_aligned_parts' =>
     ( is => 'rw', isa => 'Bool', lazy => 1, default => 1 );
 
+has 'match_type' => (
+	is => 'rw',  isa => 'Str',  default => 'match',  lazy => 1
+);
+
 sub write_feature {
     my ( $self, $event, $seq_id, $dbrow ) = @_;
 
@@ -20,9 +24,7 @@ sub write_feature {
     $hashref->{seq_id} = $seq_id;
     $hashref->{source} = $self->gff_source($dbrow) || undef;
 
-    my $type = $dbrow->type->name;
-    $type = $type . '_match' if $type !~ /match/;
-    $hashref->{type} = $type;
+    $hashref->{type} = $self->match_type;
 
     my $floc_rs = $dbrow->featureloc_features( { rank => 0 } );
     my $floc_row;
