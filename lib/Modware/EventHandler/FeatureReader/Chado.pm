@@ -41,7 +41,8 @@ sub read_reference_by_id {
         }
     );
     if ( !$reference_rs->count ) {
-        $event->throw( "no reference feature(s) found for organism ",
+        $event->logger->logcroak(
+            "no reference feature(s) found for organism ",
             $dbrow->common_name );
     }
     $event->response($reference_rs);
@@ -60,7 +61,8 @@ sub read_reference {
         }
     );
     if ( !$reference_rs->count ) {
-        $event->throw( "no reference feature(s) found for organism ",
+        $event->logger->logcroak(
+            "no reference feature(s) found for organism ",
             $dbrow->common_name );
     }
     $event->response($reference_rs);
@@ -99,10 +101,9 @@ sub read_reference_without_mito {
         );
     }
 
-    $event->throw(
-        {   msg => "no reference feature found for organism "
-                . $dbrow->common_name
-        }
+    $event->logger->logcroak(
+        "no reference feature found for organism " . $dbrow->common_name
+
     ) if !$nuclear_rs->count;
 
     $event->response($nuclear_rs);
@@ -119,11 +120,10 @@ sub read_mito_reference {
         },
         { join => [ 'type', { 'featureprops' => { 'type' => 'cv' } } ] }
     );
-    $event->throw(
-        {   msg => "no mitochondrial reference feature(s) found for organism "
-                . $dbrow->common_name
-        }
-    ) if !$rs->count;
+    $event->logger->logcroak(
+        "no mitochondrial reference feature(s) found for organism "
+            . $dbrow->common_name )
+        if !$rs->count;
 
     $event->response($rs);
 }
