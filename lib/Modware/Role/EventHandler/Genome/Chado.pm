@@ -26,17 +26,13 @@ has 'common_name' => (
     predicate => 'has_common_name'
 );
 
-
 sub read_organism {
     my ( $self, $event, $schema ) = @_;
     if ( !$self->has_species ) {
         if ( !$self->has_genus ) {
             if ( !$self->common_name ) {
-                $event->throw(
-                    {   msg =>
-                            "at least species,  genus or common_name has to be set"
-                    }
-                );
+                $event->logger->logcroak(
+                    "at least species,  genus or common_name has to be set" );
             }
         }
     }
@@ -57,7 +53,8 @@ sub read_organism {
     );
 
     my $count = $org_rs->count;
-    $event->throw('!!!! Could not find the organism !!!!') if !$count;
+    $event->logger->logcroak('!!!! Could not find the organism !!!!')
+        if !$count;
     if ( $count > 1 ) {
         my $msg
             = "you have more than one organism being selected with the current query\n";
@@ -66,7 +63,7 @@ sub read_organism {
             for $org_rs->all;
         $msg
             .= "Restrict your query to one organism: perhaps provide only **genus** and **species** for uniqueness";
-        $event->throw(  $msg  );
+        $event->logger->logcroak($msg);
     }
 
     $event->response( $org_rs->first );
