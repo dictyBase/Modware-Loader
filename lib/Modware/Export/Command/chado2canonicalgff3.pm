@@ -12,7 +12,7 @@ extends qw/Modware::Export::Chado/;
 # Module implementation
 #
 
-has '+input' => (traits => [qw/NoGetopt/]);
+has '+input' => ( traits => [qw/NoGetopt/] );
 
 has 'write_sequence' => (
     is      => 'rw',
@@ -57,16 +57,22 @@ has 'reference_type' => (
     lazy    => 1
 );
 
+has 'reference_id' => (
+    is              => 'rw',
+    isa             => 'Str',
+    'documentation' => 'reference feature name/ID/accession number. In this case,  only all of its associated features will be dumped. Takes precedence over dumping with mitochondrial options'
+);
+
 sub execute {
     my ($self) = @_;
     my $logger = $self->logger;
 
-    my $handler
+    my $read_handler
         = Modware::EventHandler::FeatureReader::Chado::Canonical->new(
         reference_type => $self->reference_type );
-    $handler->species( $self->species )      if $self->species;
-    $handler->genus( $self->genus )          if $self->genus;
-    $handler->common_name( $self->organism ) if $self->organism;
+    $read_handler->species( $self->species )      if $self->species;
+    $read_handler->genus( $self->genus )          if $self->genus;
+    $read_handler->common_name( $self->organism ) if $self->organism;
 
     my $write_handler
         = Modware::EventHandler::FeatureWriter::GFF3::Canonical->new(
@@ -78,10 +84,10 @@ sub execute {
     for my $name (qw/reference seq_id contig gene transcript exon/) {
         my $read_api  = 'read_' . $name;
         my $write_api = 'write_' . $name;
-        $event->on( $read_api  => sub { $handler->$read_api(@_) } );
+        $event->on( $read_api  => sub { $read_handler->$read_api(@_) } );
         $event->on( $write_api => sub { $write_handler->$write_api(@_) } );
     }
-    $event->on( 'read_organism' => sub { $handler->read_organism(@_) } );
+    $event->on( 'read_organism' => sub { $read_handler->read_organism(@_) } );
     $event->on( 'write_header'  => sub { $write_handler->write_header(@_) } );
     $event->on( 'write_sequence_region' =>
             sub { $write_handler->write_sequence_region(@_) } );
@@ -89,19 +95,25 @@ sub execute {
             sub { $write_handler->write_reference_sequence(@_) } );
 
     if ( $self->feature_name ) {
-        $event->on( 'read_seq_id' => sub { $handler->read_seq_id_by_name(@_) }
-        );
+        $event->on(
+            'read_seq_id' => sub { $read_handler->read_seq_id_by_name(@_) } );
     }
     if ( $self->exclude_mitochondrial ) {
         $event->on( 'read_reference' =>
-                sub { $handler->read_reference_without_mito(@_) } );
+                sub { $read_handler->read_reference_without_mito(@_) } );
     }
     if ( $self->only_mitochondrial ) {
         $event->on(
             'read_reference' => sub {
-                $handler->read_mito_reference(@_);
+                $read_handler->read_mito_reference(@_);
             }
         );
+    }
+
+    if ( $self->reference_id ) {
+        $read_handler->reference_id( $self->reference_id );
+        $event->on( 'read_reference' =>
+                sub { $read_handler->read_reference_by_id(@_) } );
     }
     $event->process;
 }
