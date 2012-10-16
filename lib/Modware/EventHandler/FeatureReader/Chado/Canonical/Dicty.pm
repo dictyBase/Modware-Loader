@@ -59,38 +59,27 @@ sub read_transcript {
         { join        => 'type' }
         )->search_related(
         'subject',
-        { 'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ] },
-        { join          => 'type'}
+        {   'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ],
+            'db.name'          => 'GFF_source',
+            'dbxref.accession' => $self->source
+        },
+        { join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
         );
-
-    my $rs;
-    if ( $trans_rs->count == 1 ) {
-        $rs = $trans_rs;
-    }
-    else {
-        $rs = $trans_rs->search(
-            {   'db.name'          => 'GFF_source',
-                'dbxref.accession' => $self->source
-            },
-            { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
-        );
-        $event->response($rs);
-    }
+    $event->response($trans_rs);
 }
 
 sub read_exon {
     my ( $self, $event, $dbrow ) = @_;
-    my $rs = 
-        $dbrow->search_related(
-            'feature_relationship_objects',
-            { 'type.name' => 'part_of' },
-            { join        => 'type' }
-            )->search_related(
-            'subject',
-            { 'type_2.name' => [qw/exon pseudogenic_exon/] },
-            { join          => 'type' }
-            );
-            $event->response($rs);
+    my $rs = $dbrow->search_related(
+        'feature_relationship_objects',
+        { 'type.name' => 'part_of' },
+        { join        => 'type' }
+        )->search_related(
+        'subject',
+        { 'type_2.name' => [qw/exon pseudogenic_exon/] },
+        { join          => 'type' }
+        );
+    $event->response($rs);
 }
 
 __PACKAGE__->meta->make_immutable;
