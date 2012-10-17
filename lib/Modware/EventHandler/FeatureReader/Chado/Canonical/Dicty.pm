@@ -61,7 +61,8 @@ sub read_transcript {
         'subject',
         {   'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ],
             'db.name'          => 'GFF_source',
-            'dbxref.accession' => $self->source
+            'dbxref.accession' => $self->source, 
+            'is_deleted' => 0
         },
         { join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
         );
