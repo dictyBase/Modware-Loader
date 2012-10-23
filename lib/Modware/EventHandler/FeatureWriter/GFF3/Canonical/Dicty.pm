@@ -37,7 +37,7 @@ sub write_transcript {
                 = $self->pseudorow2gff3hash( $parent_dbrow, $seq_id, '',
                 'pseudogene' );
             $output->print( gff3_format_feature($pseudogene_hash) );
-            $self->add_gene_in_cache($gene_id);
+            $self->add_gene_in_cache($gene_id,  1);
         }
         my $trans_hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $gene_id,
             'pseudogenic_transcript' );
@@ -48,7 +48,7 @@ sub write_transcript {
         if ( !$self->has_gene_in_cache($gene_id) ) {
             my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $seq_id );
             $output->print( gff3_format_feature($gene_hash) );
-            $self->add_gene_in_cache($gene_id);
+            $self->add_gene_in_cache($gene_id, 1);
         }
 
         #transcript
