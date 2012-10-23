@@ -5,7 +5,7 @@ use namespace::autoclean;
 use Moose;
 use Modware::EventEmitter::Feature::Chado::Canonical;
 use Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
-use Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
+use Modware::EventHandler::FeatureWriter::GFF3::NonCanonical::Dicty;
 
 extends qw/Modware::Export::Chado/;
 
@@ -50,7 +50,7 @@ sub execute {
         );
 
     my $write_handler
-        = Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty->new(
+        = Modware::EventHandler::FeatureWriter::GFF3::NonCanonical::Dicty->new(
         output => $self->output_handler );
 
     my $source = $self->schema->source('Sequence::Feature');
