@@ -6,6 +6,18 @@ use Moose;
 use Bio::GFF3::LowLevel qw/gff3_format_feature/;
 extends 'Modware::EventHandler::FeatureWriter::GFF3::Canonical';
 
+has '_gene_cache' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    lazy    => 1,
+    default => sub { {} },
+    handles => {
+        has_gene_in_cache => 'exist',
+        add_gene_in_cache => 'set'
+    }
+);
+
 # Module implementation
 #
 sub write_gene {
@@ -20,20 +32,24 @@ sub write_transcript {
 
         # dicty pseudogene gene model have to be SO complaint
         # it writes gene and transcript feature
-        my $pseudogene_hash
-            = $self->pseudorow2gff3hash( $parent_dbrow, $seq_id, '',
-            'pseudogene' );
+        if ( !$self->has_gene_in_cache($gene_id) ) {
+            my $pseudogene_hash
+                = $self->pseudorow2gff3hash( $parent_dbrow, $seq_id, '',
+                'pseudogene' );
+            $output->print( gff3_format_feature($pseudogene_hash) );
+            $self->add_gene_in_cache($gene_id);
+        }
         my $trans_hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $gene_id,
             'pseudogenic_transcript' );
-        $output->print( gff3_format_feature($pseudogene_hash) );
         $output->print( gff3_format_feature($trans_hash) );
     }
     else {
 
-        #write the cached gene
-        my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $seq_id );
-        return if not defined $gene_hash;
-        $output->print( gff3_format_feature($gene_hash) );
+        if ( !$self->has_gene_in_cache($gene_id) ) {
+            my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $seq_id );
+            $output->print( gff3_format_feature($gene_hash) );
+            $self->add_gene_in_cache($gene_id);
+        }
 
         #transcript
         my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
