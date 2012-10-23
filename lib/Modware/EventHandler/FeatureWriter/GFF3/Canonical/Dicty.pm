@@ -13,7 +13,7 @@ has '_gene_cache' => (
     lazy    => 1,
     default => sub { {} },
     handles => {
-        has_gene_in_cache => 'exist',
+        has_gene_in_cache => 'exists',
         add_gene_in_cache => 'set'
     }
 );
