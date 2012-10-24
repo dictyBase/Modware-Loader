@@ -23,7 +23,7 @@ sub read_transcript {
                 'H_ACA_box_snoRNA', 'SRP_RNA',
                 'RNase_P_RNA',      'RNAase_MRP_RNA',
                 'snoRNA',           'rRNA',
-                'ncRNA'
+                'ncRNA', 'tRNA'
             ],
             'db.name'          => 'GFF_source',
             'is_deleted'       => 0
