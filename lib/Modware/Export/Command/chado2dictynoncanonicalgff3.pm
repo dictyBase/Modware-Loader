@@ -40,13 +40,21 @@ has 'write_sequence_region' => (
         'write sequence region header in GFF3 output,  default if off'
 );
 
+has 'source' => (
+	is => 'rw', 
+	isa => 'Str', 
+	lazy => 1, 
+	default => 'Sequencing Center', 
+	documentation => 'Name of database/piece of software/algorithm that generated the gene models. By default it is *Sequencing Center*.'
+);
+
 sub execute {
     my ($self) = @_;
     my $read_handler
         = Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty->new(
         reference_type => 'chromosome',
         common_name    => 'dicty', 
-        source => 'Sequencing Center'
+        source => $self->source
         );
 
     my $write_handler
