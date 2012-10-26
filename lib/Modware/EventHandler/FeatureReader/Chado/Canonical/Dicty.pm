@@ -3,7 +3,7 @@ package Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
 # Other modules:
 use namespace::autoclean;
 use Moose;
-use List::MoreUtils;
+use List::MoreUtils qw/any/;
 extends 'Modware::EventHandler::FeatureReader::Chado::Canonical';
 
 # Module implementation
@@ -36,7 +36,7 @@ sub read_transcript {
         { join        => 'type' }
         )->search_related(
         'subject',
-        {   'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ],
+        {   'type_2.name' => { -in => [ 'mRNA', 'pseudogene' ] },
             is_deleted    => 0
         },
         { join => 'type' }
@@ -48,15 +48,15 @@ sub read_transcript {
         { join        => 'type' }
         )->search_related(
         'subject',
-        {   'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ],
-            'db.name'          => 'GFF_source',
-            'dbxref.accession' => $self->source,
-            'is_deleted'       => 0
+        {   'type_2.name'      => { -in => [ 'mRNA', 'pseudogene' ] },
+            'dbxref.accession' => { -in => $self->source },
+            'is_deleted'       => 0,
+            'db.name'          => 'GFF_source'
         },
         { join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
-        )->count;
+        );
 
-    my $num_transcript = $trans_rs->count;
+    my $num_transcript = $trans_rs2->count;
     if ( $num_transcript == 1 ) {
         $event->response($trans_rs2);
     }
@@ -67,7 +67,7 @@ sub read_transcript {
         {
             $new_rs = $trans_rs->search(
                 {   'db.name'         => 'GFF_source',
-                    'dbxref.acession' => 'dictyBase Curator'
+                    'dbxref.accession' => 'dictyBase Curator'
                 },
                 { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
             );
@@ -75,7 +75,7 @@ sub read_transcript {
         else {
             $new_rs = $trans_rs->search(
                 {   'db.name'         => 'GFF_source',
-                    'dbxref.acession' => 'Sequencing Center'
+                    'dbxref.accession' => 'Sequencing Center'
                 },
                 { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
             );
