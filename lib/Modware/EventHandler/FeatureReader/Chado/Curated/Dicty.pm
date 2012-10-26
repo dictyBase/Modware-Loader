@@ -1,9 +1,8 @@
-package Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
+package Modware::EventHandler::FeatureReader::Chado::Curtated::Dicty;
 
 # Other modules:
 use namespace::autoclean;
 use Moose;
-use List::MoreUtils;
 extends 'Modware::EventHandler::FeatureReader::Chado::Canonical';
 
 # Module implementation
@@ -11,10 +10,34 @@ extends 'Modware::EventHandler::FeatureReader::Chado::Canonical';
 
 has 'source' => (
     is      => 'rw',
-    isa     => 'ArrayRef',
+    isa     => 'Str',
     lazy    => 1,
-    default => sub { return [ 'dictyBase Curator', 'Sequencing Center' ] }
+    default => 'dictyBase Curator'
 );
+
+sub read_reference_by_id {
+    my ( $self, $event, $dbrow ) = @_;
+    my $reference_rs = $dbrow->search_related(
+        'features',
+        {   -or => [
+                'me.name'          => $self->reference_id,
+                'me.uniquename'    => $self->reference_id,
+                'dbxref.accession' => $self->reference_id
+            ],
+            'type.name' => $self->reference_type
+        },
+        {   join => [qw/type dbxref/],
+            '+select' =>
+                [ { LENGTH => 'me.residues', -as => 'sequence_length' } ],
+            cache => 1
+        }
+    );
+    if ( !$reference_rs->count ) {
+        $event->throw( "no reference feature(s) found for organism ",
+            $dbrow->common_name );
+    }
+    $event->response($reference_rs);
+}
 
 sub read_gene {
     my ( $self, $event, $dbrow ) = @_;
@@ -37,52 +60,13 @@ sub read_transcript {
         )->search_related(
         'subject',
         {   'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ],
-            is_deleted    => 0
-        },
-        { join => 'type' }
-        );
-
-    my $trans_rs2 = $gene_dbrow->search_related(
-        'feature_relationship_objects',
-        { 'type.name' => 'part_of' },
-        { join        => 'type' }
-        )->search_related(
-        'subject',
-        {   'type_2.name' => [ { 'like' => '%RNA%' }, 'pseudogene' ],
             'db.name'          => 'GFF_source',
-            'dbxref.accession' => $self->source,
-            'is_deleted'       => 0
+            'dbxref.accession' => $self->source, 
+            'is_deleted' => 0
         },
         { join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
-        )->count;
-
-    my $num_transcript = $trans_rs->count;
-    if ( $num_transcript == 1 ) {
-        $event->response($trans_rs2);
-    }
-    else {
-        my $new_rs;
-        if ( any { $_->secondary_dbxrefs eq 'dictyBase Curator' }
-            $trans_rs2->all )
-        {
-            $new_rs = $trans_rs->search(
-                {   'db.name'         => 'GFF_source',
-                    'dbxref.acession' => 'dictyBase Curator'
-                },
-                { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
-            );
-        }
-        else {
-            $new_rs = $trans_rs->search(
-                {   'db.name'         => 'GFF_source',
-                    'dbxref.acession' => 'Sequencing Center'
-                },
-                { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
-            );
-        }
-        $event->response($new_rs);
-    }
-
+        );
+    $event->response($trans_rs);
 }
 
 sub read_exon {

@@ -4,7 +4,7 @@ use strict;
 use namespace::autoclean;
 use Moose;
 use Modware::EventEmitter::Feature::Chado::Canonical;
-use Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
+use Modware::EventHandler::FeatureReader::Chado::Curated::Dicty;
 use Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
 extends qw/Modware::Export::Chado/;
 
@@ -42,7 +42,7 @@ has 'feature_name' => (
 sub execute {
     my ($self) = @_;
     my $read_handler
-        = Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty->new(
+        = Modware::EventHandler::FeatureReader::Chado::Curated::Dicty->new(
         reference_type => 'chromosome',
         common_name    => 'dicty'
         );
