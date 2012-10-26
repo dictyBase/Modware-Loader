@@ -54,7 +54,6 @@ sub read_reference {
         'features',
         { 'type.name' => $self->reference_type },
         {   join     => 'type',
-            prefetch => 'dbxref',
             '+select' =>
                 [ { LENGTH => 'me.residues', -as => 'sequence_length' } ],
             cache => 1
