@@ -8,3 +8,4 @@ locallib/
 data/
 config/
 log/
+sqlnet.log
