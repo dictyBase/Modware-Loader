@@ -5,7 +5,7 @@ use namespace::autoclean;
 use Moose;
 use Modware::EventEmitter::Feature::Chado::Canonical;
 use Modware::EventHandler::FeatureReader::Chado::Curated::Dicty;
-use Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
+use Modware::EventHandler::FeatureWriter::GFF3::NonCanonical::Dicty;
 extends qw/Modware::Export::Chado/;
 
 # Other modules:
@@ -39,6 +39,14 @@ has 'feature_name' => (
         'Output feature name instead of sequence id in the seq_id field,  default is off.'
 );
 
+has 'write_sequence_region' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'write sequence region header in GFF3 output,  default if off'
+);
+
 sub execute {
     my ($self) = @_;
     my $read_handler
@@ -48,7 +56,7 @@ sub execute {
         );
 
     my $write_handler
-        = Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty->new(
+        = Modware::EventHandler::FeatureWriter::GFF3::NonCanonical::Dicty->new(
         output => $self->output_handler );
 
     my $source = $self->schema->source('Sequence::Feature');
@@ -63,12 +71,14 @@ sub execute {
     my $event = Modware::EventEmitter::Feature::Chado::Canonical->new(
         resource => $self->schema );
 
-    for my $name (qw/reference seq_id contig gene transcript exon/) {
+    for my $name (qw/reference seq_id gene transcript exon/) {
         my $read_api  = 'read_' . $name;
-        my $write_api = 'write_' . $name;
         $event->on( $read_api  => sub { $read_handler->$read_api(@_) } );
-        $event->on( $write_api => sub { $write_handler->$write_api(@_) } );
     }
+
+    $event->on(
+        'write_transcript' => sub { $write_handler->write_transcript(@_) } );
+    $event->on( 'write_exon' => sub { $write_handler->write_exon(@_) } );
 
     if ( $self->reference_id ) {
         $read_handler->reference_id( $self->reference_id );
@@ -79,9 +89,8 @@ sub execute {
     $event->on( 'read_organism' => sub { $read_handler->read_organism(@_) } );
     $event->on( 'write_header'  => sub { $write_handler->write_header(@_) } );
     $event->on( 'write_sequence_region' =>
-            sub { $write_handler->write_sequence_region(@_) } );
-    $event->on( 'write_reference_sequence' =>
-            sub { $write_handler->write_reference_sequence(@_) } );
+            sub { $write_handler->write_sequence_region(@_) } )
+        if $self->write_sequence_region;
 
     if ( $self->feature_name ) {
         $event->on(

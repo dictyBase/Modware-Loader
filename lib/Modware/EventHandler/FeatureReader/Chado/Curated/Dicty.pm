@@ -1,4 +1,4 @@
-package Modware::EventHandler::FeatureReader::Chado::Curtated::Dicty;
+package Modware::EventHandler::FeatureReader::Chado::Curated::Dicty;
 
 # Other modules:
 use namespace::autoclean;
