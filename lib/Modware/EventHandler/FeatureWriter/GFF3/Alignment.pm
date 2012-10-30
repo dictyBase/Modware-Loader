@@ -13,7 +13,30 @@ has 'write_aligned_parts' =>
     ( is => 'rw', isa => 'Bool', lazy => 1, default => 1 );
 
 has 'match_type' => (
-	is => 'rw',  isa => 'Str',  default => 'match',  lazy => 1
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'match',
+    lazy    => 1
+);
+
+has [ 'force_name', 'force_description' ] => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1
+);
+
+has '_prop_stack' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    traits  => [qw/Array/],
+    lazy    => 1,
+    default => sub { [] },
+    handles => {
+        add_property      => 'push',
+        all_properties    => 'elements',
+        num_of_properties => 'count'
+    }
 );
 
 sub write_feature {
@@ -53,6 +76,33 @@ sub write_feature {
     $hashref->{attributes}->{ID} = [$id];
     if ( my $name = $dbrow->name ) {
         $hashref->{attributes}->{Name} = [$name];
+    }
+    else {
+        $hashref->{attributes}->{Name} = [$id] if $self->force_name;
+    }
+
+    if ( $self->force_description ) {
+        my $prop_row = $dbrow->search_related(
+            'featureprops',
+            { 'type.name' => 'description' },
+            {   join => 'type',
+                rows => 1
+            }
+        )->single;
+        $hashref->{attributes}->{Note} = [ $prop_row->value ] if $prop_row;
+    }
+    if ( $self->num_of_properties ) {
+        my $rs = $dbrow->search_related(
+            'featureprops',
+            { 'type.name' => { -in => [ $self->all_properties ] } },
+            { join        => 'type' }
+        );
+        for my $row ( $rs->all ) {
+            if ( $row->type->name ~~ [$self->all_properties] ) {
+                $hashref->{attributes}->{ $row->type->name }
+                    = [ $row->value ];
+            }
+        }
     }
 
     if ( $self->write_aligned_parts )

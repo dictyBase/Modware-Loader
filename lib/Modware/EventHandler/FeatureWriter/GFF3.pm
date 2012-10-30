@@ -12,6 +12,7 @@ has 'output' => (
     isa => 'IO::Handle'
 );
 
+
 sub write_header {
     my ( $self, $event ) = @_;
     $self->output->print("##gff-version\t3\n");

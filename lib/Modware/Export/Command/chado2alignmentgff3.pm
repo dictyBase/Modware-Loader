@@ -59,6 +59,33 @@ has 'match_type' => (
         'SO type of alignment feature that will be exported in GFF3, *_match* is appended to the feature_type by default.'
 );
 
+has 'force_name' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'Adds the value of GFF3 *ID* attribute to *Name* attribute(if absent),  off by default'
+);
+
+has 'add_description' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'If present,  add the GFF3 *Note* attribute. It looks for a feature property with *description* cvterm. Off by default'
+);
+
+has 'property' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    default => sub { [] },
+    lazy    => 1,
+    traits  => [qw/Array/],
+    handles => { num_of_properties => 'count', all_properties => 'elements' }
+);
+
 sub execute {
     my ($self) = @_;
 
@@ -76,6 +103,12 @@ sub execute {
         output     => $self->output_handler,
         match_type => $self->match_type
         );
+    $write_handler->force_name( $self->force_name );
+    $write_handler->force_description( $self->add_description );
+    if ( $self->num_of_properties ) {
+        $write_handler->add_property($_) for $self->all_properties;
+    }
+
     my $event = Modware::EventEmitter::Feature::Chado->new(
         resource => $self->schema );
 
