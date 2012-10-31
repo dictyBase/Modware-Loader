@@ -3,6 +3,7 @@ package Modware::Load::Command::ebiGaf2dictyChado;
 
 use strict;
 
+use autodie;
 use Bio::Chado::Schema;
 use IO::String;
 use Moose;
@@ -11,9 +12,11 @@ use namespace::autoclean;
 extends qw/Modware::Load::Chado/;
 
 has '_ebi_base_url' => (
-    is      => 'ro',
-    isa     => 'Str',
-    default => 'http://www.ebi.ac.uk/QuickGO/GAnnotation?format=gaf&protein='
+    is  => 'ro',
+    isa => 'Str',
+    default =>
+        'http://www.ebi.ac.uk/QuickGO/GAnnotation?format=gaf&ref=PMID:*&protein=',
+	lazy => 1
 );
 
 has '_ua' => (
@@ -28,7 +31,7 @@ has 'prune' => (
     isa           => 'Bool',
     default       => 0,
     lazy          => 1,
-    documentation => 'Delete all annotations before loading, default is False'
+    documentation => 'Delete all annotations before loading, default is OFF'
 );
 
 sub execute {
@@ -37,12 +40,13 @@ sub execute {
     my $logger = $self->logger;
     $logger->info( "Loading config from " . $self->configfile );
     my $schema = $self->schema;
-
     if ( $self->prune ) {
         $logger->warn('Pruning all annotations.');
         my $prune_count
             = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
-		#$schema->txn_do(sub { $schema->resultset('Sequence::FeatureCvterm')->delete_all });
+        $schema->txn_do(
+            sub { $schema->resultset('Sequence::FeatureCvterm')->delete_all }
+        );
         $logger->info(
             "Done! with pruning. " . $prune_count . " records deleted." );
     }
@@ -55,59 +59,84 @@ sub execute {
         {   join     => [qw/type organism/],
             select   => [qw/feature_id uniquename/],
             prefetch => 'dbxref',
-            rows     => 20
+            rows     => 75
         }
     );
     $logger->info( $gene_rs->count . " gene IDs retrieved" );
     while ( my $gene = $gene_rs->next ) {
         my $gaf = $self->get_gaf_from_ebi( $gene->dbxref->accession );
-        sleep 0.5;
-        my @go_new = $self->parse_go_from_gaf($gaf);
-        foreach my $go (@go_new) {
-            $go =~ s/^GO://;
+        sleep 0.75;
+        my @gaf_rows = $self->parse_gaf($gaf);
+        foreach my $gaf_row (@gaf_rows) {
 
-            #print $go. "\n";
+            $gaf_row->{ref}   =~ s/^PMID://;
+            $gaf_row->{go_id} =~ s/^GO://;
+
             my $cvterm_rs = $schema->resultset('Cv::Cvterm')->search(
-                { 'dbxref.accession' => $go },
+                { 'dbxref.accession' => $gaf_row->{go_id} },
                 {   join   => 'dbxref',
                     select => [qw/cvterm_id/]
                 }
             );
+
+            my $pub_rs
+                = $schema->resultset('Pub::Pub')
+                ->search( { uniquename => $gaf_row->{ref} },
+                { select => 'pub_id' } );
+
             if ( $cvterm_rs->count == 0 ) {
                 $logger->error( "GO:"
-                        . $go
+                        . $gaf_row->{go_id}
                         . " does not exist; associated with "
                         . $gene->dbxref->accession . " ("
                         . $gene->uniquename
                         . ")" );
                 next;
             }
-            while ( my $cvterm = $cvterm_rs->next ) {
-                print $gene->dbxref->accession . "\t"
-                    . $gene->feature_id . "\t"
-                    . $cvterm->cvterm_id . "\tGO:"
-                    . $go . "\n";
 
-				# Insert into feature_cvterm -> $gene->feature_id, $cvterm->cvterm_id
-            }
+            print $gene->dbxref->accession . "\t"
+                . $gene->feature_id . "\t"
+                . $cvterm_rs->first->cvterm_id . "\t"
+                . $pub_rs->first->pub_id . "\tGO:"
+                . $gaf_row->{go_id} . "\t"
+                . $gaf_row->{aspect} . "\t"
+                . $gaf_row->{evidence_code} . "\n";
+
+            $self->schema->txn_do(
+                sub {
+                    $schema->populate(
+                        'Sequence::FeatureCvterm',
+                        [   [qw/feature_id cvterm_id pub_id/],
+                            [   $gene->feature_id,
+                                $cvterm_rs->first->cvterm_id,
+                                $pub_rs->first->pub_id
+                            ],
+                        ]
+                    );
+                }
+            );
         }
     }
 }
 
-sub parse_go_from_gaf {
+sub parse_gaf {
     my ( $self, $gaf ) = @_;
-    my @go_new;
+    my @gaf_rows;
     my $io = IO::String->new();
     $io->open($gaf);
     while ( my $line = $io->getline ) {
         chomp($line);
         next if $line =~ /^!/;
         my @row_vals = split( "\t", $line );
-
-        #        print $row_vals[4] . "\n";
-        push( @go_new, $row_vals[4] );
+        my $gaf_hash = {
+            go_id         => $row_vals[4],
+            ref           => $row_vals[5],
+            evidence_code => $row_vals[6],
+            aspect        => $row_vals[8]
+        };
+        push( @gaf_rows, $gaf_hash );
     }
-    return @go_new;
+    return @gaf_rows;
 }
 
 sub get_gaf_from_ebi {
@@ -121,7 +150,7 @@ sub get_gaf_from_ebi {
 
 =head1 NAME
 
-Modware::Load::Command::ebiGaf2dictyChado - Update dicty Chado with GAF from EBI
+<Modware::Load::Command::ebiGaf2dictyChado> - [Update dicty Chado with GAF from EBI]
 
 =head1 SYNOPSIS
  
