@@ -163,21 +163,19 @@ Modware::Role::Command::WithLogger - A Moose role to integrate Log::Log4perl in 
 
 =head1 SYNOPSIS
 
-package YourApp::Cmd::Command::baz;
-use Moose;
-extends qw/MooseX::App::Cmd::Command/;
+     package YourApp::Cmd::Command::baz;
+     use Moose;
+     extends qw/MooseX::App::Cmd::Command/;
 
-with 'Modware::Role::Command::WithLogger';
+     with 'Modware::Role::Command::WithLogger';
 
 
-sub execute {
-
-   my ($self) = @_;
-   my $logger = $self->logger;
-
-   $logger->info('what is happening');
-   $logger->error('I have no idea');
-}
+     sub execute {
+         my ($self) = @_;
+         my $logger = $self->logger;
+         $logger->info('what is happening');
+         $logger->error('I have no idea');
+     }
 
 =head1 More examples
 
@@ -200,7 +198,7 @@ The following public methods are exported in the consuming application command c
 
 =head2 ATTRIBUTES
 
-The following attributes are available in the command line as well as in the consuing
+The following attributes are available in the command line as well as in the consuming
 classes
 
 =over
