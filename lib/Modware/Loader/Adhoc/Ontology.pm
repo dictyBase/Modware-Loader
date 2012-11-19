@@ -122,13 +122,28 @@ has 'term_cache' => (
     }
 );
 
-sub handle_core {
-    my ($self) = @_;
-    my $term = $self->term;
+sub update_or_create_term {
+	my ($self, $term, $relation) = @_;
+	if (my $term_from_db = $self->find_cvterm_by_id($term->identifier)) {
+		$self->_update_term($term_from_db, $term);
+	}
+	else {
+		$self->_insert_term($term, $relation);
+	}
+}
 
+sub _update_term {
+	my ($self, $term_from_db, $term) = @_;
+	if ($term_from_db->is_obsolete != $term->is_obsolete) {
+		$term_from_db->update({is_obsolete => $term->is_obsolete});
+	}
+}
+
+sub _insert_term {
+    my ($self, $term, $relation) = @_;
     my ( $db_id, $accession );
-    if (    $self->do_parse_id
-        and $self->has_idspace( $term->identifier ) )
+    if (
+        $self->has_idspace( $term->identifier ) )
     {
         my ( $db, $accession ) = $self->parse_id( $term->identifier );
         $db_id = $self->find_or_create_db_id($db);
@@ -143,37 +158,15 @@ sub handle_core {
 
     ## -- use the global namespace
     $self->add_to_mapper( 'cv_id', $self->cvrow->cv_id );
-
     $self->add_to_mapper( 'definition', encode( "UTF-8", $term->definition ) )
         if $term->defintion;
-    $self->add_to_mapper( 'is_relationshiptype', 1 )
-        if ref $node eq 'GOBO::RelationNode';
-    $self->add_to_mapper( 'is_obsolete', 1 ) if $node->is_obsolete;
+    $self->add_to_mapper( 'is_relationshiptype', 1 ) if $relation;
+    $self->add_to_mapper( 'is_obsolete', 1 ) if $term->is_obsolete;
+    $self->add_to_mapper( 'name', $term->name );
 
-    if ( $node->isa('GOBO::TermNode') ) {
-        if ( $self->is_term_in_cache( $node->label ) ) {
-            my $term = $self->get_term_from_cache( $node->label );
-            if (    ( $term->[0] eq $self->get_map('cv_id') )
-                and ( $term->[1] eq $self->get_map('is_obsolete') ) )
-            {
-                return Modware::Loader::Response->new(
-                    is_error => 1,
-                    message  => 'Node ' . $node->id . ' is already processed'
-                );
-            }
-        }
-    }
-
-    $self->add_to_mapper( 'name', $node->label );
-    $self->add_to_term_cache( $node->label,
-        [ $self->get_map('cv_id'), $self->get_map('is_obsolete') ] )
-        if $node->isa('GOBO::TermNode');
-
-    return Modware::Loader::Response->new(
-        is_success => 1,
-        message    => 'Node ' . $node->id . ' is successfully processed'
-    );
-
+    my $row = $self->chado->resultset('Cv::Cvterm')->create($self->insert_hashref);
+    $self->clear_stashes;
+    return $row;
 }
 
 sub keep_state_in_cache {
