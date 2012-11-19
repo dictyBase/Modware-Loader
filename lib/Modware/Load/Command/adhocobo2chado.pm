@@ -26,7 +26,7 @@ sub execute {
         ->find_or_create( { name => '_global' } );
 
     #2a. Get a loader object and set it up
-    my $loader = Modware::Loader::Adhoc::Ontology->new;
+    my $loader = Modware::Loader::Adhoc::Ontology->new(logger => $self->logger);
     $loader->chado($schema);
     $loader->cv_namespace($global_cv);
     $loader->db_namespace($global_db);

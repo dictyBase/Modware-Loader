@@ -10,6 +10,8 @@ use utf8;
 with 'Modware::Loader::Adhoc::Role::Ontology::Helper';
 with 'Modware::Role::Chado::Helper::BCS::WithDataStash';
 
+has 'logger' => (is => 'rw',  isa => 'Log::Log4perl');
+
 has 'chado' => (
     is      => 'rw',
     isa     => 'Bio::Chado::Schema',
@@ -66,9 +68,11 @@ sub update_or_create_term {
         )
     {
         $self->_update_term( $term_from_db, $term );
+        $self->logger->debug('update term ', $term->identifier);
     }
     else {
         $self->_insert_term( $term, $relation );
+        $self->logger->debug('insert term ', $term->identifier);
     }
 }
 
