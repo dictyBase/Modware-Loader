@@ -3,6 +3,7 @@ use strict;
 use namespace::autoclean;
 use Moose;
 use Bio::OntologyIO;
+use Modware::Loader::Adhoc::Ontology;
 extends qw/Modware::Load::Chado/;
 
 has '_is_relationship' =>
@@ -18,8 +19,10 @@ sub execute {
     );
     my $onto = $io->next_ontology;
 
-    #2. Create or select the global namespaces for cv and db.
     my $schema = $self->schema;
+    my $guard = $schema->txn_scope_guard;
+
+    #2. Create or select the global namespaces for cv and db.
     my $global_cv = $schema->resultset('Cv::Cv')
         ->find_or_create( { name => $onto->name } );
     my $global_db = $schema->resultset('General::Db')
@@ -47,6 +50,7 @@ sub execute {
 
     #4. do upsert of terms
     $loader->update_or_create_term($_) for $onto->get_all_terms;
+    $guard->commit;
 
     #5. do upsert of relationships
 
