@@ -7,10 +7,9 @@ use Carp;
 use Encode;
 use utf8;
 
-with 'Modware::Loader::Adhoc::Role::Ontology::Helper';
 with 'Modware::Role::Chado::Helper::BCS::WithDataStash';
 
-has 'logger' => ( is => 'rw', isa => 'Log::Log4perl' );
+has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 
 has 'chado' => (
     is      => 'rw',
@@ -367,6 +366,9 @@ ACCESSION:
         }
     ) if defined $cache;
 }
+
+
+with 'Modware::Loader::Adhoc::Role::Ontology::Helper';
 
 __PACKAGE__->meta->make_immutable;
 
