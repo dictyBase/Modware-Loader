@@ -93,7 +93,7 @@ sub find_cvterm_id_by_term_id {
 sub find_cvterm_by_id {
     my ( $self, $identifier, $cv ) = @_;
     my $row;
-    if ( $self->has_idspace($identfier) ) {
+    if ( $self->has_idspace($identifier) ) {
         my ( $db, $id ) = $self->parse_id($identifier);
         $row = $self->chado->resultset('Cv::Cvterm')->search(
             {   'dbxref.accession' => $id,
@@ -107,7 +107,7 @@ sub find_cvterm_by_id {
 
     $row
         = $self->chado->resultset('Cv::Cvterm')
-        ->search( { 'dbxref.accession' => $cvterm, 'cv.name' => $cv },
+        ->search( { 'dbxref.accession' => $identifier, 'cv.name' => $cv },
         { join => [qw/cv dbxref/], rows => 1 } )->single;
 
     return $row if $row;
