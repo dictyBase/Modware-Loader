@@ -6,12 +6,9 @@ use Moose::Util qw/ensure_all_roles/;
 use Carp;
 use Encode;
 use utf8;
-use Modware::Loader::Response;
 
 with 'Modware::Loader::Adhoc::Role::Ontology::Helper';
-with 'Modware::Role::Chado::Helper::BCS::WithDataStash' =>
-    { create_stash_for =>
-        [qw/cvterm_dbxrefs cvtermsynonyms cvtermprop_cvterms/] };
+with 'Modware::Role::Chado::Helper::BCS::WithDataStash';
 
 has 'chado' => (
     is      => 'rw',
@@ -25,7 +22,7 @@ has 'db_namespace' =>
 
 # revisit
 sub load_engine {
-    my ( $self ) = @_;
+    my ($self) = @_;
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::With'
         . ucfirst lc( $chado->storage->sqlt_type );
@@ -61,90 +58,31 @@ has 'other_cvs' => (
     lazy => 1
 );
 
-#revisit
-has 'xref_cache' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => [qw/Hash/],
-    default => sub { {} },
-    handles => {
-        add_to_xref_cache      => 'set',
-        get_from_xref_cache    => 'get',
-        clean_xref_cache       => 'clear',
-        entries_in_xref_cache  => 'count',
-        cached_xref_entries    => 'keys',
-        exist_in_xref_cache    => 'defined',
-        remove_from_xref_cache => 'delete'
-    }
-);
-
-#revisit
-has 'xref_tracker_cache' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => [qw/Hash/],
-    default => sub { {} },
-    handles => {
-        add_to_xref_tracker     => 'set',
-        clean_xref_tracker      => 'clear',
-        entries_in_xref_tracker => 'count',
-        tracked_xref_entries    => 'keys',
-        xref_is_tracked         => 'defined',
-        remove_xref_tracking    => 'delete'
-    }
-);
-
-has 'cache' => (
-    is      => 'rw',
-    isa     => 'ArrayRef',
-    traits  => [qw/Array/],
-    default => sub { [] },
-    handles => {
-        add_to_cache     => 'push',
-        clean_cache      => 'clear',
-        entries_in_cache => 'count',
-        cache_entries    => 'elements'
-    }
-);
-
-has 'term_cache' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => [qw/Hash/],
-    default => sub { {} },
-    handles => {
-        add_to_term_cache   => 'set',
-        clean_term_cache    => 'clear',
-        terms_in_cache      => 'count',
-        terms_from_cache    => 'keys',
-        is_term_in_cache    => 'defined',
-        get_term_from_cache => 'get'
-    }
-);
-
 sub update_or_create_term {
-	my ($self, $term, $relation) = @_;
-	if (my $term_from_db = $self->find_cvterm_by_id($term->identifier)) {
-		$self->_update_term($term_from_db, $term);
-	}
-	else {
-		$self->_insert_term($term, $relation);
-	}
+    my ( $self, $term, $relation ) = @_;
+    if (my $term_from_db = $self->find_cvterm_by_id(
+            $term->identifier, $self->cv_namespace->name
+        )
+        )
+    {
+        $self->_update_term( $term_from_db, $term );
+    }
+    else {
+        $self->_insert_term( $term, $relation );
+    }
 }
 
 sub _update_term {
-	my ($self, $term_from_db, $term) = @_;
-	if ($term_from_db->is_obsolete != $term->is_obsolete) {
-		$term_from_db->update({is_obsolete => $term->is_obsolete});
-	}
+    my ( $self, $term_from_db, $term ) = @_;
+    if ( $term_from_db->is_obsolete != $term->is_obsolete ) {
+        $term_from_db->update( { is_obsolete => $term->is_obsolete } );
+    }
 }
 
 sub _insert_term {
-    my ($self, $term, $relation) = @_;
+    my ( $self, $term, $relation ) = @_;
     my ( $db_id, $accession );
-    if (
-        $self->has_idspace( $term->identifier ) )
-    {
+    if ( $self->has_idspace( $term->identifier ) ) {
         my ( $db, $accession ) = $self->parse_id( $term->identifier );
         $db_id = $self->find_or_create_db_id($db);
     }
@@ -157,17 +95,20 @@ sub _insert_term {
         'dbxref' => { accession => $accession, db_id => $db_id } );
 
     ## -- use the global namespace
-    $self->add_to_mapper( 'cv_id', $self->cvrow->cv_id );
+    $self->add_to_mapper( 'cv_id', $self->cv_namespace->cv_id );
     $self->add_to_mapper( 'definition', encode( "UTF-8", $term->definition ) )
         if $term->defintion;
     $self->add_to_mapper( 'is_relationshiptype', 1 ) if $relation;
-    $self->add_to_mapper( 'is_obsolete', 1 ) if $term->is_obsolete;
+    $self->add_to_mapper( 'is_obsolete',         1 ) if $term->is_obsolete;
     $self->add_to_mapper( 'name', $term->name );
 
-    my $row = $self->chado->resultset('Cv::Cvterm')->create($self->insert_hashref);
+    my $row = $self->chado->resultset('Cv::Cvterm')
+        ->create( $self->insert_hashref );
     $self->clear_stashes;
     return $row;
 }
+
+#Not getting to be used for the time being
 
 sub keep_state_in_cache {
     my ($self) = @_;
@@ -255,7 +196,6 @@ sub store_cache {
     };
 }
 
-#Not getting to be used for the time being
 sub handle_alt_ids {
     my ($self) = @_;
     my $node = $self->node;

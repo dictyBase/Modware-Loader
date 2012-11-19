@@ -3,7 +3,6 @@ package Modware::Loader::Role::Ontology::WithOracle;
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
-use Modware::Loader::Response;
 
 # Module implementation
 #
