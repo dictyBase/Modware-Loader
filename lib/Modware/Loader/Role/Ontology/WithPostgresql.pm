@@ -32,6 +32,8 @@ return Modware::Loader::Response->new(
 
 }
 
+sub setup {}
+
 1;    # Magic true value required at end of module
 
 __END__
