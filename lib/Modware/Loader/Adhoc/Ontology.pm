@@ -10,12 +10,12 @@ use utf8;
 with 'Modware::Loader::Adhoc::Role::Ontology::Helper';
 with 'Modware::Role::Chado::Helper::BCS::WithDataStash';
 
-has 'logger' => (is => 'rw',  isa => 'Log::Log4perl');
+has 'logger' => ( is => 'rw', isa => 'Log::Log4perl' );
 
 has 'chado' => (
     is      => 'rw',
     isa     => 'Bio::Chado::Schema',
-    trigger => sub { $self->load_engine(@_) }
+    trigger => sub { my $self = shift; $self->load_engine(@_) }
 );
 has 'cv_namespace' =>
     ( is => 'rw', isa => 'Bio::Chado::Scheme::Result::Cv::Cv' );
@@ -27,7 +27,7 @@ sub load_engine {
     my ($self) = @_;
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::With'
-        . ucfirst lc( $chado->storage->sqlt_type );
+        . ucfirst lc( $self->chado->storage->sqlt_type );
     ensure_all_roles( $self, $engine );
     $self->meta->make_immutable;
     $self->setup;
@@ -68,11 +68,11 @@ sub update_or_create_term {
         )
     {
         $self->_update_term( $term_from_db, $term );
-        $self->logger->debug('update term ', $term->identifier);
+        $self->logger->debug( 'update term ', $term->identifier );
     }
     else {
         $self->_insert_term( $term, $relation );
-        $self->logger->debug('insert term ', $term->identifier);
+        $self->logger->debug( 'insert term ', $term->identifier );
     }
 }
 
