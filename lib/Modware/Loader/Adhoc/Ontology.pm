@@ -17,9 +17,9 @@ has 'chado' => (
     trigger => sub { my $self = shift; $self->load_engine(@_) }
 );
 has 'cv_namespace' =>
-    ( is => 'rw', isa => 'Bio::Chado::Scheme::Result::Cv::Cv' );
+    ( is => 'rw', isa => 'Bio::Chado::Schema::Result::Cv::Cv' );
 has 'db_namespace' =>
-    ( is => 'rw', isa => 'Bio::Chado::Scheme::Result::General::Db' );
+    ( is => 'rw', isa => 'Bio::Chado::Schema::Result::General::Db' );
 
 # revisit
 sub load_engine {
