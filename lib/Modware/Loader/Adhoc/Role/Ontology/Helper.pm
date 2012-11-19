@@ -2,7 +2,7 @@ package Modware::Loader::Adhoc::Role::Ontology::Helper;
 
 use namespace::autoclean;
 use Moose::Role;
-use MooseX::Params::Validate;
+use Carp;
 
 requires 'chado';
 
@@ -20,12 +20,7 @@ has 'dbrow' => (
 );
 
 sub find_dbxref_id {
-    my ( $self, $dbxref, $db ) = validated_list(
-        \@_,
-        dbxref => { isa => 'Str' },
-        db     => { isa => 'Str' },
-    );
-
+    my ( $self, $dbxref, $db ) = @_;
     my $rs = $self->chado->resultset('General::Dbxref')->search(
         {   accession => $dbxref,
             db_id     => $db
@@ -37,14 +32,7 @@ sub find_dbxref_id {
 }
 
 sub find_dbxref_id_by_cvterm {
-    my ( $self, $dbxref, $db, $cv, $cvterm ) = validated_list(
-        \@_,
-        dbxref => { isa => 'Str' },
-        db     => { isa => 'Str' },
-        cv     => { isa => 'Str' },
-        cvterm => { isa => 'Str' },
-    );
-
+    my ( $self, $dbxref, $db, $cv, $cvterm ) = @_;
     my $rs = $self->chado->resultset('General::Dbxref')->search(
         {   'accession'   => $dbxref,
             'db.name'     => $db,
@@ -59,11 +47,7 @@ sub find_dbxref_id_by_cvterm {
 }
 
 sub find_relation_term_id {
-    my ( $self, $cvterm, $cv ) = validated_list(
-        \@_,
-        cvterm => { isa => 'Str' },
-        cv     => { isa => 'ArrayRef' }
-    );
+    my ( $self, $cvterm, $cv ) = @_;
 
     ## -- extremely redundant call have to cache later ontology
     my $rs = $self->chado->resultset('Cv::Cvterm')->search(
@@ -79,11 +63,7 @@ sub find_relation_term_id {
 }
 
 sub find_cvterm_id_by_term_id {
-    my ( $self, $cvterm, $cv ) = validated_list(
-        \@_,
-        term_id => { isa => 'Str' },
-        cv      => { isa => 'Str' },
-    );
+    my ( $self, $cvterm, $cv ) = @_;
 
     if ( $self->do_parse_id and $self->has_idspace($cvterm) ) {
         my ( $db, $id ) = $self->parse_id($cvterm);
@@ -194,16 +174,7 @@ sub _build_cvrow {
 }
 
 sub find_or_create_cvterm_id {
-    my ( $self, $cvterm, $cv, $db, $dbxref ) = validated_list(
-        \@_,
-        cvterm => { isa => 'Str' },
-        cv     => { isa => 'Str' },
-        db     => { isa => 'Str' },
-        dbxref => {
-            isa      => 'Str',
-            optional => 1
-        }
-    );
+    my ( $self, $cvterm, $cv, $db, $dbxref ) = @_;
 
     $dbxref ||= $cv . '-' . $db . '-' . $cvterm;
 
@@ -235,13 +206,7 @@ sub find_or_create_cvterm_id {
 }
 
 sub find_cvterm_id {
-    my ( $self, $cvterm, $cv ) = validated_list(
-        \@_,
-        cvterm => { isa => 'Str' },
-        cv     => { isa => 'Str' },
-
-        #  db     => { isa => 'Str' }
-    );
+    my ( $self, $cvterm, $cv ) = @_;
 
     if ( $self->exist_cvterm_row($cvterm) ) {
         my $row = $self->get_cvterm_row($cvterm);
@@ -262,8 +227,7 @@ sub find_cvterm_id {
 }
 
 sub cvterm_id_by_name {
-    my $self = shift;
-    my ($name) = pos_validated_list( \@_, { isa => 'Str' } );
+    my ( $self, $name ) = @_;
 
     #check if it is already been cached
     if ( $self->exist_cvterm_row($name) ) {
@@ -291,8 +255,7 @@ sub cvterm_id_by_name {
 }
 
 sub cvterm_ids_by_namespace {
-    my $self = shift;
-    my ($name) = pos_validated_list( \@_, { isa => 'Str' } );
+    my ( $self, $name ) = @_;
 
     if ( $self->exist_cvrow($name) ) {
         my $ids = [ map { $_->cvterm_id } $self->get_cvrow($name)->cvterms ];
