@@ -124,28 +124,9 @@ has 'term_cache' => (
     }
 );
 
-before [ map { 'handle_' . $_ }
-        qw/core alt_ids xrefs synonyms comment rel_prop/ ] => sub {
-    my ($self) = @_;
-    croak "node is not set\n" if !$self->has_node;
-        };
-
 sub handle_core {
     my ($self) = @_;
     my $node = $self->node;
-
-    #if ( $node->replaced_by ) {
-    #    $self->skipped_message(
-    #        'Node is replaced by ' . $node->replaced_by );
-    #    return;
-    #}
-
-    #if ( $node->consider ) {
-    #    $self->skipped_message(
-    #        'Node has been considered for replacement by '
-    #            . $node->consider );
-    #    return;
-    #}
 
     my ( $db_id, $accession );
     if (    $self->do_parse_id
