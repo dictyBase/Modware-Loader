@@ -13,7 +13,7 @@ with 'Modware::Role::Chado::Helper::BCS::WithDataStash' =>
     { create_stash_for =>
         [qw/cvterm_dbxrefs cvtermsynonyms cvtermprop_cvterms/] };
 
-has 'chado' => ( is => 'rw',  isa => 'Bio::Chado::Schema');
+has 'chado' => ( is => 'rw', isa => 'Bio::Chado::Schema' );
 
 # revisit
 has 'runner' => (
@@ -34,7 +34,7 @@ has 'runner' => (
 
 has 'node' => (
     is        => 'rw',
-    isa       => 'Bio::Ontology::TermI', 
+    isa       => 'Bio::Ontology::TermI',
     clearer   => 'clear_node',
     predicate => 'has_node'
 );
@@ -154,28 +154,8 @@ sub handle_core {
     $self->add_to_mapper(
         'dbxref' => { accession => $accession, db_id => $db_id } );
 
-    #logic if node has its own namespace defined
-    if ( $node->namespace
-        and ( $node->namespace ne $self->cvrow->name ) )
-    {
-        if ( $self->exist_cvrow( $node->namespace ) ) {
-            $self->add_to_mapper( 'cv_id',
-                $self->get_cvrow( $node->namespace )->cv_id );
-        }
-        else {
-            my $row = $self->chado->txn_do(
-                sub {
-                    $self->chado->resultset('Cv::Cv')
-                        ->create( { name => $node->namespace } );
-                }
-            );
-            $self->set_cvrow( $node->namespace, $row );
-            $self->add_to_mapper( 'cv_id', $row->cv_id );
-        }
-    }
-    else {    ## -- use the global namespace
-        $self->add_to_mapper( 'cv_id', $self->cvrow->cv_id );
-    }
+    ## -- use the global namespace
+    $self->add_to_mapper( 'cv_id', $self->cvrow->cv_id );
 
     $self->add_to_mapper( 'definition', encode( "UTF-8", $node->definition ) )
         if $node->defintion;
@@ -221,14 +201,14 @@ sub clear_current_state {
 }
 
 sub handle_relation {
-    my ($self)     = @_;
-    my $node       = $self->node;
-    my $graph      = $self->graph;
-    my $type       = $node->relation;
-    my $subject    = $node->node;
-    my $object     = $node->target;
-    my $subj_inst  = $graph->get_node($subject);
-    my $obj_inst   = $graph->get_node($object);
+    my ($self)    = @_;
+    my $node      = $self->node;
+    my $graph     = $self->graph;
+    my $type      = $node->relation;
+    my $subject   = $node->node;
+    my $object    = $node->target;
+    my $subj_inst = $graph->get_node($subject);
+    my $obj_inst  = $graph->get_node($object);
 
     my $type_id = $self->find_relation_term_id(
         cv     => [ $self->cvrow->name, 'relationship' ],
@@ -294,7 +274,6 @@ sub store_cache {
         croak Dumper $cache->[$index];
     };
 }
-
 
 #Not getting to be used for the time being
 sub handle_alt_ids {
