@@ -26,9 +26,23 @@ sub handle_synonyms {
         );
     }
     return Modware::Loader::Response->new(
-    	is_success => 1, 
-    	message => 'Loaded all synonyms for '. $node->id
+        is_success => 1,
+        message    => 'Loaded all synonyms for ' . $node->id
     );
+}
+
+sub setup {
+    my $self       = shift;
+    my $source     = $self->chado->source('Cv::Cvtermsynonym');
+    $source->remove_column('synonym');
+    $source->add_column(
+        'synonym_' => {
+            data_type   => 'varchar',
+            is_nullable => 0,
+            size        => 1024
+        }
+    );
+
 }
 
 1;    # Magic true value required at end of module
