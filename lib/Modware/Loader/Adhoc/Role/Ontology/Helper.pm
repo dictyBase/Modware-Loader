@@ -4,6 +4,8 @@ use namespace::autoclean;
 use Moose::Role;
 use MooseX::Params::Validate;
 
+requires 'chado';
+
 has 'dbrow' => (
     is      => 'rw',
     isa     => 'HashRef',
@@ -108,6 +110,30 @@ sub find_cvterm_id_by_term_id {
     }
 }
 
+sub find_cvterm_by_id {
+    my ( $self, $identifier, $cv ) = @_;
+    my $row;
+    if ( $self->has_idspace($identfier) ) {
+        my ( $db, $id ) = $self->parse_id($identifier);
+        $row = $self->chado->resultset('Cv::Cvterm')->search(
+            {   'dbxref.accession' => $id,
+                'cv.name'          => $cv,
+                'db.name'          => $db
+            },
+            { join => [ 'cv', { 'dbxref' => 'db' } ], rows => 1 }
+        )->single;
+        return $row if $row;
+    }
+
+    $row
+        = $self->chado->resultset('Cv::Cvterm')
+        ->search( { 'dbxref.accession' => $cvterm, 'cv.name' => $cv },
+        { join => [qw/cv dbxref/], rows => 1 } )->single;
+
+    return $row if $row;
+
+}
+
 sub find_or_create_db_id {
     my ( $self, $name ) = @_;
     if ( $self->has_dbrow($name) ) {
@@ -133,7 +159,6 @@ sub parse_id {
     my ( $self, $id ) = @_;
     return split /:/, $id;
 }
-
 
 has 'cvterm_row' => (
     is        => 'rw',
@@ -283,7 +308,6 @@ sub cvterm_ids_by_namespace {
     }
     croak "the given cv namespace $name does not exist : create one\n";
 }
-
 
 1;    # Magic true value required at end of module
 
