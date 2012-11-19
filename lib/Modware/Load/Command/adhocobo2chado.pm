@@ -46,7 +46,7 @@ sub execute {
     }
 
     #4. do upsert of terms
-    $loader->update_or_create_term($term) for $onto->get_all_terms;
+    $loader->update_or_create_term($_) for $onto->get_all_terms;
 
     #5. do upsert of relationships
 
