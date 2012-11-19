@@ -13,40 +13,32 @@ with 'Modware::Role::Chado::Helper::BCS::WithDataStash' =>
     { create_stash_for =>
         [qw/cvterm_dbxrefs cvtermsynonyms cvtermprop_cvterms/] };
 
-has 'chado' => ( is => 'rw', isa => 'Bio::Chado::Schema' );
+has 'chado' => (
+    is      => 'rw',
+    isa     => 'Bio::Chado::Schema',
+    trigger => sub { $self->load_engine(@_) }
+);
+has 'cv_namespace' =>
+    ( is => 'rw', isa => 'Bio::Chado::Scheme::Result::Cv::Cv' );
+has 'db_namespace' =>
+    ( is => 'rw', isa => 'Bio::Chado::Scheme::Result::General::Db' );
 
 # revisit
-has 'runner' => (
-    is      => 'rw',
-    isa     => 'MooseX::App::Cmd::Command',
-    trigger => sub {
-        my ( $self, $runner ) = @_;
-        my $helper = $runner->helper;
-        $self->meta->make_mutable;
-        my $engine = 'Modware::Loader::Role::Ontology::With'
-            . ucfirst lc( $chado->storage->sqlt_type );
-        ensure_all_roles( $self, $engine );
-        $self->meta->make_immutable;
-        $self->setup;
-    },
-    handles => [qw/helper chado do_parse_id graph current_logger/]
-);
+sub load_engine {
+    my ( $self ) = @_;
+    $self->meta->make_mutable;
+    my $engine = 'Modware::Loader::Role::Ontology::With'
+        . ucfirst lc( $chado->storage->sqlt_type );
+    ensure_all_roles( $self, $engine );
+    $self->meta->make_immutable;
+    $self->setup;
+}
 
-has 'node' => (
+has 'term' => (
     is        => 'rw',
     isa       => 'Bio::Ontology::TermI',
-    clearer   => 'clear_node',
-    predicate => 'has_node'
-);
-
-has 'cvrow' => (
-    is  => 'rw',
-    isa => 'DBIx::Class::Row',
-);
-
-has 'dbrow' => (
-    is  => 'rw',
-    isa => 'DBIx::Class::Row'
+    clearer   => 'clear_term',
+    predicate => 'has_term'
 );
 
 #revisit
@@ -132,23 +124,18 @@ has 'term_cache' => (
 
 sub handle_core {
     my ($self) = @_;
-    my $node = $self->node;
+    my $term = $self->term;
 
     my ( $db_id, $accession );
     if (    $self->do_parse_id
-        and $self->has_idspace( $node->id ) )
+        and $self->has_idspace( $term->identifier ) )
     {
-        my ( $db, $accession ) = $self->parse_id( $node->id );
+        my ( $db, $accession ) = $self->parse_id( $term->identifier );
         $db_id = $self->find_or_create_db_id($db);
     }
     else {
-        my $namespace
-            = $node->namespace
-            ? $node->namespace
-            : $self->cvrow->name;
-
-        $db_id     = $self->find_or_create_db_id($namespace);
-        $accession = $node->id;
+        $db_id     = $self->find_or_create_db_id( $self->cvrow->name );
+        $accession = $term->identifier;
     }
 
     $self->add_to_mapper(
@@ -157,8 +144,8 @@ sub handle_core {
     ## -- use the global namespace
     $self->add_to_mapper( 'cv_id', $self->cvrow->cv_id );
 
-    $self->add_to_mapper( 'definition', encode( "UTF-8", $node->definition ) )
-        if $node->defintion;
+    $self->add_to_mapper( 'definition', encode( "UTF-8", $term->definition ) )
+        if $term->defintion;
     $self->add_to_mapper( 'is_relationshiptype', 1 )
         if ref $node eq 'GOBO::RelationNode';
     $self->add_to_mapper( 'is_obsolete', 1 ) if $node->is_obsolete;
