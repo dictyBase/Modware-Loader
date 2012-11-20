@@ -32,12 +32,6 @@ sub load_engine {
     $self->setup;
 }
 
-has 'term' => (
-    is        => 'rw',
-    isa       => 'Bio::Ontology::TermI',
-    clearer   => 'clear_term',
-    predicate => 'has_term'
-);
 
 #revisit
 has 'other_cvs' => (
@@ -60,32 +54,34 @@ has 'other_cvs' => (
 );
 
 sub update_or_create_term {
-    my ( $self, $term, $relation ) = @_;
-    if (my $term_from_db = $self->find_cvterm_by_id(
-            $term->identifier, $self->cv_namespace->name
-        )
-        )
-    {
+    my ( $self, $term ) = @_;
+    my $term_from_db
+        = $self->find_cvterm_by_id( $term->id, $self->cv_namespace->name );
+    if ($term_from_db) {
         $self->_update_term( $term_from_db, $term );
-        $self->logger->debug( 'update term ', $term->identifier );
+        $self->logger->debug( 'update term ', $term->id );
     }
     else {
         $self->_insert_term( $term, $relation );
-        $self->logger->debug( 'insert term ', $term->identifier );
+        $self->logger->debug( 'insert term ', $term->id );
     }
 }
 
 sub _update_term {
     my ( $self, $term_from_db, $term ) = @_;
     if ( $term_from_db->is_obsolete != $term->is_obsolete ) {
-        $term_from_db->update( { is_obsolete => $term->is_obsolete } );
+        $term_from_db->update(
+            {   is_obsolete => $term->is_obsolete,
+                definition  => $term->definition
+            }
+        );
     }
 }
 
 sub load_namespaces {
     my ( $self, $ontology ) = @_;
     my $global_cv = $self->chado->resultset('Cv::Cv')
-        ->find_or_create( { name => $onto->name } );
+        ->find_or_create( { name => $onto->default_namespace } );
     my $global_db = $self->chado->resultset('General::Db')
         ->find_or_create( { name => '_global' } );
     $self->cv_namespace($global_cv);
@@ -93,15 +89,15 @@ sub load_namespaces {
 }
 
 sub _insert_term {
-    my ( $self, $term, $relation ) = @_;
+    my ( $self, $term ) = @_;
     my ( $db_id, $accession );
-    if ( $self->has_idspace( $term->identifier ) ) {
-        my ( $db, $accession ) = $self->parse_id( $term->identifier );
+    if ( $self->has_idspace( $term->id ) ) {
+        my ( $db, $accession ) = $self->parse_id( $term->id );
         $db_id = $self->find_or_create_db_id($db);
     }
     else {
         $db_id     = $self->find_or_create_db_id( $self->cv_namespace->name );
-        $accession = $term->identifier;
+        $accession = $term->id;
     }
 
     $self->add_to_mapper(
@@ -111,9 +107,10 @@ sub _insert_term {
     $self->add_to_mapper( 'cv_id', $self->cv_namespace->cv_id );
     $self->add_to_mapper( 'definition', encode( "UTF-8", $term->definition ) )
         if $term->definition;
-    $self->add_to_mapper( 'is_relationshiptype', 1 ) if $relation;
-    $self->add_to_mapper( 'is_obsolete',         1 ) if $term->is_obsolete;
-    $self->add_to_mapper( 'name', $term->name );
+    $self->add_to_mapper( 'is_relationshiptype', 1 )
+        if $term->is_a('OBO::Core::RelationshipType');
+    $self->add_to_mapper( 'is_obsolete', 1 ) if $term->is_obsolete;
+    $self->add_to_mapper( 'name', $term->name ? $term->name : $term->id );
 
     my $row = $self->chado->resultset('Cv::Cvterm')
         ->create( $self->insert_hashref );
