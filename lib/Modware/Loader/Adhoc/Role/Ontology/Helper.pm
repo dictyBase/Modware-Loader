@@ -52,7 +52,7 @@ sub find_relation_term_id {
     ## -- extremely redundant call have to cache later ontology
     my $rs = $self->chado->resultset('Cv::Cvterm')->search(
         {   'me.name' => $cvterm,
-            'cv.name' => { -in => $cv }
+            'cv.name' => $cv
         },
         { join => 'cv' }
     );
@@ -128,6 +128,10 @@ sub find_or_create_db_id {
     );
     $self->add_dbrow( $name, $row );
     $row->db_id;
+}
+
+sub get_term_identifier {
+    my ($self) = @_;
 }
 
 sub has_idspace {
