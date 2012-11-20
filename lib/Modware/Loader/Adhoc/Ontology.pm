@@ -92,30 +92,27 @@ sub _insert_term {
     my ( $self, $term ) = @_;
     my ( $db_id, $accession );
     if ( $self->has_idspace( $term->id ) ) {
-        my ( $db, $accession ) = $self->parse_id( $term->id );
-        $db_id = $self->find_or_create_db_id($db);
+        my @parsed = $self->parse_id( $term->id );
+        $db_id = $self->find_or_create_db_id($parsed[0]);
+        $accession = $parsed[1];
     }
     else {
         $db_id     = $self->find_or_create_db_id( $self->cv_namespace->name );
         $accession = $term->id;
     }
 
-    $self->add_to_mapper(
-        'dbxref' => { accession => $accession, db_id => $db_id } );
-
-    ## -- use the global namespace
-    $self->add_to_mapper( 'cv_id', $self->cv_namespace->cv_id );
-    $self->add_to_mapper( 'definition', encode( "UTF-8", $term->def->text ) )
+    my $insert_hash;
+    $insert_hash->{dbxref} = { accession => $accession, db_id => $db_id } ;
+    $insert_hash->{cv_id} = $self->cv_namespace->cv_id ;
+    $insert_hash->{definition} = encode( "UTF-8", $term->def->text ) 
         if $term->def;
-    $self->add_to_mapper( 'is_relationshiptype', 1 )
-        if $term->is_a('OBO::Core::RelationshipType');
-    $self->add_to_mapper( 'is_obsolete', 1 ) if $term->is_obsolete;
-    $self->add_to_mapper( 'name', $term->name ? $term->name : $term->id );
+    $insert_hash->{is_relationshiptype} = 1 
+        if $term->isa('OBO::Core::RelationshipType');
+    $insert_hash->{is_obsolete} = 1 if $term->is_obsolete;
+    $insert_hash->{name} = $term->name ? $term->name : $term->id ;
 
-    my $row = $self->chado->resultset('Cv::Cvterm')
-        ->create( $self->insert_hashref );
-    $self->clear_stashes;
-    return $row;
+    return $self->chado->resultset('Cv::Cvterm')
+        ->create( $insert_hash );
 }
 
 #Not getting to be used for the time being
