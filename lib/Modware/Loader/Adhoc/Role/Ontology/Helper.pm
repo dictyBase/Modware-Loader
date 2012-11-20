@@ -62,6 +62,17 @@ sub find_relation_term {
     }
 }
 
+sub find_relation {
+    my ( $self, $subject, $object, $predicate ) = @_;
+    return $self->chado->resultset('Cv::CvtermRelationship')->search(
+        {   subject_id => $subject->cvterm_id,
+            object_id  => $object->cvterm_id,
+            type_id    => $predicate->cvterm_id
+        },
+        { rows => 1 }
+    )->single;
+}
+
 sub find_cvterm_id_by_term_id {
     my ( $self, $cvterm, $cv ) = @_;
 
