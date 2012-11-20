@@ -46,7 +46,7 @@ sub find_dbxref_id_by_cvterm {
     }
 }
 
-sub find_relation_term_id {
+sub find_relation_term {
     my ( $self, $cvterm, $cv ) = @_;
 
     ## -- extremely redundant call have to cache later ontology
@@ -58,7 +58,7 @@ sub find_relation_term_id {
     );
 
     if ( $rs->count ) {
-        return $rs->first->cvterm_id;
+        return $rs->first;
     }
 }
 
