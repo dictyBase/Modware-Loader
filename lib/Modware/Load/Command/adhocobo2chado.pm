@@ -2,40 +2,28 @@ package Modware::Load::Command::adhocobo2chado;
 use strict;
 use namespace::autoclean;
 use Moose;
-use Bio::OntologyIO;
+use OBO::Parser::OBOParser;
 use Modware::Loader::Adhoc::Ontology;
 extends qw/Modware::Load::Chado/;
-
-has '_is_relationship' =>
-    ( is => 'ro', lazy => 1, default => 1, isa => 'Bool' );
 
 sub execute {
     my ($self) = @_;
 
     #1. read the file
-    my $io = Bio::OntologyIO->new(
-        -fh     => $self->input_handler,
-        -format => 'obo'
-    );
-    my $onto = $io->next_ontology;
+    my $io   = OBO::Parser::OBOParser->new;
+    my $onto = $io->work( $self->input_handler );
 
     my $schema = $self->schema;
-    my $guard = $schema->txn_scope_guard;
-
-    #2. Create or select the global namespaces for cv and db.
-    my $global_cv = $schema->resultset('Cv::Cv')
-        ->find_or_create( { name => $onto->name } );
-    my $global_db = $schema->resultset('General::Db')
-        ->find_or_create( { name => '_global' } );
+    my $guard  = $schema->txn_scope_guard;
 
     #2a. Get a loader object and set it up
-    my $loader = Modware::Loader::Adhoc::Ontology->new(logger => $self->logger);
+    my $loader
+        = Modware::Loader::Adhoc::Ontology->new( logger => $self->logger );
     $loader->chado($schema);
-    $loader->cv_namespace($global_cv);
-    $loader->db_namespace($global_db);
+    $loader->load_namespaces($onto);
 
     #3. do upsert of relationship terms
-    for my $term ( $onto->get_predicate_terms ) {
+    for my $term ( @{ $onto->get_relationship_types } ) {
 
         #get list of new relationship terms
         #   It wraps around two methods
@@ -45,11 +33,11 @@ sub execute {
         #   else {
         #     insert_term($term);
         #}
-        $loader->update_or_create_term( $term, $self->is_relationship );
+        $loader->update_or_create_term( $term );
     }
 
     #4. do upsert of terms
-    $loader->update_or_create_term($_) for $onto->get_all_terms;
+    $loader->update_or_create_term($_) for @{ $onto->get_terms };
     $guard->commit;
 
     #5. do upsert of relationships
