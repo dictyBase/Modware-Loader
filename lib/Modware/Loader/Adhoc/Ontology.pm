@@ -82,6 +82,16 @@ sub _update_term {
     }
 }
 
+sub load_namespaces {
+    my ( $self, $ontology ) = @_;
+    my $global_cv = $self->chado->resultset('Cv::Cv')
+        ->find_or_create( { name => $onto->name } );
+    my $global_db = $self->chado->resultset('General::Db')
+        ->find_or_create( { name => '_global' } );
+    $self->cv_namespace($global_cv);
+    $self->db_namespace($global_db);
+}
+
 sub _insert_term {
     my ( $self, $term, $relation ) = @_;
     my ( $db_id, $accession );
@@ -366,7 +376,6 @@ ACCESSION:
         }
     ) if defined $cache;
 }
-
 
 with 'Modware::Loader::Adhoc::Role::Ontology::Helper';
 
