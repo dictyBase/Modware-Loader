@@ -62,7 +62,7 @@ sub update_or_create_term {
         $self->logger->debug( 'update term ', $term->id );
     }
     else {
-        $self->_insert_term( $term, $relation );
+        $self->_insert_term( $term );
         $self->logger->debug( 'insert term ', $term->id );
     }
 }
@@ -81,7 +81,7 @@ sub _update_term {
 sub load_namespaces {
     my ( $self, $ontology ) = @_;
     my $global_cv = $self->chado->resultset('Cv::Cv')
-        ->find_or_create( { name => $onto->default_namespace } );
+        ->find_or_create( { name => $ontology->default_namespace } );
     my $global_db = $self->chado->resultset('General::Db')
         ->find_or_create( { name => '_global' } );
     $self->cv_namespace($global_cv);
