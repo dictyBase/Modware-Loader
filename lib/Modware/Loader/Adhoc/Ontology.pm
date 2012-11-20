@@ -72,7 +72,7 @@ sub _update_term {
     if ( $term_from_db->is_obsolete != $term->is_obsolete ) {
         $term_from_db->update(
             {   is_obsolete => $term->is_obsolete,
-                definition  => $term->definition
+                definition  => $term->def->text
             }
         );
     }
@@ -105,8 +105,8 @@ sub _insert_term {
 
     ## -- use the global namespace
     $self->add_to_mapper( 'cv_id', $self->cv_namespace->cv_id );
-    $self->add_to_mapper( 'definition', encode( "UTF-8", $term->definition ) )
-        if $term->definition;
+    $self->add_to_mapper( 'definition', encode( "UTF-8", $term->def->text ) )
+        if $term->def;
     $self->add_to_mapper( 'is_relationshiptype', 1 )
         if $term->is_a('OBO::Core::RelationshipType');
     $self->add_to_mapper( 'is_obsolete', 1 ) if $term->is_obsolete;
