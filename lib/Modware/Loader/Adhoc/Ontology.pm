@@ -98,36 +98,43 @@ sub create_relationship {
     my $cv     = $self->cv_namespace->name;
     my $logger = $self->logger;
 
-    my $relationship_from_db = $self->find_relation_term( $relation->type, $cv );
+    my $relationship_from_db
+        = $self->find_relation_term( $relation->type, $cv );
     if ( !$relationship_from_db ) {
         $logger->error( $relation->type, " relation do no exist in storage" );
         return;
     }
     my $subject = $self->find_cvterm_by_id( $relation->tail->id, $cv );
-    if ( !$subject) {
+    if ( !$subject ) {
         $logger->error( $relation->tail->id,
             " subject term do not exist in storage" );
         return;
     }
 
     my $object = $self->find_cvterm_by_id( $relation->head->id, $cv );
-    if ( !$object) {
+    if ( !$object ) {
         $logger->error( $relation->head->id,
             " object term do not exist in storage" );
         return;
     }
 
-	my $relation_from_db = $self->find_relation($subject, $object, $relationship_from_db);
-	if ($relation_from_db) {
-		$logger->debug("!!!! relation exist in database");
-		return;
-	}
-	
-	return $self->chado->resultset('Cv::CvtermRelationship')->create({
-		object_id => $object->cvterm_id, 
-		subject_id => $subject->cvterm_id, 
-		type_id => $relationship_from_db->cvterm_id
-	});
+    my $relation_from_db
+        = $self->find_relation( $subject, $object, $relationship_from_db );
+    if ($relation_from_db) {
+        $logger->debug("!!!! relation exist in database");
+        return;
+    }
+
+    my $row = $self->chado->resultset('Cv::CvtermRelationship')->create(
+        {   object_id  => $object->cvterm_id,
+            subject_id => $subject->cvterm_id,
+            type_id    => $relationship_from_db->cvterm_id
+        }
+    );
+    $logger->debug( "created relationship ",
+        $relation->type, " between ",
+        $relation->tail->id, " and ", $relation->head->id );
+        return $row;
 }
 
 #Not getting to be used for the time being
