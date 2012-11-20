@@ -90,7 +90,7 @@ sub _insert_term {
         $db_id = $self->find_or_create_db_id($db);
     }
     else {
-        $db_id     = $self->find_or_create_db_id( $self->cvrow->name );
+        $db_id     = $self->find_or_create_db_id( $self->cv_namespace->name );
         $accession = $term->identifier;
     }
 
@@ -100,7 +100,7 @@ sub _insert_term {
     ## -- use the global namespace
     $self->add_to_mapper( 'cv_id', $self->cv_namespace->cv_id );
     $self->add_to_mapper( 'definition', encode( "UTF-8", $term->definition ) )
-        if $term->defintion;
+        if $term->definition;
     $self->add_to_mapper( 'is_relationshiptype', 1 ) if $relation;
     $self->add_to_mapper( 'is_obsolete',         1 ) if $term->is_obsolete;
     $self->add_to_mapper( 'name', $term->name );
