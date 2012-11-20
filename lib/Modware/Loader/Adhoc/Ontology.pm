@@ -32,27 +32,6 @@ sub load_engine {
     $self->setup;
 }
 
-
-#revisit
-has 'other_cvs' => (
-    is         => 'rw',
-    isa        => 'ArrayRef',
-    auto_deref => 1,
-    default    => sub {
-        my ($self) = @_;
-        my $names = [
-            map { $_->name }
-                $self->runner->chado->resultset('Cv::Cv')->search(
-                {   name =>
-                        { -not_in => [ 'relationship', $self->cvrow->name ] }
-                }
-                )
-        ];
-        return $names;
-    },
-    lazy => 1
-);
-
 sub update_or_create_term {
     my ( $self, $term ) = @_;
     my $term_from_db
@@ -62,7 +41,7 @@ sub update_or_create_term {
         $self->logger->debug( 'update term ', $term->id );
     }
     else {
-        $self->_insert_term( $term );
+        $self->_insert_term($term);
         $self->logger->debug( 'insert term ', $term->id );
     }
 }
@@ -93,7 +72,7 @@ sub _insert_term {
     my ( $db_id, $accession );
     if ( $self->has_idspace( $term->id ) ) {
         my @parsed = $self->parse_id( $term->id );
-        $db_id = $self->find_or_create_db_id($parsed[0]);
+        $db_id     = $self->find_or_create_db_id( $parsed[0] );
         $accession = $parsed[1];
     }
     else {
@@ -102,17 +81,53 @@ sub _insert_term {
     }
 
     my $insert_hash;
-    $insert_hash->{dbxref} = { accession => $accession, db_id => $db_id } ;
-    $insert_hash->{cv_id} = $self->cv_namespace->cv_id ;
-    $insert_hash->{definition} = encode( "UTF-8", $term->def->text ) 
+    $insert_hash->{dbxref}     = { accession => $accession, db_id => $db_id };
+    $insert_hash->{cv_id}      = $self->cv_namespace->cv_id;
+    $insert_hash->{definition} = encode( "UTF-8", $term->def->text )
         if $term->def;
-    $insert_hash->{is_relationshiptype} = 1 
+    $insert_hash->{is_relationshiptype} = 1
         if $term->isa('OBO::Core::RelationshipType');
     $insert_hash->{is_obsolete} = 1 if $term->is_obsolete;
-    $insert_hash->{name} = $term->name ? $term->name : $term->id ;
+    $insert_hash->{name} = $term->name ? $term->name : $term->id;
 
-    return $self->chado->resultset('Cv::Cvterm')
-        ->create( $insert_hash );
+    return $self->chado->resultset('Cv::Cvterm')->create($insert_hash);
+}
+
+sub create_relationship {
+    my ( $self, $relation ) = @_;
+    my $cv     = $self->cv_namespace->name;
+    my $logger = $self->logger;
+
+    my $relationship_from_db = $self->find_relation_term( $relation->type, $cv );
+    if ( !$relationship_from_db ) {
+        $logger->error( $relation->type, " relation do no exist in storage" );
+        return;
+    }
+    my $subject = $self->find_cvterm_by_id( $relation->tail->id, $cv );
+    if ( !$subject) {
+        $logger->error( $relation->tail->id,
+            " subject term do not exist in storage" );
+        return;
+    }
+
+    my $object = $self->find_cvterm_by_id( $relation->head->id, $cv );
+    if ( !$object) {
+        $logger->error( $relation->head->id,
+            " object term do not exist in storage" );
+        return;
+    }
+
+	my $relation_from_db = $self->find_relation($subject, $object, $relationship_from_db);
+	if ($relation_from_db) {
+		$logger->debug("!!!! relation exist in database");
+		return;
+	}
+	
+	return $self->chado->resultset('Cv::CvtermRelationship')->create({
+		object_id => $object->cvterm_id, 
+		subject_id => $subject->cvterm_id, 
+		type_id => $relationship_from_db->cvterm_id
+	});
 }
 
 #Not getting to be used for the time being
@@ -126,58 +141,6 @@ sub clear_current_state {
     my ($self) = @_;
     $self->clear_stashes;
     $self->clear_node;
-}
-
-sub handle_relation {
-    my ($self)    = @_;
-    my $node      = $self->node;
-    my $graph     = $self->graph;
-    my $type      = $node->relation;
-    my $subject   = $node->node;
-    my $object    = $node->target;
-    my $subj_inst = $graph->get_node($subject);
-    my $obj_inst  = $graph->get_node($object);
-
-    my $type_id = $self->find_relation_term_id(
-        cv     => [ $self->cvrow->name, 'relationship' ],
-        cvterm => $type
-    );
-
-    if ( !$type_id ) {
-        return Modware::Loader::Response->new(
-            message  => "$type relation node not in storage",
-            is_error => 1
-        );
-    }
-
-    my $subject_id = $self->find_cvterm_id_by_term_id(
-        term_id => $subject,
-        cv      => $subj_inst->namespace
-    );
-
-    if ( !$subject_id ) {
-        return Modware::Loader::Response->new(
-            message  => "subject $subject not in storage",
-            is_error => 1
-        );
-    }
-
-    my $object_id = $self->find_cvterm_id_by_term_id(
-        term_id => $object,
-        cv      => $obj_inst->namespace
-    );
-
-    if ( !$object_id ) {
-        return Modware::Loader::Response->new(
-            message  => "object $object not in storage",
-            is_error => 1
-        );
-    }
-
-    $self->add_to_mapper( 'type_id',    $type_id );
-    $self->add_to_mapper( 'subject_id', $subject_id );
-    $self->add_to_mapper( 'object_id',  $object_id );
-    return 1;
 }
 
 sub store_cache {
