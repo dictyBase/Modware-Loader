@@ -1,4 +1,4 @@
-package Modware::Loader::Role::Ontology::WithSqLite;
+package Modware::Loader::Role::Ontology::WithSqlite;
 
 # Other modules:
 use namespace::autoclean;

@@ -11,15 +11,16 @@ sub execute {
 
     #1. read the file
     my $io   = OBO::Parser::OBOParser->new;
-    my $onto = $io->work( $self->input_handler );
+    my $onto = $io->work( $self->input );
 
     my $schema = $self->schema;
     my $guard  = $schema->txn_scope_guard;
 
     #2a. Get a loader object and set it up
-    my $loader
-        = Modware::Loader::Adhoc::Ontology->new( logger => $self->logger );
-    $loader->chado($schema);
+    my $loader = Modware::Loader::Adhoc::Ontology->new(
+        logger => $self->logger,
+        chado  => $schema
+    );
     $loader->load_namespaces($onto);
 
     #3. do upsert of relationship terms
@@ -33,14 +34,19 @@ sub execute {
         #   else {
         #     insert_term($term);
         #}
-        $loader->update_or_create_term( $term );
+        $loader->update_or_create_term($term);
     }
 
     #4. do upsert of terms
     $loader->update_or_create_term($_) for @{ $onto->get_terms };
+    #5. do insert of relationships
     $guard->commit;
 
-    #5. do upsert of relationships
+
+    my $guard2  = $schema->txn_scope_guard;
+    $loader->create_relationship($_) for @{$onto->get_relationships};
+    $guard2->commit;
+
 
 }
 
