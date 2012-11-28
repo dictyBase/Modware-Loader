@@ -3,10 +3,8 @@ use strict;
 use namespace::autoclean;
 use Moose;
 use BioPortal::WebService;
-use IO::Async::Loop;
-use IO::Async::Function;
-use feature qw/say/;
-use Data::Dumper;
+use Modware::Loader::Ontology;
+use OBO::Parser::OBOParser;
 extends qw/Modware::Load::Chado/;
 
 has 'apikey' => (
@@ -25,80 +23,21 @@ has 'ontology' => (
 
 sub execute {
     my ($self) = @_;
+    my $logger = $self->logger;
+
     my $bioportal = BioPortal::WebService->new( apikey => $self->apikey );
-    my $onto      = $bioportal->get_ontology( $self->ontology );
-    my $itr       = $onto->get_all_terms;
+	my $downloader = $bioportal->downlaod($self->ontology);
+	if (!$downloader->is_obo_format) {
+		$logger->logcroak($self->ontology,  ' is not available in OBO format');
+	}
 
-    my $total = $itr->total_page;
-    $self->logger->info("total page $total");
-    my $intervals = $self->make_intervals( $total, 10 );
+	my $loader = Modware::Loader::Ontology->new;
+	my $ontology = OBO::Parser::OBOParser->new->work($downloader->filename);
+	$loader->set_ontology($ontology);
+	$loader->set_schema($self->schema);
 
-    my $loop = IO::Async::Loop->new;
-    my $func = IO::Async::Function->new(
-        code => sub {
-            $self->fetch_terms(@_);
-        },
-        min_workers => 3,
-        max_workers => 5
-    );
-    $loop->add($func);
-
-    my $counter = 0;
-    for my $i ( 0 .. 2 ) {
-        my $slice = $itr->slice( @{ $intervals->[$i] } );
-        $func->call(
-            args      => [$slice],
-            on_return => sub {
-                $self->load_terms(@_);
-                if ( $counter == 2 ) {
-                    $loop->stop;
-                }
-                $counter++;
-            },
-            on_error => sub { $self->throw_error(@_) }
-        );
-    }
-    $loop->run;
 }
 
-sub fetch_terms {
-    my ( $self, $itr ) = @_;
-    my $all_terms;
-    while ( my $term = $itr->next_term ) {
-        push @$all_terms, $term;
-    }
-    return $all_terms;
-}
-
-sub load_terms {
-    my ( $self, $all_terms ) = @_;
-    $self->logger->info( $_->name ) for @$all_terms;
-}
-
-sub throw_error {
-    my ( $self, $error ) = @_;
-    $self->logger->error("could not get terms $error");
-}
-
-sub make_intervals {
-    my ( $self, $end, $increment ) = @_;
-    my $slices;
-    my $start = 1;
-    while (1) {
-        my $next = $start + $increment;
-        if ( $next >= $end ) {
-            push @$slices, [ $start, $end ];
-            last;
-        }
-        push @$slices, [ $start, $next ];
-        $start = $next + 1;
-    }
-    return $slices;
-}
-
-sub create_shared_data {
-	my ($self, $ontology) = @_;
-}
 
 1;
 
