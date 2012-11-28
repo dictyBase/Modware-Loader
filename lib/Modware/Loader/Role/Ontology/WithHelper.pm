@@ -5,7 +5,7 @@ use Moose::Role;
 
 requires 'schema';
 
-has 'cvrow' => (
+has '_cvrow' => (
     is      => 'rw',
     isa     => 'HashRef',
     traits  => ['Hash'],
@@ -18,7 +18,21 @@ has 'cvrow' => (
 );
 
 
-has 'dbrow' => (
+has '_cvterm_row' => (
+    is        => 'rw',
+    isa       => 'HashRef',
+    traits    => ['Hash'],
+    predicate => 'has_cvterm_row',
+    default   => sub { {} },
+    handles   => {
+        get_cvterm_row   => 'get',
+        set_cvterm_row   => 'set',
+        exist_cvterm_row => 'defined'
+    }
+);
+
+
+has '_dbrow' => (
     is      => 'rw',
     isa     => 'HashRef',
     traits  => [qw/Hash/],
@@ -30,3 +44,5 @@ has 'dbrow' => (
         has_dbrow    => 'defined'
     }
 );
+
+1;
