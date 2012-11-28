@@ -1,75 +1,67 @@
 package Modware::Loader::Ontology;
 
-use Moose;
-use Try::Tiny;
-use Carp;
 use namespace::autoclean;
+use Moose;
+use Carp;
+use Moose::Util qw/ensure_all_roles/;
+with 'Modware::Loader::Role::Ontology::WithHelper';
 
-has 'manager' => (
-    is  => 'rw',
-    isa => 'Modware::Loader::Ontology::Manager'
-);
-
-has 'resultset' => (
-    is  => 'rw',
-    isa => 'Str'
-);
-
-sub store_cache {
-    my ( $self, $cache ) = @_;
-    my $chado = $self->manager->helper->chado;
-
-    my $index;
-    try {
-        $chado->txn_do(
-            sub {
-                #$chado->resultset( $self->resultset )->populate($cache);
-                for my $i ( 0 .. scalar @$cache - 1 ) {
-                    $index = $i;
-                    $chado->resultset( $self->resultset )
-                        ->create( $cache->[$i] );
-                }
-            }
-        );
+has 'schema' => (
+    is      => 'rw',
+    isa     => 'Bio::Chado::Schema',
+    writer  => 'set_schema',
+    trigger => sub {
+        my ( $self, $schema ) = @_;
+        $self->_load_engine($schema);
+        $self->transform_schema;
     }
-    catch {
-        warn "error in creating: $_";
-        croak Dumper $cache->[$index];
-    };
+);
+
+has 'ontology' => (
+    is     => 'rw',
+    isa    => 'OBO::Core::Ontology',
+    writer => 'set_ontology'
+);
+
+sub _load_engine {
+    my ( $self, $schema ) = @_;
+    $self->meta->make_mutable;
+    my $engine = 'Modware::Loader::Role::Ontology::With'
+        . ucfirst lc( $schema->storage->sqlt_type );
+    ensure_all_roles( $self, $engine );
+    $self->meta->make_immutable;
 }
 
-sub process_xref_cache {
+sub is_ontology_in_db {
     my ($self) = @_;
-    my $cache;
-    my $chado = $self->manager->helper->chado;
-ACCESSION:
-    for my $acc ( $self->manager->cached_xref_entries ) {
-        my $data = $self->manager->get_from_xref_cache($acc);
-        my $rs   = $chado->resultset('General::Dbxref')
-            ->search( { accession => $acc, db_id => $data->[1] } );
-        next ACCESSION if !$rs->count;
-
-        my $cvterm = $chado->resultset('Cv::Cvterm')->find(
-            {   name        => $data->[0],
-                is_obsolete => 0,
-                cv_id       => $self->manager->cv_namespace->cv_id
-            }
-        );
-        next ACCESSION if !$cvterm;
-        push @$cache,
-            {
-            cvterm_id => $cvterm->cvterm_id,
-            dbxref_id => $rs->first->dbxref_id
-            };
-
-        $self->manager->remove_from_xref_cache($acc);
+    my $row = $self->schema->resultset('Cv::Cv')
+        ->find( { name => $self->ontology->default_namespace } );
+    if ($row) {
+        $self->set_cvrow( $self->ontology->default_namespace, $row );
+        return $row;
     }
+}
 
-    $chado->txn_do(
-        sub {
-            $chado->resultset('Cv::CvtermDbxref')->populate($cache);
-        }
-    ) if defined $cache;
+sub get_ontology_version_from_db {
+    my ($self) = @_;
+    my $cvrow;
+    my $cvname = $self->ontology->default_namespace;
+    if ( $self->exists_cvrow($cvname) ) {
+        $cvrow = $self->get_cvrow($cvname);
+    }
+    else {
+        $cvrow
+            = $self->schema->resultset('Cv::Cv')->find( { name => $name } );
+        $self->set_cvrow( $name, $row );
+    }
+    my $version_row = $cvrow->search_related(
+        'cvprops',
+        {   'cv.name'   => 'cv_property',
+            'type.name' => 'data-version'
+        },
+        { join => [ { 'type' => 'cv' } ], rows => 1 }
+    )->single;
+    return $version_row->value if $version_row;
 }
 
 __PACKAGE__->meta->make_immutable;
