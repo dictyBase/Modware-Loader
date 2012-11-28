@@ -4,6 +4,7 @@ use namespace::autoclean;
 use Carp;
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
+use feature qw/switch/;
 use DateTime::Format::Strptime;
 
 has 'schema' => (
@@ -14,6 +15,7 @@ has 'schema' => (
         my ( $self, $schema ) = @_;
         $self->_load_engine($schema);
         $self->transform_schema;
+        $self->_check_cvprop_or_die;
     }
 );
 
@@ -34,6 +36,14 @@ has '_date_parser' => (
         );
     }
 );
+
+sub _check_cvprop_or_die {
+    my ($self) = @_;
+    my $row = $self->schema->resultset('Cv::Cv')
+        ->find( { name => 'cv_property' } );
+    croak "cv_property ontology is not loaded\n" if !$row;
+    $self->set_cvrow( 'cv_property', $row );
+}
 
 sub _load_engine {
     my ( $self, $schema ) = @_;
@@ -86,6 +96,46 @@ sub _get_ontology_date_from_db {
         { join => [ { 'type' => 'cv' } ], rows => 1 }
     )->single;
     return $version_row->value if $version_row;
+}
+
+sub store_metadata {
+    my ($self) = @_;
+    my $schema = $self->schema;
+    my $onto   = $self->ontology;
+
+    my $cvrow = $schema->resultset('Cv::Cv')
+        ->find_or_new( { name => $onto->name } );
+    if ( $cvrow->in_storage ) {
+        my $rs = $cvrow->search_related(
+            'cvprops',
+            { 'cv.name' => 'cv_property' },
+            { join      => [ { 'type' => 'cv' } ] }
+        );
+        for my $row ( $rs->all ) {
+            ( my $method = $row->type->name ) =~ s{-}{_};
+            $row->value( $onto->$method );
+            $row->update;
+        }
+    }
+    else {
+        my $data_array;
+        $cvrow->insert;
+        my $cvprop_id = $self->get_cvrow('cv_property')->cv_id;
+        for my $method ( ( 'date', 'data_version', 'saved_by', 'remark' ) ) {
+            ( my $cvterm = $method ) =~ s{_}{-};
+            push @$data_array,
+                {
+                value   => $onto->$method,
+                type_id => $schema->resultset('Cv::Cvterm')->find(
+                    {   name  => $cvterm,
+                        cv_id => $cvprop_id
+                    }
+                )->cvterm_id
+                };
+        }
+        $cvrow->create_related( 'cvprops', $data_array );
+    }
+    $self->set_cvrow($cvrow->name, $cvrow);
 }
 
 with 'Modware::Loader::Role::Ontology::WithHelper';
