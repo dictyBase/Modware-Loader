@@ -1,10 +1,10 @@
 package Modware::Loader::Ontology;
 
 use namespace::autoclean;
-use Moose;
 use Carp;
+use Moose;
 use Moose::Util qw/ensure_all_roles/;
-with 'Modware::Loader::Role::Ontology::WithHelper';
+use DateTime::Format::Strptime;
 
 has 'schema' => (
     is      => 'rw',
@@ -21,6 +21,18 @@ has 'ontology' => (
     is     => 'rw',
     isa    => 'OBO::Core::Ontology',
     writer => 'set_ontology'
+);
+
+has '_date_parser' => (
+    is      => 'ro',
+    isa     => 'DateTime::Format::Strptime',
+    lazy    => 1,
+    default => sub {
+        return DateTime::Format::Strptime->new(
+            pattern  => '%Y-%m-%d',
+            on_error => 'croak'
+        );
+    }
 );
 
 sub _load_engine {
@@ -42,7 +54,19 @@ sub is_ontology_in_db {
     }
 }
 
-sub get_ontology_version_from_db {
+sub is_ontology_new_version {
+    my ($self) = @_;
+    my $onto_datetime
+        = $self->_date_parser->parse_datetime( $self->ontology->date );
+    my $db_datetime = $self->_date_parser->parse_datetime(
+        $self->_get_ontology_date_from_db );
+
+    if ( $onto_datetime > $db_datetime ) {
+        return $onto_datetime;
+    }
+}
+
+sub _get_ontology_date_from_db {
     my ($self) = @_;
     my $cvrow;
     my $cvname = $self->ontology->default_namespace;
@@ -51,19 +75,20 @@ sub get_ontology_version_from_db {
     }
     else {
         $cvrow
-            = $self->schema->resultset('Cv::Cv')->find( { name => $name } );
-        $self->set_cvrow( $name, $row );
+            = $self->schema->resultset('Cv::Cv')->find( { name => $cvname } );
+        $self->set_cvrow( $cvname, $cvrow );
     }
     my $version_row = $cvrow->search_related(
         'cvprops',
         {   'cv.name'   => 'cv_property',
-            'type.name' => 'data-version'
+            'type.name' => 'date'
         },
         { join => [ { 'type' => 'cv' } ], rows => 1 }
     )->single;
     return $version_row->value if $version_row;
 }
 
+with 'Modware::Loader::Role::Ontology::WithHelper';
 __PACKAGE__->meta->make_immutable;
 
 1;    # Magic true value required at end of module
