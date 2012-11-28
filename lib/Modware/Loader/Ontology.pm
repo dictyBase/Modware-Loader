@@ -135,7 +135,19 @@ sub store_metadata {
         }
         $cvrow->create_related( 'cvprops', $data_array );
     }
-    $self->set_cvrow($cvrow->name, $cvrow);
+    $self->set_cvrow( $cvrow->name, $cvrow );
+}
+
+sub find_or_create_namespaces {
+    my ($self) = @_;
+    $self->find_or_create_dbrow('internal');
+    $self->find_or_create_cvrow($_) for qw/cvterm_property_type synonym_type/;
+    $self->find_or_create_cvterm_namespace($_)
+        for
+        qw/comment alt_id xref cyclic reflexive transitive anonymous domain range/;
+    $self->find_or_create_cvterm_namespace( $_, 'synonym_type' )
+        for qw/EXACT BROAD NARROW RELATED/;
+
 }
 
 with 'Modware::Loader::Role::Ontology::WithHelper';
