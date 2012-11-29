@@ -21,7 +21,6 @@ has '_cvterm_row' => (
     is        => 'rw',
     isa       => 'HashRef',
     traits    => ['Hash'],
-    predicate => 'has_cvterm_row',
     default   => sub { {} },
     handles   => {
         get_cvterm_row   => 'get',
