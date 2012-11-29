@@ -12,9 +12,9 @@ has 'schema' => (
     isa     => 'Bio::Chado::Schema',
     writer  => 'set_schema',
     trigger => sub {
-        my ( $self, $schema ) = @_;
-        $self->_load_engine($schema);
-        $self->transform_schema;
+        my ( $self ) = @_;
+        $self->_load_engine;
+        $self->_around_connection;
         $self->_check_cvprop_or_die;
     }
 );
@@ -37,6 +37,10 @@ has '_date_parser' => (
     }
 );
 
+sub _around_connection {
+	my ($self) = @_;
+}
+
 sub _check_cvprop_or_die {
     my ($self) = @_;
     my $row = $self->schema->resultset('Cv::Cv')
@@ -46,12 +50,14 @@ sub _check_cvprop_or_die {
 }
 
 sub _load_engine {
-    my ( $self, $schema ) = @_;
+    my ( $self ) = @_;
+    my $schema = $self->schema;
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::With'
         . ucfirst lc( $schema->storage->sqlt_type );
     ensure_all_roles( $self, $engine );
     $self->meta->make_immutable;
+    $self->transform_schema;
 }
 
 sub is_ontology_in_db {
@@ -104,8 +110,8 @@ sub store_metadata {
     my $onto   = $self->ontology;
 
     my $cvrow = $schema->resultset('Cv::Cv')
-        ->find_or_new( { name => $onto->name } );
-    if ( $cvrow->in_storage ) {
+        ->find( { name => $onto->name } );
+    if ( $cvrow ) {
         my $rs = $cvrow->search_related(
             'cvprops',
             { 'cv.name' => 'cv_property' },
@@ -119,7 +125,7 @@ sub store_metadata {
     }
     else {
         my $data_array;
-        $cvrow->insert;
+        $cvrow = $schema->resultset('Cv::Cv')->create({name => $onto->name});
         my $cvprop_id = $self->get_cvrow('cv_property')->cv_id;
         for my $method ( ( 'date', 'data_version', 'saved_by', 'remark' ) ) {
             ( my $cvterm = $method ) =~ s{_}{-};
