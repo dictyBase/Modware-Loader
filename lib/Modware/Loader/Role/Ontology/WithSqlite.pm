@@ -31,7 +31,7 @@ return Modware::Loader::Response->new(
 
 }
 
-sub setup {}
+sub transform_schema {}
 
 1;    # Magic true value required at end of module
 
