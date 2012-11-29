@@ -118,8 +118,14 @@ sub store_metadata {
         );
         for my $row ( $rs->all ) {
             ( my $method = $row->type->name ) =~ s{-}{_};
-            my $api = ( $method eq 'remark' ) ? $method . 's' : $method;
-            $row->value( $onto->$api );
+            if ( $method eq 'remark' ) {
+                my $set = $obo->remarks;
+                ( my $value ) = $set->get_set;
+                $row->value($value);
+            }
+            else {
+                $row->value( $onto->$method );
+            }
             $row->update;
         }
     }
@@ -128,9 +134,16 @@ sub store_metadata {
         my $cvprop_id = $self->get_cvrow('cv_property')->cv_id;
         for my $method ( ( 'date', 'data_version', 'saved_by', 'remark' ) ) {
             ( my $cvterm = $method ) =~ s{_}{-};
-            my $api = ( $method eq 'remark' ) ? $method . 's' : $method;
+            my $value;
+            if ( $method eq 'remark' ) {
+                my $set = $obo->remarks;
+                ($value) = $set->get_set;
+            }
+            else {
+                $value = $onto->$method;
+            }
             $cvrow->add_to_cvprops(
-                {   value   => $onto->$api,
+                {   value   => $value,
                     type_id => $schema->resultset('Cv::Cvterm')->find(
                         {   name  => $cvterm,
                             cv_id => $cvprop_id
