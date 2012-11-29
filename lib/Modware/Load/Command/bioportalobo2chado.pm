@@ -38,7 +38,6 @@ sub execute {
     $loader->set_schema( $self->schema );
 
 	#enable transaction 
-    my $guard  = $self->schema->txn_scope_guard;
     # check if it is a new version
     if ( $loader->is_ontology_in_db() ) {
         if ( !$loader->is_ontology_new_version() ) {
@@ -46,6 +45,8 @@ sub execute {
                 "This version of ontology already exist in database");
         }
     }
+
+    my $guard  = $self->schema->txn_scope_guard;
     $loader->store_metadata;
     $loader->find_or_create_namespaces;
     $guard->commit;
