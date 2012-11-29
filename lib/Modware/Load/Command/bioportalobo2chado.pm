@@ -47,6 +47,7 @@ sub execute {
         }
     }
     $loader->store_metadata;
+    $loader->find_or_create_namespaces;
     $guard->commit;
 }
 
