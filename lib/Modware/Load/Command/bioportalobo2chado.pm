@@ -26,7 +26,7 @@ sub execute {
     my $logger = $self->logger;
 
     my $bioportal = BioPortal::WebService->new( apikey => $self->apikey );
-    my $downloader = $bioportal->downlaod( $self->ontology );
+    my $downloader = $bioportal->download( $self->ontology );
     if ( !$downloader->is_obo_format ) {
         $logger->logcroak( $self->ontology,
             ' is not available in OBO format' );
@@ -37,6 +37,8 @@ sub execute {
     $loader->set_ontology($ontology);
     $loader->set_schema( $self->schema );
 
+	#enable transaction 
+    my $guard  = $self->schema->txn_scope_guard;
     # check if it is a new version
     if ( $loader->is_ontology_in_db() ) {
         if ( !$loader->is_ontology_new_version() ) {
@@ -45,7 +47,7 @@ sub execute {
         }
     }
     $loader->store_metadata;
-
+    $guard->commit;
 }
 
 1;
