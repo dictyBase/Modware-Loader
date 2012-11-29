@@ -108,8 +108,9 @@ sub store_metadata {
     my ($self) = @_;
     my $schema = $self->schema;
     my $onto   = $self->ontology;
-    my $cvrow = $schema->resultset('Cv::Cv')->find_or_new( { name => $onto->default_namespace } );
-    if ($cvrow->in_storage) {
+    my $cvrow  = $schema->resultset('Cv::Cv')
+        ->find_or_new( { name => $onto->default_namespace } );
+    if ( $cvrow->in_storage ) {
         my $rs = $cvrow->search_related(
             'cvprops',
             { 'cv.name' => 'cv_property' },
@@ -117,29 +118,27 @@ sub store_metadata {
         );
         for my $row ( $rs->all ) {
             ( my $method = $row->type->name ) =~ s{-}{_};
-            $method .= 's' if $method eq 'remark';
-            $row->value( $onto->$method );
+            my $api = ( $method eq 'remark' ) ? $method . 's' : $method;
+            $row->value( $onto->$api );
             $row->update;
         }
     }
     else {
-        my $data_array;
         $cvrow->insert;
         my $cvprop_id = $self->get_cvrow('cv_property')->cv_id;
         for my $method ( ( 'date', 'data_version', 'saved_by', 'remark' ) ) {
             ( my $cvterm = $method ) =~ s{_}{-};
-            $method .= 's' if $method eq 'remark';
-            push @$data_array,
-                {
-                value   => $onto->$method,
-                type_id => $schema->resultset('Cv::Cvterm')->find(
-                    {   name  => $cvterm,
-                        cv_id => $cvprop_id
-                    }
-                )->cvterm_id
-                };
+            my $api = ( $method eq 'remark' ) ? $method . 's' : $method;
+            $cvrow->add_to_cvprops(
+                {   value   => $onto->$api,
+                    type_id => $schema->resultset('Cv::Cvterm')->find(
+                        {   name  => $cvterm,
+                            cv_id => $cvprop_id
+                        }
+                    )->cvterm_id
+                }
+            );
         }
-        $cvrow->create_related( 'cvprops', $data_array );
     }
     $self->set_cvrow( $cvrow->name, $cvrow );
 }
