@@ -86,7 +86,7 @@ sub _get_ontology_date_from_db {
     my ($self) = @_;
     my $cvrow;
     my $cvname = $self->ontology->default_namespace;
-    if ( $self->exists_cvrow($cvname) ) {
+    if ( $self->has_cvrow($cvname) ) {
         $cvrow = $self->get_cvrow($cvname);
     }
     else {
@@ -121,6 +121,7 @@ sub store_metadata {
             if ( $method eq 'remark' ) {
                 my $set = $onto->remarks;
                 ( my $value ) = $set->get_set;
+                next if !$value;
                 $row->value($value);
             }
             else {
@@ -138,6 +139,7 @@ sub store_metadata {
             if ( $method eq 'remark' ) {
                 my $set = $onto->remarks;
                 ($value) = $set->get_set;
+                next if !$value;
             }
             else {
                 $value = $onto->$method;
