@@ -29,7 +29,7 @@ sub load_engine {
         . ucfirst lc( $self->chado->storage->sqlt_type );
     ensure_all_roles( $self, $engine );
     $self->meta->make_immutable;
-    $self->setup;
+    $self->transform_schema;
 }
 
 sub update_or_create_term {
