@@ -31,7 +31,7 @@ has '_date_parser' => (
     lazy    => 1,
     default => sub {
         return DateTime::Format::Strptime->new(
-            pattern  => '%Y-%m-%d',
+            pattern  => '%d:%m:%Y',
             on_error => 'croak'
         );
     }
@@ -119,7 +119,7 @@ sub store_metadata {
         for my $row ( $rs->all ) {
             ( my $method = $row->type->name ) =~ s{-}{_};
             if ( $method eq 'remark' ) {
-                my $set = $obo->remarks;
+                my $set = $onto->remarks;
                 ( my $value ) = $set->get_set;
                 $row->value($value);
             }
@@ -136,7 +136,7 @@ sub store_metadata {
             ( my $cvterm = $method ) =~ s{_}{-};
             my $value;
             if ( $method eq 'remark' ) {
-                my $set = $obo->remarks;
+                my $set = $onto->remarks;
                 ($value) = $set->get_set;
             }
             else {
