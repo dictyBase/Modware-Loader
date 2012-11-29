@@ -117,6 +117,7 @@ sub store_metadata {
         );
         for my $row ( $rs->all ) {
             ( my $method = $row->type->name ) =~ s{-}{_};
+            $method .= 's' if $method eq 'remark';
             $row->value( $onto->$method );
             $row->update;
         }
@@ -127,6 +128,7 @@ sub store_metadata {
         my $cvprop_id = $self->get_cvrow('cv_property')->cv_id;
         for my $method ( ( 'date', 'data_version', 'saved_by', 'remark' ) ) {
             ( my $cvterm = $method ) =~ s{_}{-};
+            $method .= 's' if $method eq 'remark';
             push @$data_array,
                 {
                 value   => $onto->$method,
