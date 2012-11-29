@@ -13,7 +13,7 @@ has '_cvrow' => (
     handles => {
         get_cvrow   => 'get',
         set_cvrow   => 'set',
-        exist_cvrow => 'defined'
+        has_cvrow => 'defined'
     }
 );
 
@@ -26,7 +26,7 @@ has '_cvterm_row' => (
     handles   => {
         get_cvterm_row   => 'get',
         set_cvterm_row   => 'set',
-        exist_cvterm_row => 'defined'
+        has_cvterm_row => 'defined'
     }
 );
 
@@ -36,7 +36,7 @@ has '_dbrow' => (
     traits  => [qw/Hash/],
     default => sub { {} },
     handles => {
-        add_dbrow    => 'set',
+        set_dbrow    => 'set',
         get_dbrow    => 'get',
         delete_dbrow => 'delete',
         has_dbrow    => 'defined'
