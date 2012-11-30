@@ -7,6 +7,8 @@ use Moose::Util qw/ensure_all_roles/;
 use feature qw/switch/;
 use DateTime::Format::Strptime;
 
+has 'connect_info' => ( is => 'rw', isa => 'Modware::Storage::Connection' );
+
 has 'schema' => (
     is      => 'rw',
     isa     => 'Bio::Chado::Schema',
@@ -38,7 +40,27 @@ has '_date_parser' => (
 );
 
 sub _around_connection {
-    my ($self) = @_;
+    my ($self)       = @_;
+    my $connect_info = $self->connect_info;
+    my $extra_attr   = $connect_info->extra_attribute;
+
+    my $create_statements = $self->create_temp_statements;
+    my $drop_statements   = $self->drop_temp_statements;
+
+    push @$create_statements, $extra_attr->{on_connect_do}
+        if defined $exta_attr->{on_connect_do};
+    push @$drop_statements, $extra_attr->{on_disconnect_do}
+        if defined $exta_attr->{on_disconnect_do};
+
+    $self->schema->connection(
+        $connect_info->dsn,
+        $connect_info->user,
+        $connect_info->password,
+        $connect_info->attribute,
+        {   on_connect_do => $create_statements,
+            on_disconnect_do => $drop_statements
+        }
+    );
 }
 
 sub _check_cvprop_or_die {
