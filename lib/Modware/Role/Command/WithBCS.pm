@@ -43,7 +43,7 @@ has 'attribute' => (
     documentation => 'Additional database attribute',
     lazy          => 1,
     default       => sub {
-        { 'LongReadLen' => 2**25, AutoCommit => 1 };
+        return { AutoCommit => 1 };
     }
 );
 
@@ -65,11 +65,15 @@ has 'schema_debug' => (
 
 sub _build_schema {
     my ($self) = @_;
+    my $attribute = $self->attribute;
+    if ($self->dsn =~ /Oracle/i) {
+    	$attribute->{LongReadLen} = 2**25;
+    }
     my $schema = Bio::Chado::Schema->connect(
         $self->dsn,
         $self->user,
         $self->password,
-        $self->attribute,
+        $attribute, 
         {   on_connect_do => sub {
                 tie %{ shift->_dbh->{CachedKids} }, 'Tie::Cache', 100;
                 }
