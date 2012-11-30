@@ -8,9 +8,25 @@ use Moose::Role;
 use Bio::Chado::Schema;
 use Tie::Cache;
 use Modware::Load::Types qw/Dsn/;
+use Modware::Storage::DBI;
 
 # Module implementation
 #
+
+has 'storage' => (
+    traits  => [qw/NoGetopt/],
+    is      => 'rw',
+    isa     => 'Modware::Storage::DBI',
+    lazy    => 1,
+    default => sub {
+        return Modware::Storage::DBI->new(
+            dsn       => $self->dsn,
+            user      => $self->user,
+            password  => $self->password,
+            attribute => $self->attribute
+        );
+    }
+);
 
 has 'dsn' => (
     is            => 'rw',
@@ -66,20 +82,33 @@ has 'schema_debug' => (
 sub _build_schema {
     my ($self) = @_;
     my $attribute = $self->attribute;
-    if ($self->dsn =~ /Oracle/i) {
-    	$attribute->{LongReadLen} = 2**25;
+    if ( $self->dsn =~ /Oracle/i ) {
+        $attribute->{LongReadLen} = 2**25;
     }
     my $schema = Bio::Chado::Schema->connect(
         $self->dsn,
         $self->user,
         $self->password,
-        $attribute, 
+        $attribute,
         {   on_connect_do => sub {
                 tie %{ shift->_dbh->{CachedKids} }, 'Tie::Cache', 100;
                 }
         }
     );
     $schema->storage->debug( $self->schema_debug );
+    $self->storage(
+        Modware::Storage::DBI->new(
+            dsn             => $self->dsn,
+            user            => $self->user,
+            password        => $self->password,
+            attribute       => $self->attribute,
+            extra_attribute => {
+                on_connect_do => sub {
+                    tie %{ shift->_dbh->{CachedKids} }, 'Tie::Cache', 100;
+                    }
+            }
+        )
+    );
     return $schema;
 }
 
