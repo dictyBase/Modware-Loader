@@ -36,6 +36,7 @@ sub execute {
     my $ontology = OBO::Parser::OBOParser->new->work( $downloader->filename );
     $loader->set_ontology($ontology);
     $loader->set_schema( $self->schema );
+    $loader->set_connect_info($self->connect_info);
 
 	#enable transaction 
     # check if it is a new version
