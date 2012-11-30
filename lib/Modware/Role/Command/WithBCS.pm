@@ -8,7 +8,7 @@ use Moose::Role;
 use Bio::Chado::Schema;
 use Tie::Cache;
 use Modware::Load::Types qw/Dsn/;
-use Modware::Storage::DBI;
+use Modware::Storage::Connection;
 
 # Module implementation
 #
@@ -16,10 +16,10 @@ use Modware::Storage::DBI;
 has 'connect_info' => (
     traits  => [qw/NoGetopt/],
     is      => 'rw',
-    isa     => 'Modware::Storage::DBI',
+    isa     => 'Modware::Storage::Connection', 
     lazy    => 1,
     default => sub {
-        return Modware::Storage::DBI->new(
+        return Modware::Storage::Connection->new(
             dsn       => $self->dsn,
             user      => $self->user,
             password  => $self->password,
@@ -97,7 +97,7 @@ sub _build_schema {
     );
     $schema->storage->debug( $self->schema_debug );
     $self->connect_info(
-        Modware::Storage::DBI->new(
+        Modware::Storage::Connection->new(
             dsn             => $self->dsn,
             user            => $self->user,
             password        => $self->password,
