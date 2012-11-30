@@ -24,14 +24,32 @@ sub handle_synonyms {
             }
         );
     }
-return Modware::Loader::Response->new(
-    	is_success => 1, 
-    	message => 'Loaded all synonyms for '. $node->id
+    return Modware::Loader::Response->new(
+        is_success => 1,
+        message    => 'Loaded all synonyms for ' . $node->id
     );
 
 }
 
-sub transform_schema {}
+sub transform_schema { }
+
+sub create_temp_statements {
+    return [
+        qq{
+	        CREATE TEMPORARY TABLE temp_cvterm (
+               name varchar(1024) NOT NULL, 
+               accession varchar(1024) NOT NULL, 
+               is_obsolete integer NOT NULL DEFAULT 0, 
+               is_relationshiptype integer NOT NULL DEFAULT 0, 
+               definition text, 
+            )
+   	    }
+    ];
+}
+
+sub drop_temp_statements {
+	return [ qq{ DROP TABLE temp_cvterm }];
+}
 
 1;    # Magic true value required at end of module
 
