@@ -6,8 +6,13 @@ use Moose;
 use Moose::Util qw/ensure_all_roles/;
 use feature qw/switch/;
 use DateTime::Format::Strptime;
+use Modware::Loader::Schema::Temporary;
 
-has 'connect_info' => ( is => 'rw', isa => 'Modware::Storage::Connection' );
+has 'connect_info' => (
+    is  => 'rw',
+    isa => 'Modware::Storage::Connection',
+    set => 'set_connect_info'
+);
 
 has 'schema' => (
     is      => 'rw',
@@ -18,6 +23,7 @@ has 'schema' => (
         $self->_load_engine;
         $self->_around_connection;
         $self->_check_cvprop_or_die;
+        $self->_register_schema_classes;
     }
 );
 
@@ -57,10 +63,16 @@ sub _around_connection {
         $connect_info->user,
         $connect_info->password,
         $connect_info->attribute,
-        {   on_connect_do => $create_statements,
+        {   on_connect_do    => $create_statements,
             on_disconnect_do => $drop_statements
         }
     );
+}
+
+sub _register_schema_classes {
+	my ($self) = @_;
+	my $schema = $self->schema;
+	$schema->register_class('TempCvterm' => 'Modware::Loader::Schema::Temporary::Cvterm');
 }
 
 sub _check_cvprop_or_die {
