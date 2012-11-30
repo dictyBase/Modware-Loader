@@ -13,7 +13,7 @@ use Modware::Storage::DBI;
 # Module implementation
 #
 
-has 'storage' => (
+has 'connect_info' => (
     traits  => [qw/NoGetopt/],
     is      => 'rw',
     isa     => 'Modware::Storage::DBI',
@@ -96,7 +96,7 @@ sub _build_schema {
         }
     );
     $schema->storage->debug( $self->schema_debug );
-    $self->storage(
+    $self->connect_info(
         Modware::Storage::DBI->new(
             dsn             => $self->dsn,
             user            => $self->user,
