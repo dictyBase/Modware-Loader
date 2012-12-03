@@ -5,6 +5,19 @@ use Moose::Role;
 
 requires 'schema';
 
+has '_cache' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    traits  => [qw/Array/],
+    default => sub { [] },
+    handles => {
+        add_to_cache           => 'push',
+        clean_cache            => 'clear',
+        count_entries_in_cache => 'count',
+        entries_in_cache       => 'elements'
+    }
+);
+
 has '_cvrow' => (
     is      => 'rw',
     isa     => 'HashRef',
@@ -108,7 +121,7 @@ sub find_or_create_db_id {
     my $schema = $self->schema;
     my $row    = $schema->resultset('General::Db')
         ->find_or_create( { name => $name } );
-    $self->add_dbrow( $name, $row );
+    $self->set_dbrow( $name, $row );
     $row->db_id;
 }
 
