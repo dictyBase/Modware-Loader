@@ -11,7 +11,12 @@ use Modware::Loader::Schema::Temporary;
 has 'connect_info' => (
     is  => 'rw',
     isa => 'Modware::Storage::Connection',
-    set => 'set_connect_info'
+    set => 'set_connect_info', 
+    trigger => sub {
+        $self->_around_connection;
+        $self->_register_schema_classes;
+        $self->_check_cvprop_or_die;
+    }
 );
 
 has 'schema' => (
@@ -21,9 +26,6 @@ has 'schema' => (
     trigger => sub {
         my ($self) = @_;
         $self->_load_engine;
-        $self->_around_connection;
-        $self->_check_cvprop_or_die;
-        $self->_register_schema_classes;
     }
 );
 
@@ -54,9 +56,9 @@ sub _around_connection {
     my $drop_statements   = $self->drop_temp_statements;
 
     push @$create_statements, $extra_attr->{on_connect_do}
-        if defined $exta_attr->{on_connect_do};
+        if defined $extra_attr->{on_connect_do};
     push @$drop_statements, $extra_attr->{on_disconnect_do}
-        if defined $exta_attr->{on_disconnect_do};
+        if defined $extra_attr->{on_disconnect_do};
 
     $self->schema->connection(
         $connect_info->dsn,
@@ -70,9 +72,10 @@ sub _around_connection {
 }
 
 sub _register_schema_classes {
-	my ($self) = @_;
-	my $schema = $self->schema;
-	$schema->register_class('TempCvterm' => 'Modware::Loader::Schema::Temporary::Cvterm');
+    my ($self) = @_;
+    my $schema = $self->schema;
+    $schema->register_class(
+        'TempCvterm' => 'Modware::Loader::Schema::Temporary::Cvterm' );
 }
 
 sub _check_cvprop_or_die {
@@ -202,6 +205,51 @@ sub find_or_create_namespaces {
     $self->find_or_create_cvterm_namespace( $_, 'synonym_type' )
         for qw/EXACT BROAD NARROW RELATED/;
 
+}
+
+sub prepare_data_for_loading {
+    my ($self) = @_;
+    my $onto   = $self->ontology;
+    my $cv_id  = $self->get_cvrow( ontology->default_namespace )->cv_id;
+    my $insert_array;
+    for my $term ( @{ $onto->get_relationship_types, $onto->get_terms } ) {
+        my $insert_hash = $self->_get_insert_term_hash($term);
+        $insert_hash->{cv_id} = $cv_id;
+        push @$insert_array, $insert_hash;
+    }
+    my $schema = $self->schema;
+    $schema->resultset('TempCvterm')->populate($insert_array);
+}
+
+sub cvterms_in_staging {
+	my ($self) = @_;
+	return $self->schema->resultset('TempCvterm')->count({});
+}
+
+sub _get_insert_term_hash {
+    my ( $self, $term ) = @_;
+    my ( $db_id, $accession );
+    if ( $self->has_idspace( $term->id ) ) {
+        my @parsed = $self->parse_id( $term->id );
+        $db_id     = $self->find_or_create_db_id( $parsed[0] );
+        $accession = $parsed[1];
+    }
+    else {
+        $db_id     = $self->find_or_create_db_id( $self->cv_namespace->name );
+        $accession = $term->id;
+    }
+
+    my $insert_hash;
+    $insert_hash->{accession}  = $accession;
+    $insert_hash->{db_id}      = $db_id;
+    $insert_hash->{definition} = encode( "UTF-8", $term->def->text )
+        if $term->def;
+    $insert_hash->{is_relationshiptype} = 1
+        if $term->isa('OBO::Core::RelationshipType');
+    $insert_hash->{is_obsolete} = 1 if $term->is_obsolete;
+    $insert_hash->{name} = $term->name ? $term->name : $term->id;
+    $insert_hash->{comment} = $term->comment;
+    return $insert_hash;
 }
 
 with 'Modware::Loader::Role::Ontology::WithHelper';
