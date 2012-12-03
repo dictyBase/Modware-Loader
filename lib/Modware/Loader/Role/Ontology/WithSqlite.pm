@@ -7,6 +7,8 @@ use Moose::Role;
 # Module implementation
 #
 
+has cache_threshold => ( is => 'rw',  isa => 'Int',  lazy => 1,  default => 2000);
+
 sub transform_schema { }
 
 sub create_temp_statements {
@@ -60,6 +62,12 @@ sub merge_cvterms {
     );
     return $rows;
 }
+
+sub merge_comments {
+    return 0;
+}
+
+sub merge_relations { return 0; }
 
 1;    # Magic true value required at end of module
 
