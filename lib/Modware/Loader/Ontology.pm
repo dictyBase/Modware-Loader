@@ -7,12 +7,17 @@ use Moose::Util qw/ensure_all_roles/;
 use feature qw/switch/;
 use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
+use DBI;
+use Encode;
+use utf8;
+use Data::Dumper;
 
 has 'connect_info' => (
-    is  => 'rw',
-    isa => 'Modware::Storage::Connection',
-    set => 'set_connect_info', 
+    is      => 'rw',
+    isa     => 'Modware::Storage::Connection',
+    writer  => 'set_connect_info',
     trigger => sub {
+        my ($self) = @_;
         $self->_around_connection;
         $self->_register_schema_classes;
         $self->_check_cvprop_or_die;
@@ -52,23 +57,17 @@ sub _around_connection {
     my $connect_info = $self->connect_info;
     my $extra_attr   = $connect_info->extra_attribute;
 
-    my $create_statements = $self->create_temp_statements;
-    my $drop_statements   = $self->drop_temp_statements;
-
-    push @$create_statements, $extra_attr->{on_connect_do}
+    my $opt = {
+        on_connect_do    => sub { $self->create_temp_statements(@_) },
+        on_disconnect_do => sub { $self->drop_temp_statements(@_) }
+    };
+    $opt->{on_connect_call} = $extra_attr->{on_connect_do}
         if defined $extra_attr->{on_connect_do};
-    push @$drop_statements, $extra_attr->{on_disconnect_do}
-        if defined $extra_attr->{on_disconnect_do};
 
-    $self->schema->connection(
-        $connect_info->dsn,
-        $connect_info->user,
-        $connect_info->password,
-        $connect_info->attribute,
-        {   on_connect_do    => $create_statements,
-            on_disconnect_do => $drop_statements
-        }
-    );
+    $self->schema->connection( $connect_info->dsn, $connect_info->user,
+        $connect_info->password, $connect_info->attribute, $opt );
+    $self->schema->storage->debug( $connect_info->schema_debug );
+
 }
 
 sub _register_schema_classes {
@@ -210,7 +209,7 @@ sub find_or_create_namespaces {
 sub prepare_data_for_loading {
     my ($self) = @_;
     my $onto   = $self->ontology;
-    my $cv_id  = $self->get_cvrow( ontology->default_namespace )->cv_id;
+    my $cv_id  = $self->get_cvrow( $onto->default_namespace )->cv_id;
     my $insert_array;
     for my $term ( @{ $onto->get_relationship_types, $onto->get_terms } ) {
         my $insert_hash = $self->_get_insert_term_hash($term);
@@ -222,8 +221,8 @@ sub prepare_data_for_loading {
 }
 
 sub cvterms_in_staging {
-	my ($self) = @_;
-	return $self->schema->resultset('TempCvterm')->count({});
+    my ($self) = @_;
+    return $self->schema->resultset('TempCvterm')->count( {} );
 }
 
 sub _get_insert_term_hash {
