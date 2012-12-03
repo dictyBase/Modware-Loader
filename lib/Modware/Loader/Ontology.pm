@@ -12,6 +12,9 @@ use Encode;
 use utf8;
 use Data::Dumper;
 
+
+has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+
 has 'connect_info' => (
     is      => 'rw',
     isa     => 'Modware::Storage::Connection',
