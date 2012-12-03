@@ -12,8 +12,8 @@ use Encode;
 use utf8;
 use Data::Dumper;
 
-
-has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has 'logger' =>
+    ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
 
 has 'connect_info' => (
     is      => 'rw',
@@ -210,20 +210,32 @@ sub find_or_create_namespaces {
 }
 
 sub prepare_data_for_loading {
-    my ($self) = @_;
-    my $onto   = $self->ontology;
-    my $cv_id  = $self->get_cvrow( $onto->default_namespace )->cv_id;
+    my ($self)        = @_;
+    my $onto          = $self->ontology;
+    my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
+    my $schema        = $self->schema;
     my $insert_array;
     for my $term ( @{ $onto->get_relationship_types, $onto->get_terms } ) {
         my $insert_hash = $self->_get_insert_term_hash($term);
-        $insert_hash->{cv_id} = $cv_id;
-        push @$insert_array, $insert_hash;
+        $insert_hash->{cv_id}
+            = $term->namespace
+            ? $self->find_or_create_cvrow( $term->namespace )->cv_id
+            : $default_cv_id;
+        $self->add_to_cache($insert_hash);
+        if ( $self->count_entries_in_cache >= $self->cache_threshold ) {
+            $schema->resultset('TempCvterm')
+                ->populate( [ $self->entries_in_cache ] );
+            $self->clean_cache;
+        }
     }
-    my $schema = $self->schema;
-    $schema->resultset('TempCvterm')->populate($insert_array);
+    if ( $self->count_entries_in_cache ) {
+        $schema->resultset('TempCvterm')
+            ->populate( [ $self->entries_in_cache ] );
+        $self->clean_cache;
+    }
 }
 
-sub cvterms_in_staging {
+sub terms_in_staging {
     my ($self) = @_;
     return $self->schema->resultset('TempCvterm')->count( {} );
 }
@@ -252,6 +264,16 @@ sub _get_insert_term_hash {
     $insert_hash->{name} = $term->name ? $term->name : $term->id;
     $insert_hash->{comment} = $term->comment;
     return $insert_hash;
+}
+
+sub merge_ontology {
+    my ($self) = @_;
+    my $storage = $self->schema->storage;
+    my $dbxrefs   = $storage->dbh_do( sub { $self->merge_dbxrefs(@_) } );
+    my $cvterms   = $storage->dbh_do( sub { $self->merge_cvterms(@_) } );
+    my $comments  = $storage->dbh_do( sub { $self->merge_comments(@_) } );
+    my $relations = $storage->dbh_do( sub { $self->merge_relations(@_) } );
+
 }
 
 with 'Modware::Loader::Role::Ontology::WithHelper';
