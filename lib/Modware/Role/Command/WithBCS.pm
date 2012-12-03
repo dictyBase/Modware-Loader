@@ -16,9 +16,10 @@ use Modware::Storage::Connection;
 has 'connect_info' => (
     traits  => [qw/NoGetopt/],
     is      => 'rw',
-    isa     => 'Modware::Storage::Connection', 
+    isa     => 'Modware::Storage::Connection',
     lazy    => 1,
     default => sub {
+        my ($self) = @_;
         return Modware::Storage::Connection->new(
             dsn       => $self->dsn,
             user      => $self->user,
@@ -59,7 +60,7 @@ has 'attribute' => (
     documentation => 'Additional database attribute',
     lazy          => 1,
     default       => sub {
-        return { AutoCommit => 1 };
+        return { AutoCommit => 1, RaiseError => 1 };
     }
 );
 
@@ -106,7 +107,8 @@ sub _build_schema {
                 on_connect_do => sub {
                     tie %{ shift->_dbh->{CachedKids} }, 'Tie::Cache', 100;
                     }
-            }
+            },
+            schema_debug => $self->schema_debug
         )
     );
     return $schema;
