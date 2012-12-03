@@ -11,21 +11,6 @@ use namespace::autoclean;
 
 extends qw/Modware::Load::Chado/;
 
-has '_ebi_base_url' => (
-    is  => 'ro',
-    isa => 'Str',
-    default =>
-        'http://www.ebi.ac.uk/QuickGO/GAnnotation?format=gaf&ref=PMID:*&db=dictyBase&protein=',
-    lazy => 1
-);
-
-has '_ua' => (
-    is      => 'ro',
-    isa     => 'LWP::UserAgent',
-    default => sub { LWP::UserAgent->new },
-    lazy    => 1
-);
-
 has 'prune' => (
     is            => 'rw',
     isa           => 'Bool',
@@ -59,17 +44,12 @@ sub execute {
             "Done! with pruning. " . $prune_count . " records deleted." );
     }
 
+    my $gafU = GAFUpdater->new;
+    $logger->info( ref($gafU) );
+    $gafU->schema($schema);
+    my $gene_rs = $gafU->get_gene_ids();
     $logger->info('Retrieving gene IDs from dictyBase');
-    my $gene_rs = $schema->resultset('Sequence::Feature')->search(
-        {   'type.name'            => 'gene',
-            'organism.common_name' => 'dicty'
-        },
-        {   join     => [qw/type organism/],
-            select   => [qw/feature_id uniquename type_id/],
-            prefetch => 'dbxref',
-            rows     => 50
-        }
-    );
+
     if ( $gene_rs->count == 0 ) {
         $logger->error('NO gene IDs retrieved');
         exit;
@@ -78,45 +58,44 @@ sub execute {
         $logger->info( $gene_rs->count . " gene IDs retrieved" );
     }
     while ( my $gene = $gene_rs->next ) {
-        my $gaf = $self->get_gaf_from_ebi( $gene->dbxref->accession );
+        my @annotations = $gafU->query_ebi( $gene->dbxref->accession );
         sleep 0.75;
-        my @gaf_rows = $self->parse_gaf($gaf);
-        foreach my $gaf_row (@gaf_rows) {
 
-            $gaf_row->{ref}   =~ s/^PMID://x;
-            $gaf_row->{go_id} =~ s/^GO://x;
+        #my @gaf_rows = $self->parse_gaf($gaf);
+        foreach my $anno (@annotations) {
 
-            my $cvterm_rs = $schema->resultset('Cv::Cvterm')->search(
-                { 'dbxref.accession' => $gaf_row->{go_id} },
-                { join => [qw/dbxref/], select => [qw/cvterm_id/] }
-            );
+            $anno->db_ref =~ s/^PMID://x;
+            $anno->go_id  =~ s/^GO://x;
+
+            my $cvterm_rs
+                = $schema->resultset('Cv::Cvterm')
+                ->search( { 'dbxref.accession' => $anno->go_id },
+                { join => [qw/dbxref/], select => [qw/cvterm_id/] } );
 
             my $evterm_rs = $schema->resultset('Cv::Cvterm')->search(
                 {   'cv.name' => { -like => 'evidence_code%' },
-                    'cvtermsynonyms.synonym_' => $gaf_row->{evidence_code},
+                    'cvtermsynonyms.synonym_' => $anno->evidence_code,
                 },
                 {   join   => [qw/cv cvtermsynonyms/],
                     select => [qw/cvterm_id/]
                 },
             );
 
-#$logger->debug( $evterm_rs->count . ' Cvterm IDs for ' . $gaf_row->{evidence_code} );
-
-            if ( $gaf_row->{ref} eq '' ) {
+            if ( $anno->db_ref eq '' ) {
                 $logger->error( 'No PubID ('
-                        . $gaf_row->{ref}
+                        . $anno->db_ref
                         . ') for GO:'
-                        . $gaf_row->{go_id} );
+                        . $anno->go_id );
                 next;
             }
             my $pub_rs
                 = $schema->resultset('Pub::Pub')
-                ->search( { uniquename => $gaf_row->{ref} },
+                ->search( { uniquename => $anno->db_ref },
                 { select => 'pub_id' } );
 
             if ( $cvterm_rs->count == 0 ) {
                 $logger->error( "GO:"
-                        . $gaf_row->{go_id}
+                        . $anno->go_id
                         . " does not exist; associated with "
                         . $gene->dbxref->accession . " ("
                         . $gene->uniquename
@@ -127,15 +106,11 @@ sub execute {
             my $qualifier_rs = $schema->resultset('Cv::Cvterm')
                 ->search( { name => 'qualifier' } );
 
-            #$logger->info( $qualifier_rs->first->cvterm_id );
             my $date_rs = $schema->resultset('Cv::Cvterm')
                 ->search( { name => 'date' } );
-            $logger->info(
-                $date_rs->first->cvterm_id . "\t" . $gaf_row->{date} );
 
             $self->schema->txn_do(
                 sub {
-                    $logger->debug( $gene->dbxref->accession );
                     if ( $pub_rs->count > 0 ) {
                         my $anno_check
                             = $self->find( $gene->feature_id,
@@ -163,12 +138,12 @@ sub execute {
                             }
                         );
 
-                        if ( $gaf_row->{qualifier} ne '' ) {
+                        if ( $anno->qualifier ne '' ) {
                             $fcvt->create_related(
                                 'feature_cvtermprops',
                                 {   type_id =>
                                         $qualifier_rs->first->cvterm_id,
-                                    value => $gaf_row->{qualifier},
+                                    value => $anno->qualifier,
                                     rank  => $rank
                                 }
                             );
@@ -225,12 +200,133 @@ sub parse_gaf {
     return @gaf_rows;
 }
 
-sub get_gaf_from_ebi {
+1;
+
+package GAFUpdater;
+
+use strict;
+use warnings;
+
+use Moose;
+
+has 'schema' => (
+    is  => 'rw',
+    isa => 'Bio::Chado::Schema',
+);
+
+has 'ebi_base_url' => (
+    is  => 'ro',
+    isa => 'Str',
+    default =>
+        'http://www.ebi.ac.uk/QuickGO/GAnnotation?format=gaf&ref=PMID:*&db=dictyBase&protein=',
+    lazy => 1
+);
+
+has 'ua' => (
+    is      => 'ro',
+    isa     => 'LWP::UserAgent',
+    default => sub { LWP::UserAgent->new },
+    lazy    => 1
+);
+
+sub get_gene_ids {
+    my ($self) = @_;
+    my $gene_rs = $self->schema->resultset('Sequence::Feature')->search(
+        {   'type.name'            => 'gene',
+            'organism.common_name' => 'dicty'
+        },
+        {   join     => [qw/type organism/],
+            select   => [qw/feature_id uniquename type_id/],
+            prefetch => 'dbxref',
+            rows     => 50
+        }
+    );
+    return $gene_rs;
+}
+
+sub query_ebi {
     my ( $self, $gene_id ) = @_;
     my $response
-        = $self->_ua->get( $self->_ebi_base_url . $gene_id )->decoded_content;
-    return $response;
+        = $self->ua->get( $self->ebi_base_url . $gene_id )->decoded_content;
+    return $self->parse($response);
 }
+
+sub parse {
+    my ( $self, $gaf ) = @_;
+    my @annotations;
+    my $io = IO::String->new();
+    $io->open($gaf);
+    while ( my $line = $io->getline ) {
+        chomp($line);
+        next if $line =~ /^!/x;
+
+        #if ( $self->print_gaf ) {
+        #    print $line. "\n";
+        #}
+        my @row_vals = split( "\t", $line );
+        my $anno = Annotation->new;
+        $anno->qualifier( $row_vals[3] );
+        $anno->go_id( $row_vals[4] );
+        $anno->db_ref( $row_vals[5] );
+        $anno->evidence_code( $row_vals[6] );
+        $anno->aspect( $row_vals[8] );
+        $anno->date( $row_vals[13] );
+
+        push( @annotations, $anno );
+    }
+    return @annotations;
+}
+
+1;
+
+package Annotation;
+
+use strict;
+use warnings;
+
+use Moose;
+
+has 'go_id' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => '',
+    lazy    => 1
+);
+
+has 'qualifier' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => '',
+    lazy    => 1
+);
+
+has 'with_from' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => '',
+    lazy    => 1
+);
+
+has 'date' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => '',
+    lazy    => 1
+);
+
+has 'evidence_code' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => '',
+    lazy    => 1
+);
+
+has [qw/db_ref aspect db gene_id gene_symbol/] => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => '',
+    lazy    => 1
+);
 
 1;
 
