@@ -7,30 +7,6 @@ use Moose::Role;
 # Module implementation
 #
 
-sub handle_synonyms {
-    my ($self) = @_;
-    my $node = $self->node;
-    return if !$node->synonyms;
-    my %uniq_syns = map { $_->label => $_->scope } @{ $node->synonyms };
-    for my $label ( keys %uniq_syns ) {
-        $self->add_to_insert_cvtermsynonyms(
-            {   synonym => $label,
-                type_id => $self->helper->find_or_create_cvterm_id(
-                    cvterm => $uniq_syns{$label},
-                    cv     => 'synonym_type',
-                    dbxref => $uniq_syns{$label},
-                    db     => 'internal'
-                )
-            }
-        );
-    }
-    return Modware::Loader::Response->new(
-        is_success => 1,
-        message    => 'Loaded all synonyms for ' . $node->id
-    );
-
-}
-
 sub transform_schema { }
 
 sub create_temp_statements {
@@ -46,13 +22,43 @@ sub create_temp_statements {
                comment text, 
                cv_id integer NOT NULL, 
                db_id integer NOT NULL
-      }
+    )}
     );
 }
 
 sub drop_temp_statements {
     my ( $self, $storage ) = @_;
     $storage->dbh->do(qq{DROP TABLE temp_cvterm });
+}
+
+sub merge_dbxrefs {
+    my ( $self, $storage, $dbh ) = @_;
+    my $rows = $dbh->do(
+        q{
+			INSERT INTO dbxref(accession, db_id)
+			SELECT tmcv.accession, tmcv.db_id FROM temp_cvterm tmcv
+			LEFT JOIN dbxref ON tmcv.accession=dbxref.accession
+			WHERE dbxref.accession is NULL
+			}
+    );
+    return $rows;
+}
+
+sub merge_cvterms {
+    my ( $self, $storage, $dbh ) = @_;
+    my $rows = $dbh->do(
+        q{
+			INSERT INTO cvterm(name, is_obsolete, 
+			  is_relationshiptype, definition, cv_id, dbxref_id)
+			SELECT tmcv.name, tmcv.is_obsolete,  tmcv.is_relationshiptype, 
+			tmcv.definition, tmcv.cv_id,dbxref.dbxref_id 
+			FROM temp_cvterm tmcv
+			LEFT JOIN cvterm ON cvterm.name=tmcv.name
+			INNER JOIN dbxref ON dbxref.accession=tmcv.accession
+			WHERE cvterm.name is NULL
+			}
+    );
+    return $rows;
 }
 
 1;    # Magic true value required at end of module
