@@ -78,6 +78,8 @@ sub _register_schema_classes {
     my $schema = $self->schema;
     $schema->register_class(
         'TempCvterm' => 'Modware::Loader::Schema::Temporary::Cvterm' );
+    $schema->register_class( 'TempCvtermRelationship' =>
+            'Modware::Loader::Schema::Temporary::CvtermRelationship' );
 }
 
 sub _check_cvprop_or_die {
@@ -215,6 +217,8 @@ sub prepare_data_for_loading {
     my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
     my $schema        = $self->schema;
     my $insert_array;
+
+    #Term
     for my $term ( @{ $onto->get_relationship_types, $onto->get_terms } ) {
         my $insert_hash = $self->_get_insert_term_hash($term);
         $insert_hash->{cv_id}
@@ -233,11 +237,31 @@ sub prepare_data_for_loading {
             ->populate( [ $self->entries_in_cache ] );
         $self->clean_cache;
     }
+
+    #Relationship
+    for my $rel ( @{ $onto->get_relationships } ) {
+        $self->add_to_cache(
+            {   object  => $rel->head->name,
+                subject => $rel->tail->name,
+                type    => $rel->type
+            }
+        );
+        if ( $self->count_entries_in_cache >= $self->cache_threshold ) {
+            $schema->resultset('TempCvtermRelationship')
+                ->populate( [ $self->entries_in_cache ] );
+            $self->clean_cache;
+        }
+    }
+    if ( $self->count_entries_in_cache ) {
+        $schema->resultset('TempCvtermRelationship')
+            ->populate( [ $self->entries_in_cache ] );
+        $self->clean_cache;
+    }
 }
 
-sub terms_in_staging {
-    my ($self) = @_;
-    return $self->schema->resultset('TempCvterm')->count( {} );
+sub entries_in_staging {
+    my ($self, $name) = @_;
+    return $self->schema->resultset($name)->count( {} );
 }
 
 sub _get_insert_term_hash {
