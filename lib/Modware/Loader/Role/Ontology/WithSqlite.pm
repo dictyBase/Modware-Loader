@@ -7,7 +7,8 @@ use Moose::Role;
 # Module implementation
 #
 
-has cache_threshold => ( is => 'rw',  isa => 'Int',  lazy => 1,  default => 2000);
+has cache_threshold =>
+    ( is => 'rw', isa => 'Int', lazy => 1, default => 2000 );
 
 sub transform_schema { }
 
@@ -77,7 +78,24 @@ sub merge_comments {
     return 0;
 }
 
-sub merge_relations { return 0; }
+sub merge_relations {
+    my ( $self, $storage, $dbh ) = @_;
+    my $rows = $dbh->do(q{
+    	INSERT INTO cvterm_relationship(object_id, subject_id, type_id)
+    	SELECT object.cvterm_id, subject.cvterm_id, type.cvterm_id
+    	FROM temp_cvterm_relationship tmprel
+    	INNER JOIN cvterm object ON
+    	  tmprel.object = object.name
+		INNER JOIN cvterm subject ON
+		  tmprel.subject = subject.name
+		INNER JOIN cvterm type ON
+		  tmprel.type = type.name
+		 EXCEPT
+    	SELECT cvrel.object_id, cvrel.subject_id, cvrel.type_id
+    	FROM cvterm_relationship cvrel
+    });
+    return $rows;
+}
 
 1;    # Magic true value required at end of module
 
