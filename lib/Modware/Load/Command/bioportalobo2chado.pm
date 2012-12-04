@@ -5,6 +5,7 @@ use Moose;
 use BioPortal::WebService;
 use Modware::Loader::Ontology;
 use OBO::Parser::OBOParser;
+use feature qw/say/;
 extends qw/Modware::Load::Chado/;
 
 has 'apikey' => (
@@ -34,11 +35,12 @@ sub execute {
 
     my $loader   = Modware::Loader::Ontology->new;
     my $ontology = OBO::Parser::OBOParser->new->work( $downloader->filename );
+    $loader->set_logger($logger);
     $loader->set_ontology($ontology);
     $loader->set_schema( $self->schema );
-    $loader->set_connect_info($self->connect_info);
+    $loader->set_connect_info( $self->connect_info );
 
-	#enable transaction 
+    #enable transaction
     # check if it is a new version
     if ( $loader->is_ontology_in_db() ) {
         if ( !$loader->is_ontology_new_version() ) {
@@ -47,9 +49,20 @@ sub execute {
         }
     }
 
-    my $guard  = $self->schema->txn_scope_guard;
+    my $guard = $self->schema->txn_scope_guard;
     $loader->store_metadata;
     $loader->find_or_create_namespaces;
+
+    #transaction for loading in staging temp tables
+    $loader->prepare_data_for_loading;
+
+    $logger->info(
+        sprintf "terms:%d\trelationships:%d in staging tables",
+        $loader->entries_in_staging('TempCvterm'),
+        $loader->entries_in_staging('TempCvtermRelationship')
+    );
+
+    $loader->merge_ontology;
     $guard->commit;
 }
 
