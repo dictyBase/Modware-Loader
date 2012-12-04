@@ -3,6 +3,8 @@ package Modware::Loader::Role::Ontology::WithSqlite;
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
+use feature qw/say/;
+use Data::Dump qw/dump/;
 
 # Module implementation
 #
@@ -33,7 +35,7 @@ sub create_temp_statements {
 	        CREATE TEMPORARY TABLE temp_cvterm_relationship (
                subject varchar(1024) NOT NULL, 
                object varchar(1024) NOT NULL, 
-               type varchar(256) NOT NULL, 
+               type varchar(256) NOT NULL 
     )}
     );
 }
@@ -51,25 +53,29 @@ sub merge_dbxrefs {
 			INSERT INTO dbxref(accession, db_id)
 			SELECT tmcv.accession, tmcv.db_id FROM temp_cvterm tmcv
 			LEFT JOIN dbxref ON tmcv.accession=dbxref.accession
+			LEFT JOIN db ON db.db_id = tmcv.db_id
 			WHERE dbxref.accession is NULL
+			AND db.db_id is NULL
 			}
     );
     return $rows;
 }
 
 sub merge_cvterms {
-    my ( $self, $storage, $dbh ) = @_;
+    my ( $self, $storage, $dbh , @args) = @_;
     my $rows = $dbh->do(
         q{
-			INSERT INTO cvterm(name, is_obsolete, 
-			  is_relationshiptype, definition, cv_id, dbxref_id)
+			INSERT INTO cvterm(name, is_obsolete, is_relationshiptype, 
+			  definition, cv_id, dbxref_id)
 			SELECT tmcv.name, tmcv.is_obsolete,  tmcv.is_relationshiptype, 
 			tmcv.definition, tmcv.cv_id,dbxref.dbxref_id 
 			FROM temp_cvterm tmcv
 			LEFT JOIN cvterm ON cvterm.name=tmcv.name
 			INNER JOIN dbxref ON dbxref.accession=tmcv.accession
+			INNER JOIN db ON db.db_id=tmcv.db_id
 			WHERE cvterm.name is NULL
-			}
+			AND cvterm.cv_id = ?
+			},  undef , @args
     );
     return $rows;
 }
@@ -79,7 +85,7 @@ sub merge_comments {
 }
 
 sub merge_relations {
-    my ( $self, $storage, $dbh ) = @_;
+    my ( $self, $storage, $dbh , $arg) = @_;
     my $rows = $dbh->do(q{
     	INSERT INTO cvterm_relationship(object_id, subject_id, type_id)
     	SELECT object.cvterm_id, subject.cvterm_id, type.cvterm_id
@@ -93,7 +99,16 @@ sub merge_relations {
 		 EXCEPT
     	SELECT cvrel.object_id, cvrel.subject_id, cvrel.type_id
     	FROM cvterm_relationship cvrel
-    });
+    	INNER JOIN cvterm object ON
+    	  cvrel.object_id = object.cvterm_id
+    	INNER JOIN cvterm subject ON
+    	   cvrel.subject_id = subject.cvterm_id
+    	INNER JOIN cvterm type ON
+    	   cvrel.type_id = type.cvterm_id
+    	WHERE object.cv_id = ?
+    	 AND subject.cv_id = ?
+    	 AND type.cv_id = ?
+    }, undef,  ($arg, $arg, $arg));
     return $rows;
 }
 
