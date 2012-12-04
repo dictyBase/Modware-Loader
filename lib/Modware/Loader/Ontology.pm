@@ -260,7 +260,7 @@ sub prepare_data_for_loading {
 }
 
 sub entries_in_staging {
-    my ($self, $name) = @_;
+    my ( $self, $name ) = @_;
     return $self->schema->resultset($name)->count( {} );
 }
 
@@ -291,12 +291,18 @@ sub _get_insert_term_hash {
 }
 
 sub merge_ontology {
-    my ($self) = @_;
+    my ($self)  = @_;
     my $storage = $self->schema->storage;
-    my $dbxrefs   = $storage->dbh_do( sub { $self->merge_dbxrefs(@_) } );
-    my $cvterms   = $storage->dbh_do( sub { $self->merge_cvterms(@_) } );
-    my $comments  = $storage->dbh_do( sub { $self->merge_comments(@_) } );
-    my $relations = $storage->dbh_do( sub { $self->merge_relations(@_) } );
+    my $logger  = $self->logger;
+    my $default_cv_id = $self->get_cvrow( $self->ontology->default_namespace )->cv_id;
+
+    my $dbxrefs = $storage->dbh_do( sub { $self->merge_dbxrefs(@_) } );
+    my $cvterms = $storage->dbh_do( sub { $self->merge_cvterms(@_) }, $default_cv_id );
+    my $relationships
+        = $storage->dbh_do( sub { $self->merge_relations(@_) }, $default_cv_id );
+
+   $logger->info( sprintf "Loaded dbxrefs:%d\tterms:%d\trelationships:%d",
+        $dbxrefs, $cvterms, $relationships );
 
 }
 
