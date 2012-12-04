@@ -26,11 +26,21 @@ sub create_temp_statements {
                db_id integer NOT NULL
     )}
     );
+
+    $storage->dbh->do(
+        qq{
+	        CREATE TEMPORARY TABLE temp_cvterm_relationship (
+               subject varchar(1024) NOT NULL, 
+               object varchar(1024) NOT NULL, 
+               type varchar(256) NOT NULL, 
+    )}
+    );
 }
 
 sub drop_temp_statements {
     my ( $self, $storage ) = @_;
     $storage->dbh->do(qq{DROP TABLE temp_cvterm });
+    $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship });
 }
 
 sub merge_dbxrefs {
