@@ -53,9 +53,8 @@ sub merge_dbxrefs {
 			INSERT INTO dbxref(accession, db_id)
 			SELECT tmcv.accession, tmcv.db_id FROM temp_cvterm tmcv
 			LEFT JOIN dbxref ON tmcv.accession=dbxref.accession
-			LEFT JOIN db ON db.db_id = tmcv.db_id
+			INNER JOIN db ON db.db_id = tmcv.db_id
 			WHERE dbxref.accession is NULL
-			AND db.db_id is NULL
 			}
     );
     return $rows;

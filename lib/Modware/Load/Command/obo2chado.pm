@@ -57,8 +57,8 @@ sub execute {
     else {
         $guard->commit;
     }
-
-    1;
+}
+1;
 
 __END__
 
