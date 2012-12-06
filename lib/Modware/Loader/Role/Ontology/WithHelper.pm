@@ -5,19 +5,6 @@ use Moose::Role;
 
 requires 'schema';
 
-has '_cache' => (
-    is      => 'rw',
-    isa     => 'ArrayRef',
-    traits  => [qw/Array/],
-    default => sub { [] },
-    handles => {
-        add_to_cache           => 'push',
-        clean_cache            => 'clear',
-        count_entries_in_cache => 'count',
-        entries_in_cache       => 'elements'
-    }
-);
-
 has '_cvrow' => (
     is      => 'rw',
     isa     => 'HashRef',
