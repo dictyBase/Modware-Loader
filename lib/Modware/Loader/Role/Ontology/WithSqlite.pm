@@ -47,7 +47,7 @@ sub create_temp_statements {
 sub drop_temp_statements {
 }
 
-sub merge_dbxrefs {
+sub create_dbxrefs {
     my ( $self, $storage, $dbh ) = @_;
     $dbh->do(
         q{
@@ -70,22 +70,25 @@ sub merge_dbxrefs {
     return $rows;
 }
 
-sub merge_cvterms {
-    my ( $self, $storage, $dbh, @args ) = @_;
+sub create_cvterms {
+    my ( $self, $storage, $dbh ) = @_;
     my $rows = $dbh->do(
         q{
     		INSERT INTO cvterm(name, is_obsolete, is_relationshiptype,
     		  definition, cv_id, dbxref_id)
 			SELECT tmcv.name,tmcv.is_obsolete,tmcv.is_relationshiptype, 
 			tmcv.definition,tmcv.cv_id,dbxref.dbxref_id 
-			FROM temp_cvterm tmcv
-			INNER JOIN temp_accession tmacc ON tmcv.accession=tmacc.accession
-			INNER JOIN dbxref ON dbxref.accession=tmacc.accession
-			INNER JOIN db ON db.db_id=tmcv.db_id
-			AND tmcv.cv_id = ?
-			}, undef, @args
+			FROM temp_cvterm tmcv,temp_accession tmacc, dbxref,cv
+			WHERE tmcv.accession=tmacc.accession
+			AND dbxref.accession=tmcv.accession
+			AND dbxref.db_id=tmcv.db_id
+			}
     );
+    return $rows;
+}
 
+sub update_cvterm_names {
+    my ( $self, $storage, $dbh ) = @_;
 #SQLite do not support JOINS in update statements,  so it's need to be done in few
 #more steps
 #This will update the name of cvterms.
@@ -93,38 +96,43 @@ sub merge_cvterms {
         q{
     	SELECT fresh.* FROM (
     	   SELECT tmcv.name fname, cvterm.name oname, cvterm.cvterm_id
-    	   FROM temp_cvterm tmcv
-    	   INNER JOIN dbxref ON dbxref.accession = tmcv.accession
-    	   INNER JOIN db ON db.db_id=tmcv.db_id
-    	   INNER JOIN cvterm ON cvterm.dbxref_id=dbxref.dbxref_id
+    	   FROM temp_cvterm tmcv, dbxref, cvterm
+    	   WHERE dbxref.accession = tmcv.accession
+    	   AND dbxref.db_id=tmcv.db_id
+    	   AND cvterm.dbxref_id=dbxref.dbxref_id
     	) AS fresh
     	WHERE fresh.fname != fresh.oname
     }, { Slice => {} }
     );
     for my $frow (@$data) {
+        $self->logger->info(
+            sprintf( "old:%s\tnew:%s", $frow->{oname}, $frow->{fname} ) );
         my $dbrow
             = $self->schema->resultset('Cv::Cvterm')
             ->find( $frow->{cvterm_id} )
             ->update( { name => $frow->{fname} } );
     }
+    return scalar @$data;
+}
 
+sub update_cvterms {
+    my ( $self, $storage, $dbh ) = @_;
 # This will update definition and status of all cvterms, as usual it is more work in case of SQLit existing cvterms
-    my $arr = $dbh->selectall_arrayref(
+    my $data = $dbh->selectall_arrayref(
         q{
     		SELECT cvterm.cvterm_id, tmcv.definition, tmcv.is_obsolete 
-    		FROM cvterm
-    		INNER JOIN dbxref ON 
-    		  dbxref.dbxref_id=cvterm.dbxref_id
-    		INNER JOIN temp_cvterm tmcv ON
-    		  tmcv.accession = dbxref.accession
-    		WHERE 
-    		 NOT EXISTS (
+    		 FROM cvterm, dbxref, temp_cvterm tmcv
+    		 WHERE  dbxref.dbxref_id=cvterm.dbxref_id
+    		 AND  tmcv.accession = dbxref.accession
+    		 AND  tmcv.db_id = dbxref.db_id
+    		 WHERE 
+    		  NOT EXISTS (
     		    SELECT temp_accession.accession 
     		    FROM temp_accession
     		 )
     	}, { Slice => {} }
     );
-    for my $trow (@$arr) {
+    for my $trow (@$data) {
         $self->schema->resultset('Cv::Cvterm')->find( $trow->{cvterm_id} )
             ->update(
             {   definition  => $trow->{definition},
@@ -132,14 +140,14 @@ sub merge_cvterms {
             }
             );
     }
-    return $rows;
+    return scalar @$data;
 }
 
 sub merge_comments {
     return 0;
 }
 
-sub merge_relations {
+sub create_relations {
     my ( $self, $storage, $dbh ) = @_;
     my $rows = $dbh->do(
         q{
