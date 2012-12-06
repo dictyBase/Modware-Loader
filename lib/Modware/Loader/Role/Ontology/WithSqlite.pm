@@ -86,9 +86,9 @@ sub merge_cvterms {
 			}, undef, @args
     );
 
-#This will update the name of cvterms
 #SQLite do not support JOINS in update statements,  so it's need to be done in few
 #more steps
+#This will update the name of cvterms.
     my $data = $dbh->selectall_arrayref(
         q{
     	SELECT fresh.* FROM (
@@ -106,6 +106,28 @@ sub merge_cvterms {
             = $self->schema->resultset('Cv::Cvterm')
             ->find( $frow->{cvterm_id} )
             ->update( { name => $frow->{fname} } );
+    }
+
+
+# This will update definition of all cvterms, as usual it is more work in case of SQLitexisting cvterms
+    my $arr = $dbh->selectall_arrayref(
+        q{
+    		SELECT cvterm.cvterm_id, tmcv.defintion 
+    		FROM cvterm
+    		INNER JOIN dbxref ON 
+    		  dbxref.dbxref_id=cvterm.dbxref_id
+    		INNER JOIN temp_cvterm tmcv ON
+    		  tmcv.accession = dbxref.accession
+    		WHERE tmcv.accession 
+    		 NOT EXISTS (
+    		    SELECT temp_accession.accession 
+    		    FROM temp_accession
+    		 )
+    	}, { Slice => {} }
+    );
+    for my $trow (@$arr) {
+        $self->schema->resultset('Cv::Cvterm')->find( $trow->{cvterm_id} )
+            ->update( { definition => $trow->{definition} } );
     }
     return $rows;
 }
@@ -132,7 +154,7 @@ sub merge_relations {
     	FROM cvterm_relationship cvrel
     }
     );
-	return $rows;
+    return $rows;
 }
 
 1;    # Magic true value required at end of module
