@@ -310,17 +310,23 @@ sub merge_ontology {
     my ($self)  = @_;
     my $storage = $self->schema->storage;
     my $logger  = $self->logger;
-    my $default_cv_id
-        = $self->get_cvrow( $self->ontology->default_namespace )->cv_id;
 
-    my $dbxrefs = $storage->dbh_do( sub { $self->merge_dbxrefs(@_) } );
-    my $cvterms = $storage->dbh_do( sub { $self->merge_cvterms(@_) },
-        $default_cv_id );
+    my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
+    $logger->info("created $dbxrefs dbxrefs");
+
+    if ($dbxrefs) {
+        my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
+        $logger->info("created $cvterms cvterms");
+    }
+    my $cvterm_names = $storage->dbh_do(sub {$self->update_cvterm_names(@_)});
+    $logger->info("updated $cvterms_names cvterm names");
+
+    my $update_terms = $storage->dbh_do(sub {$self->update_cvterms(@_)});
+    $logger->info("updated $updated_terms cvterms");
+
     my $relationships
-        = $storage->dbh_do( sub { $self->merge_relations(@_) } );
-
-    $logger->info( sprintf "Loaded dbxrefs:%d\tterms:%d\trelationships:%d",
-        $dbxrefs, $cvterms, $relationships );
+        = $storage->dbh_do( sub { $self->create_relations(@_) } );
+        $logger->info("created $relationships relationships");
 
 }
 
