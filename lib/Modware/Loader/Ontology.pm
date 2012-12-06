@@ -11,7 +11,7 @@ use DBI;
 use Encode;
 use utf8;
 use Data::Dumper;
-with 'Modware::Role::Chado::Helper::WithDataStash' =>
+with 'Modware::Role::WithDataStash' =>
     { create_stash_for => [qw/term relationship/] };
 
 has 'logger' =>
@@ -222,8 +222,8 @@ sub prepare_data_for_loading {
 sub load_cvterms_in_staging {
     my ($self)        = @_;
     my $onto          = $self->ontology;
-    my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
     my $schema        = $self->schema;
+    my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
 
     #Term
     for my $term ( @{ $onto->get_relationship_types, $onto->get_terms } ) {
@@ -239,6 +239,7 @@ sub load_cvterms_in_staging {
             $self->clean_term_cache;
         }
     }
+
     if ( $self->count_entries_in_term_cache ) {
         $schema->resultset('TempCvterm')
             ->populate( [ $self->entries_in_term_cache ] );
@@ -249,6 +250,7 @@ sub load_cvterms_in_staging {
 sub load_relationship_in_stating {
     my ($self) = @_;
     my $onto = $self->ontology;
+    my $schema = $self->schema;
 
     for my $rel ( @{ $onto->get_relationships } ) {
         $self->add_to_relationship_cache(
