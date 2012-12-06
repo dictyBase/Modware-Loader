@@ -4,7 +4,6 @@ package Modware::Loader::Role::Ontology::WithSqlite;
 use namespace::autoclean;
 use Moose::Role;
 use feature qw/say/;
-use Data::Dump qw/dump/;
 
 # Module implementation
 #
@@ -29,25 +28,36 @@ sub create_temp_statements {
                db_id integer NOT NULL
     )}
     );
-
+    $storage->dbh->do(
+        qq{
+	        CREATE TEMPORARY TABLE temp_accession (
+               accession varchar(256) NOT NULL 
+    )}
+    );
     $storage->dbh->do(
         qq{
 	        CREATE TEMPORARY TABLE temp_cvterm_relationship (
                subject varchar(1024) NOT NULL, 
                object varchar(1024) NOT NULL, 
-               type varchar(256) NOT NULL 
+               type varchar(1024) NULL 
     )}
     );
 }
 
 sub drop_temp_statements {
-    my ( $self, $storage ) = @_;
-    $storage->dbh->do(qq{DROP TABLE temp_cvterm });
-    $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship });
 }
 
 sub merge_dbxrefs {
     my ( $self, $storage, $dbh ) = @_;
+    $dbh->do(
+        q{
+    		INSERT INTO temp_accession(accession)
+			SELECT tmcv.accession FROM temp_cvterm tmcv
+			LEFT JOIN dbxref ON tmcv.accession=dbxref.accession
+			INNER JOIN db ON db.db_id = tmcv.db_id
+			WHERE dbxref.accession is NULL
+			}
+    );
     my $rows = $dbh->do(
         q{
 			INSERT INTO dbxref(accession, db_id)
@@ -61,21 +71,42 @@ sub merge_dbxrefs {
 }
 
 sub merge_cvterms {
-    my ( $self, $storage, $dbh , @args) = @_;
+    my ( $self, $storage, $dbh, @args ) = @_;
     my $rows = $dbh->do(
         q{
-			INSERT INTO cvterm(name, is_obsolete, is_relationshiptype, 
-			  definition, cv_id, dbxref_id)
-			SELECT tmcv.name, tmcv.is_obsolete,  tmcv.is_relationshiptype, 
-			tmcv.definition, tmcv.cv_id,dbxref.dbxref_id 
+    		INSERT INTO cvterm(name, is_obsolete, is_relationshiptype,
+    		  definition, cv_id, dbxref_id)
+			SELECT tmcv.name,tmcv.is_obsolete,tmcv.is_relationshiptype, 
+			tmcv.definition,tmcv.cv_id,dbxref.dbxref_id 
 			FROM temp_cvterm tmcv
-			LEFT JOIN cvterm ON cvterm.name=tmcv.name
-			INNER JOIN dbxref ON dbxref.accession=tmcv.accession
+			INNER JOIN temp_accession tmacc ON tmcv.accession=tmacc.accession
+			INNER JOIN dbxref ON dbxref.accession=tmacc.accession
 			INNER JOIN db ON db.db_id=tmcv.db_id
-			WHERE cvterm.name is NULL
-			AND cvterm.cv_id = ?
-			},  undef , @args
+			AND tmcv.cv_id = ?
+			}, undef, @args
     );
+
+#This will update the name of cvterms
+#SQLite do not support JOINS in update statements,  so it's need to be done in few
+#more steps
+    my $data = $dbh->selectall_arrayref(
+        q{
+    	SELECT fresh.* FROM (
+    	   SELECT tmcv.name fname, cvterm.name oname, cvterm.cvterm_id
+    	   FROM temp_cvterm tmcv
+    	   INNER JOIN dbxref ON dbxref.accession = tmcv.accession
+    	   INNER JOIN db ON db.db_id=tmcv.db_id
+    	   INNER JOIN cvterm ON cvterm.dbxref_id=dbxref.dbxref_id
+    	) AS fresh
+    	WHERE fresh.fname != fresh.oname
+    }, { Slice => {} }
+    );
+    for my $frow (@$data) {
+        my $dbrow
+            = $self->schema->resultset('Cv::Cvterm')
+            ->find( $frow->{cvterm_id} )
+            ->update( { name => $frow->{fname} } );
+    }
     return $rows;
 }
 
@@ -84,8 +115,9 @@ sub merge_comments {
 }
 
 sub merge_relations {
-    my ( $self, $storage, $dbh , $arg) = @_;
-    my $rows = $dbh->do(q{
+    my ( $self, $storage, $dbh ) = @_;
+    my $rows = $dbh->do(
+        q{
     	INSERT INTO cvterm_relationship(object_id, subject_id, type_id)
     	SELECT object.cvterm_id, subject.cvterm_id, type.cvterm_id
     	FROM temp_cvterm_relationship tmprel
@@ -98,17 +130,9 @@ sub merge_relations {
 		 EXCEPT
     	SELECT cvrel.object_id, cvrel.subject_id, cvrel.type_id
     	FROM cvterm_relationship cvrel
-    	INNER JOIN cvterm object ON
-    	  cvrel.object_id = object.cvterm_id
-    	INNER JOIN cvterm subject ON
-    	   cvrel.subject_id = subject.cvterm_id
-    	INNER JOIN cvterm type ON
-    	   cvrel.type_id = type.cvterm_id
-    	WHERE object.cv_id = ?
-    	 AND subject.cv_id = ?
-    	 AND type.cv_id = ?
-    }, undef,  ($arg, $arg, $arg));
-    return $rows;
+    }
+    );
+	return $rows;
 }
 
 1;    # Magic true value required at end of module
