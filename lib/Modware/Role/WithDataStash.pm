@@ -21,7 +21,7 @@ role {
             traits  => [qw/Array/],
             handles => {
                 'add_to_' . $name . '_cache'           => 'push',
-                'clean_' . $name . '_cache'            => 'clean',
+                'clean_' . $name . '_cache'            => 'clear',
                 'entries_in_' . $name . '_cache'       => 'elements',
                 'count_entries_in_' . $name . '_cache' => 'count'
             },
