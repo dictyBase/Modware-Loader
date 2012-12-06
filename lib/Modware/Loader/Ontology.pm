@@ -11,6 +11,8 @@ use DBI;
 use Encode;
 use utf8;
 use Data::Dumper;
+with 'Modware::Role::Chado::Helper::WithDataStash' =>
+    { create_stash_for => [qw/term relationship/] };
 
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
@@ -212,11 +214,16 @@ sub find_or_create_namespaces {
 }
 
 sub prepare_data_for_loading {
+    my ($self) = @_;
+    $self->load_cvterms_in_staging;
+    $self->load_relationship_in_stating;
+}
+
+sub load_cvterms_in_staging {
     my ($self)        = @_;
     my $onto          = $self->ontology;
     my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
     my $schema        = $self->schema;
-    my $insert_array;
 
     #Term
     for my $term ( @{ $onto->get_relationship_types, $onto->get_terms } ) {
@@ -225,37 +232,43 @@ sub prepare_data_for_loading {
             = $term->namespace
             ? $self->find_or_create_cvrow( $term->namespace )->cv_id
             : $default_cv_id;
-        $self->add_to_cache($insert_hash);
-        if ( $self->count_entries_in_cache >= $self->cache_threshold ) {
+        $self->add_to_term_cache($insert_hash);
+        if ( $self->count_entries_in_term_cache >= $self->cache_threshold ) {
             $schema->resultset('TempCvterm')
-                ->populate( [ $self->entries_in_cache ] );
-            $self->clean_cache;
+                ->populate( [ $self->entries_in_term_cache ] );
+            $self->clean_term_cache;
         }
     }
-    if ( $self->count_entries_in_cache ) {
+    if ( $self->count_entries_in_term_cache ) {
         $schema->resultset('TempCvterm')
-            ->populate( [ $self->entries_in_cache ] );
-        $self->clean_cache;
+            ->populate( [ $self->entries_in_term_cache ] );
+        $self->clean_term_cache;
     }
+}
 
-    #Relationship
+sub load_relationship_in_stating {
+    my ($self) = @_;
+    my $onto = $self->ontology;
+
     for my $rel ( @{ $onto->get_relationships } ) {
-        $self->add_to_cache(
+        $self->add_to_relationship_cache(
             {   object  => $rel->head->name,
                 subject => $rel->tail->name,
                 type    => $rel->type
             }
         );
-        if ( $self->count_entries_in_cache >= $self->cache_threshold ) {
+        if ( $self->count_entries_in_relationship_cache
+            >= $self->cache_threshold )
+        {
             $schema->resultset('TempCvtermRelationship')
-                ->populate( [ $self->entries_in_cache ] );
-            $self->clean_cache;
+                ->populate( [ $self->entries_in_relationship_cache ] );
+            $self->clean_relationship_cache;
         }
     }
-    if ( $self->count_entries_in_cache ) {
+    if ( $self->count_entries_in_relationship_cache ) {
         $schema->resultset('TempCvtermRelationship')
-            ->populate( [ $self->entries_in_cache ] );
-        $self->clean_cache;
+            ->populate( [ $self->entries_in_relationship_cache ] );
+        $self->clean_relationship_cache;
     }
 }
 
@@ -294,14 +307,16 @@ sub merge_ontology {
     my ($self)  = @_;
     my $storage = $self->schema->storage;
     my $logger  = $self->logger;
-    my $default_cv_id = $self->get_cvrow( $self->ontology->default_namespace )->cv_id;
+    my $default_cv_id
+        = $self->get_cvrow( $self->ontology->default_namespace )->cv_id;
 
     my $dbxrefs = $storage->dbh_do( sub { $self->merge_dbxrefs(@_) } );
-    my $cvterms = $storage->dbh_do( sub { $self->merge_cvterms(@_) }, $default_cv_id );
+    my $cvterms = $storage->dbh_do( sub { $self->merge_cvterms(@_) },
+        $default_cv_id );
     my $relationships
         = $storage->dbh_do( sub { $self->merge_relations(@_) } );
 
-   $logger->info( sprintf "Loaded dbxrefs:%d\tterms:%d\trelationships:%d",
+    $logger->info( sprintf "Loaded dbxrefs:%d\tterms:%d\trelationships:%d",
         $dbxrefs, $cvterms, $relationships );
 
 }
