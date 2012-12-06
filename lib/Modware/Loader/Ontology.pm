@@ -299,7 +299,7 @@ sub merge_ontology {
     my $dbxrefs = $storage->dbh_do( sub { $self->merge_dbxrefs(@_) } );
     my $cvterms = $storage->dbh_do( sub { $self->merge_cvterms(@_) }, $default_cv_id );
     my $relationships
-        = $storage->dbh_do( sub { $self->merge_relations(@_) }, $default_cv_id );
+        = $storage->dbh_do( sub { $self->merge_relations(@_) } );
 
    $logger->info( sprintf "Loaded dbxrefs:%d\tterms:%d\trelationships:%d",
         $dbxrefs, $cvterms, $relationships );
