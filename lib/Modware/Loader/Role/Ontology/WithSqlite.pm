@@ -112,13 +112,13 @@ sub merge_cvterms {
 # This will update definition of all cvterms, as usual it is more work in case of SQLitexisting cvterms
     my $arr = $dbh->selectall_arrayref(
         q{
-    		SELECT cvterm.cvterm_id, tmcv.defintion 
+    		SELECT cvterm.cvterm_id, tmcv.definition 
     		FROM cvterm
     		INNER JOIN dbxref ON 
     		  dbxref.dbxref_id=cvterm.dbxref_id
     		INNER JOIN temp_cvterm tmcv ON
     		  tmcv.accession = dbxref.accession
-    		WHERE tmcv.accession 
+    		WHERE 
     		 NOT EXISTS (
     		    SELECT temp_accession.accession 
     		    FROM temp_accession
