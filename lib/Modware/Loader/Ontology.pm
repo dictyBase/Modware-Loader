@@ -249,7 +249,7 @@ sub load_cvterms_in_staging {
 
 sub load_relationship_in_stating {
     my ($self) = @_;
-    my $onto = $self->ontology;
+    my $onto   = $self->ontology;
     my $schema = $self->schema;
 
     for my $rel ( @{ $onto->get_relationships } ) {
@@ -293,12 +293,13 @@ sub _get_insert_term_hash {
     }
 
     my $insert_hash;
-    $insert_hash->{accession}  = $accession;
-    $insert_hash->{db_id}      = $db_id;
-    $insert_hash->{definition} = encode( "UTF-8", $term->def->text )
-        if $term->def;
-    $insert_hash->{is_relationshiptype} = 1
-        if $term->isa('OBO::Core::RelationshipType');
+    $insert_hash->{accession} = $accession;
+    $insert_hash->{db_id}     = $db_id;
+    if ( my $text = $term->def->text ) {
+        $insert_hash->{definition} = encode( "UTF-8", $text );
+    }
+    $insert_hash->{is_relationshiptype}
+        = $term->isa('OBO::Core::RelationshipType') ? 1 : 0;
     $insert_hash->{is_obsolete} = $term->is_obsolete ? 1 : 0;
     $insert_hash->{name} = $term->name ? $term->name : $term->id;
     $insert_hash->{comment} = $term->comment;
