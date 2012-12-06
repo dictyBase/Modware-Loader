@@ -108,11 +108,10 @@ sub merge_cvterms {
             ->update( { name => $frow->{fname} } );
     }
 
-
-# This will update definition of all cvterms, as usual it is more work in case of SQLitexisting cvterms
+# This will update definition and status of all cvterms, as usual it is more work in case of SQLit existing cvterms
     my $arr = $dbh->selectall_arrayref(
         q{
-    		SELECT cvterm.cvterm_id, tmcv.definition 
+    		SELECT cvterm.cvterm_id, tmcv.definition, tmcv.is_obsolete 
     		FROM cvterm
     		INNER JOIN dbxref ON 
     		  dbxref.dbxref_id=cvterm.dbxref_id
@@ -127,7 +126,11 @@ sub merge_cvterms {
     );
     for my $trow (@$arr) {
         $self->schema->resultset('Cv::Cvterm')->find( $trow->{cvterm_id} )
-            ->update( { definition => $trow->{definition} } );
+            ->update(
+            {   definition  => $trow->{definition},
+                is_obsolete => $trow->{is_obsolete}
+            }
+            );
     }
     return $rows;
 }
