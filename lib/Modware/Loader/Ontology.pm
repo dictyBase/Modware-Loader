@@ -299,7 +299,7 @@ sub _get_insert_term_hash {
         if $term->def;
     $insert_hash->{is_relationshiptype} = 1
         if $term->isa('OBO::Core::RelationshipType');
-    $insert_hash->{is_obsolete} = 1 if $term->is_obsolete;
+    $insert_hash->{is_obsolete} = $term->is_obsolete ? 1 : 0;
     $insert_hash->{name} = $term->name ? $term->name : $term->id;
     $insert_hash->{comment} = $term->comment;
     return $insert_hash;
