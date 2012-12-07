@@ -1,9 +1,10 @@
 
+use autodie;
+use strict;
+use warnings;
+
 package Modware::Load::Command::ebiGaf2dictyChado;
 
-use strict;
-
-use autodie;
 use Bio::Chado::Schema;
 use IO::String;
 use Moose;
@@ -44,11 +45,10 @@ sub execute {
             "Done! with pruning. " . $prune_count . " records deleted." );
     }
 
-    my $gafU = GAFUpdater->new;
-    $logger->info( ref($gafU) );
-    $gafU->schema($schema);
-    my $gene_rs = $gafU->get_gene_ids();
+    my $gaf_manager = GAFManager->new;
+    $gaf_manager->schema($schema);
     $logger->info('Retrieving gene IDs from dictyBase');
+    my $gene_rs = $gaf_manager->get_gene_ids();
 
     if ( $gene_rs->count == 0 ) {
         $logger->error('NO gene IDs retrieved');
@@ -57,15 +57,26 @@ sub execute {
     else {
         $logger->info( $gene_rs->count . " gene IDs retrieved" );
     }
+    my $ebi_query = EBIQuery->new;
     while ( my $gene = $gene_rs->next ) {
-        my @annotations = $gafU->query_ebi( $gene->dbxref->accession );
-        sleep 0.75;
+
+        my $gaf         = $ebi_query->query_ebi( $gene->dbxref->accession );
+        my @annotations = $gaf_manager->parse($gaf);
+
+        #sleep 0.75;
 
         #my @gaf_rows = $self->parse_gaf($gaf);
         foreach my $anno (@annotations) {
 
-            $anno->db_ref =~ s/^PMID://x;
-            $anno->go_id  =~ s/^GO://x;
+            if ( $self->print_gaf ) {
+                $anno->print;
+            }
+            my $db_val = $anno->db_ref;
+            my $go_val = $anno->go_id;
+            $db_val =~ s/^PMID://x;
+            $go_val =~ s/^GO://x;
+            $anno->db_ref($db_val);
+            $anno->go_id($go_val);
 
             my $cvterm_rs
                 = $schema->resultset('Cv::Cvterm')
@@ -188,6 +199,9 @@ sub parse_gaf {
         }
         my @row_vals = split( "\t", $line );
         my $gaf_hash = {
+            db            => $row_vals[0],
+            gene_id       => $row_vals[1],
+            gene_symbol   => $row_vals[2],
             qualifier     => $row_vals[3],
             go_id         => $row_vals[4],
             ref           => $row_vals[5],
@@ -202,24 +216,39 @@ sub parse_gaf {
 
 1;
 
-package GAFUpdater;
+package EBIQuery;
 
-use strict;
-use warnings;
-
+use LWP::UserAgent;
 use Moose;
-
-has 'schema' => (
-    is  => 'rw',
-    isa => 'Bio::Chado::Schema',
-);
+use MooseX::Attribute::Dependent;
 
 has 'ebi_base_url' => (
-    is  => 'ro',
-    isa => 'Str',
-    default =>
-        'http://www.ebi.ac.uk/QuickGO/GAnnotation?format=gaf&ref=PMID:*&db=dictyBase&protein=',
-    lazy => 1
+    is      => 'rw',
+    isa     => 'Str',
+    default => sub {
+        my ($self) = @_;
+        'http://www.ebi.ac.uk/QuickGO/GAnnotation?format='
+            . $self->format
+            . '&ref=PMID:*&db='
+            . $self->db
+            . '&protein=';
+    },
+    lazy       => 1,
+    dependency => All [ 'format', 'db' ]
+);
+
+has 'format' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'gaf',
+    lazy    => 1
+);
+
+has 'db' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'dictyBase',
+    lazy    => 1
 );
 
 has 'ua' => (
@@ -227,6 +256,24 @@ has 'ua' => (
     isa     => 'LWP::UserAgent',
     default => sub { LWP::UserAgent->new },
     lazy    => 1
+);
+
+sub query_ebi {
+    my ( $self, $gene_id ) = @_;
+    my $response = $self->ua->get( $self->ebi_base_url . $gene_id );
+    $response->is_success || die "NO GAF retrieved from EBI";
+    return $response->decoded_content;
+}
+
+1;
+
+package GAFManager;
+
+use Moose;
+
+has 'schema' => (
+    is  => 'rw',
+    isa => 'Bio::Chado::Schema',
 );
 
 sub get_gene_ids {
@@ -238,17 +285,10 @@ sub get_gene_ids {
         {   join     => [qw/type organism/],
             select   => [qw/feature_id uniquename type_id/],
             prefetch => 'dbxref',
-            rows     => 50
+            rows     => 15
         }
     );
     return $gene_rs;
-}
-
-sub query_ebi {
-    my ( $self, $gene_id ) = @_;
-    my $response
-        = $self->ua->get( $self->ebi_base_url . $gene_id )->decoded_content;
-    return $self->parse($response);
 }
 
 sub parse {
@@ -265,10 +305,14 @@ sub parse {
         #}
         my @row_vals = split( "\t", $line );
         my $anno = Annotation->new;
+        $anno->db( $row_vals[0] );
+        $anno->gene_id( $row_vals[1] );
+        $anno->gene_symbol( $row_vals[2] );
         $anno->qualifier( $row_vals[3] );
         $anno->go_id( $row_vals[4] );
         $anno->db_ref( $row_vals[5] );
         $anno->evidence_code( $row_vals[6] );
+        $anno->with_from( $row_vals[7] );
         $anno->aspect( $row_vals[8] );
         $anno->date( $row_vals[13] );
 
@@ -280,9 +324,6 @@ sub parse {
 1;
 
 package Annotation;
-
-use strict;
-use warnings;
 
 use Moose;
 
@@ -327,6 +368,21 @@ has [qw/db_ref aspect db gene_id gene_symbol/] => (
     default => '',
     lazy    => 1
 );
+
+sub print {
+    my ($self) = @_;
+    my $row
+        = $self->db . "\t"
+        . $self->gene_id . "\t"
+        . $self->gene_symbol . "\t"
+        . $self->qualifier . "\t"
+        . $self->go_id . "\t"
+        . $self->db_ref . "\t"
+        . $self->evidence_code . "\t"
+        . $self->with_from . "\t"
+        . $self->aspect . "\n";
+    print $row;
+}
 
 1;
 
