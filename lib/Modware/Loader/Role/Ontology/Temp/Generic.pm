@@ -2,6 +2,8 @@ package Modware::Loader::Role::Ontology::Temp::Generic;
 
 use namespace::autoclean;
 use Moose::Role;
+use Encode;
+use utf8;
 
 
 sub get_insert_term_hash {

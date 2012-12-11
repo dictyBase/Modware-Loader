@@ -36,7 +36,12 @@ __PACKAGE__->add_columns(
     'object' => { data_type => 'varchar', size => 1024 } );
 __PACKAGE__->add_columns(
     'type' => { data_type => 'varchar', size => 256 } );
-
+__PACKAGE__->add_columns(
+    'object_db_id' => { data_type => 'int', nullable => 0 } );
+__PACKAGE__->add_columns(
+    'subject_db_id' => { data_type => 'int', nullable => 0 } );
+__PACKAGE__->add_columns(
+    'type_db_id' => { data_type => 'int', nullable => 0 } );
 1;
 
 1;    # Magic true value required at end of module
