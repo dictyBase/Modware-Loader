@@ -7,10 +7,8 @@ use Moose::Util qw/ensure_all_roles/;
 use feature qw/switch/;
 use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
-use DBI;
 use Encode;
 use utf8;
-use Data::Dumper;
 with 'Modware::Role::WithDataStash' =>
     { create_stash_for => [qw/term relationship/] };
 
@@ -216,7 +214,7 @@ sub find_or_create_namespaces {
 sub prepare_data_for_loading {
     my ($self) = @_;
     $self->load_cvterms_in_staging;
-    $self->load_relationship_in_stating;
+    $self->load_relationship_in_staging;
 }
 
 sub load_cvterms_in_staging {
@@ -226,7 +224,8 @@ sub load_cvterms_in_staging {
     my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
 
     #Term
-    for my $term ( @{ $onto->get_relationship_types, $onto->get_terms } ) {
+    for my $term ( @{ $onto->get_relationship_types }, @{ $onto->get_terms } )
+    {
         my $insert_hash = $self->_get_insert_term_hash($term);
         $insert_hash->{cv_id}
             = $term->namespace
@@ -247,16 +246,43 @@ sub load_cvterms_in_staging {
     }
 }
 
-sub load_relationship_in_stating {
+sub load_alt_ids_in_staging {
+}
+
+sub _get_insert_term_hash {
+    my ( $self,  $term )      = @_;
+    my ( $db_id, $accession ) = $self->_normalize_id( $term->id );
+    my $insert_hash;
+    $insert_hash->{accession} = $accession;
+    $insert_hash->{db_id}     = $db_id;
+    if ( my $text = $term->def->text ) {
+        $insert_hash->{definition} = encode( "UTF-8", $text );
+    }
+    $insert_hash->{is_relationshiptype}
+        = $term->isa('OBO::Core::RelationshipType') ? 1 : 0;
+    $insert_hash->{is_obsolete} = $term->is_obsolete ? 1 : 0;
+    $insert_hash->{name} = $term->name ? $term->name : $term->id;
+    $insert_hash->{comment} = $term->comment;
+    return $insert_hash;
+}
+
+sub load_relationship_in_staging {
     my ($self) = @_;
     my $onto   = $self->ontology;
     my $schema = $self->schema;
 
     for my $rel ( @{ $onto->get_relationships } ) {
+        my @object  = $self->_normalize_id( $rel->head->id );
+        my @subject = $self->_normalize_id( $rel->tail->id );
+        my @type    = $self->_normalize_id( $rel->type );
+
         $self->add_to_relationship_cache(
-            {   object  => $rel->head->name,
-                subject => $rel->tail->name,
-                type    => $rel->type
+            {   object_db_id  => $object[0],
+                object        => $object[1],
+                subject_db_id => $subject[0],
+                subject       => $subject[1],
+                type_db_id    => $type[0],
+                type          => $type[1]
             }
         );
         if ( $self->count_entries_in_relationship_cache
@@ -279,54 +305,36 @@ sub entries_in_staging {
     return $self->schema->resultset($name)->count( {} );
 }
 
-sub _get_insert_term_hash {
-    my ( $self, $term ) = @_;
-    my ( $db_id, $accession );
-    if ( $self->has_idspace( $term->id ) ) {
-        my @parsed = $self->parse_id( $term->id );
-        $db_id     = $self->find_or_create_db_id( $parsed[0] );
-        $accession = $parsed[1];
-    }
-    else {
-        $db_id     = $self->find_or_create_db_id( $self->cv_namespace->name );
-        $accession = $term->id;
-    }
-
-    my $insert_hash;
-    $insert_hash->{accession} = $accession;
-    $insert_hash->{db_id}     = $db_id;
-    if ( my $text = $term->def->text ) {
-        $insert_hash->{definition} = encode( "UTF-8", $text );
-    }
-    $insert_hash->{is_relationshiptype}
-        = $term->isa('OBO::Core::RelationshipType') ? 1 : 0;
-    $insert_hash->{is_obsolete} = $term->is_obsolete ? 1 : 0;
-    $insert_hash->{name} = $term->name ? $term->name : $term->id;
-    $insert_hash->{comment} = $term->comment;
-    return $insert_hash;
-}
-
 sub merge_ontology {
     my ($self)  = @_;
     my $storage = $self->schema->storage;
     my $logger  = $self->logger;
 
+    #remove terms that are pruned(present in database but not in file)
+    my $deleted_terms
+        = $storage->dbh_do( sub { $self->delete_non_existing_terms(@_) } );
+    $logger->info("deleted $deleted_terms terms");
+
+    #This has to be run first in order to get the list of existing cvterms
+    #particularly before the staging and live tables get synced
+    my $updated_terms = $storage->dbh_do( sub { $self->update_cvterms(@_) } );
+    $logger->info("updated $updated_terms cvterms");
+    my $cvterm_names
+        = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
+    $logger->info("updated $cvterm_names cvterm names");
+
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
     $logger->info("created $dbxrefs dbxrefs");
 
     if ($dbxrefs) {
-        my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
+        my $cvterms
+            = $storage->dbh_do( sub { $self->create_cvterms_debug(@_) } );
         $logger->info("created $cvterms cvterms");
     }
-    my $cvterm_names = $storage->dbh_do(sub {$self->update_cvterm_names(@_)});
-    $logger->info("updated $cvterms_names cvterm names");
-
-    my $update_terms = $storage->dbh_do(sub {$self->update_cvterms(@_)});
-    $logger->info("updated $updated_terms cvterms");
 
     my $relationships
         = $storage->dbh_do( sub { $self->create_relations(@_) } );
-        $logger->info("created $relationships relationships");
+    $logger->info("created $relationships relationships");
 
 }
 
