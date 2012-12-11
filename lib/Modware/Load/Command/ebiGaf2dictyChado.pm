@@ -65,7 +65,6 @@ sub execute {
 
         #sleep 0.75;
 
-        #my @gaf_rows = $self->parse_gaf($gaf);
         foreach my $anno (@annotations) {
 
             if ( $self->print_gaf ) {
@@ -114,12 +113,6 @@ sub execute {
                 next;
             }
 
-            my $qualifier_rs = $schema->resultset('Cv::Cvterm')
-                ->search( { name => 'qualifier' } );
-
-            my $date_rs = $schema->resultset('Cv::Cvterm')
-                ->search( { name => 'date' } );
-
             $self->schema->txn_do(
                 sub {
                     if ( $pub_rs->count > 0 ) {
@@ -145,30 +138,61 @@ sub execute {
                             'feature_cvtermprops',
                             {   type_id => $evterm_rs->first->cvterm_id,
                                 value   => 1,
-                                rank    => 0
+                                rank    => $rank
                             }
                         );
 
                         if ( $anno->qualifier ne '' ) {
                             $fcvt->create_related(
                                 'feature_cvtermprops',
+                                {   type_id => $gaf_manager->cvterm_qualifier,
+                                    value   => $anno->qualifier,
+                                    rank    => $rank
+                                }
+                            );
+                        }
+
+                        print $gene->dbxref->accession . "\t"
+                            . $fcvt->feature_id . "\t"
+                            . $fcvt->feature_cvterm_id . "\t"
+                            . $anno->evidence_code . "\t"
+                            . $anno->with_from . "\t"
+                            . $gaf_manager->cvterm_date . "\t"
+                            . $anno->date . "\t"
+                            . $anno->assigned_by . "\t"
+                            . $rank . "\n";
+
+                        if ( $anno->date ne '' ) {
+                            $fcvt->create_related(
+                                'feature_cvtermprops',
+                                {   type_id => $gaf_manager->cvterm_date,
+                                    value   => $anno->date,
+                                    rank    => $rank
+                                }
+                            );
+                        }
+
+                        if ( $anno->with_from ne '' ) {
+                            $fcvt->create_related(
+                                'feature_cvtermprops',
+                                {   type_id => $gaf_manager->cvterm_with_from,
+                                    value   => $anno->with_from,
+                                    rank    => $rank
+                                }
+                            );
+                        }
+
+                        if ( $anno->assigned_by ne '' ) {
+                            $fcvt->create_related(
+                                'feature_cvtermprops',
                                 {   type_id =>
-                                        $qualifier_rs->first->cvterm_id,
-                                    value => $anno->qualifier,
+                                        $gaf_manager->cvterm_assigned_by,
+                                    value => $anno->assigned_by,
                                     rank  => $rank
                                 }
                             );
                         }
-   #
-   #                        if ( $gaf_row->{date} ne '' ) {
-   #                            $fcvt->create_related(
-   #                                'feature_cvtermprops',
-   #                                {   type_id => $date_rs->first->cvterm_id,
-   #                                    value   => $gaf_row->{date},
-   #                                    rank    => $rank
-   #                                }
-   #                            );
-   #                        }
+
                     }
                 }
             );
@@ -181,37 +205,9 @@ sub find {
     my $anno_check
         = $self->schema->resultset('Sequence::FeatureCvterm')
         ->search(
-        { feature_id => $feature, cvterm_id => $cvterm, pub_id => $pub } )
-        ->first;
+        { feature_id => $feature, cvterm_id => $cvterm, pub_id => $pub },
+        { order_by => { -desc => 'rank' } } )->first;
     return $anno_check;
-}
-
-sub parse_gaf {
-    my ( $self, $gaf ) = @_;
-    my @gaf_rows;
-    my $io = IO::String->new();
-    $io->open($gaf);
-    while ( my $line = $io->getline ) {
-        chomp($line);
-        next if $line =~ /^!/x;
-        if ( $self->print_gaf ) {
-            print $line. "\n";
-        }
-        my @row_vals = split( "\t", $line );
-        my $gaf_hash = {
-            db            => $row_vals[0],
-            gene_id       => $row_vals[1],
-            gene_symbol   => $row_vals[2],
-            qualifier     => $row_vals[3],
-            go_id         => $row_vals[4],
-            ref           => $row_vals[5],
-            evidence_code => $row_vals[6],
-            aspect        => $row_vals[8],
-            date          => $row_vals[13]
-        };
-        push( @gaf_rows, $gaf_hash );
-    }
-    return @gaf_rows;
 }
 
 1;
@@ -270,10 +266,63 @@ sub query_ebi {
 package GAFManager;
 
 use Moose;
+use MooseX::Attribute::Dependent;
 
 has 'schema' => (
     is  => 'rw',
     isa => 'Bio::Chado::Schema',
+);
+
+has 'cvterm_date' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => sub {
+        my ($self) = @_;
+        my $date_rs = $self->schema->resultset('Cv::Cvterm')
+            ->search( { name => 'date' } );
+        return $date_rs->first->cvterm_id;
+    },
+    lazy       => 1,
+    dependency => All ['schema']
+);
+
+has 'cvterm_with_from' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => sub {
+        my ($self) = @_;
+        my $with_rs = $self->schema->resultset('Cv::Cvterm')
+            ->search( { name => 'with' } );
+        return $with_rs->first->cvterm_id;
+    },
+    lazy       => 1,
+    dependency => All ['schema']
+);
+
+has 'cvterm_assigned_by' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => sub {
+        my ($self) = @_;
+        my $source_rs = $self->schema->resultset('Cv::Cvterm')
+            ->search( { name => 'source' } );
+        return $source_rs->first->cvterm_id;
+    },
+    lazy       => 1,
+    dependency => All ['schema']
+);
+
+has 'cvterm_qualifier' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => sub {
+        my ($self) = @_;
+        my $qualifier_rs = $self->schema->resultset('Cv::Cvterm')
+            ->search( { name => 'qualifier' } );
+        return $qualifier_rs->first->cvterm_id;
+    },
+    lazy       => 1,
+    dependency => All ['schema']
 );
 
 sub get_gene_ids {
@@ -285,7 +334,7 @@ sub get_gene_ids {
         {   join     => [qw/type organism/],
             select   => [qw/feature_id uniquename type_id/],
             prefetch => 'dbxref',
-            rows     => 15
+            rows     => 500
         }
     );
     return $gene_rs;
@@ -300,9 +349,6 @@ sub parse {
         chomp($line);
         next if $line =~ /^!/x;
 
-        #if ( $self->print_gaf ) {
-        #    print $line. "\n";
-        #}
         my @row_vals = split( "\t", $line );
         my $anno = Annotation->new;
         $anno->db( $row_vals[0] );
@@ -314,7 +360,9 @@ sub parse {
         $anno->evidence_code( $row_vals[6] );
         $anno->with_from( $row_vals[7] );
         $anno->aspect( $row_vals[8] );
+        $anno->taxon( $row_vals[12] );
         $anno->date( $row_vals[13] );
+        $anno->assigned_by( $row_vals[14] );
 
         push( @annotations, $anno );
     }
@@ -327,47 +375,28 @@ package Annotation;
 
 use Moose;
 
-has 'go_id' => (
+has 'db' => (
     is      => 'rw',
     isa     => 'Str',
-    default => '',
+    default => 'dictyBase',
     lazy    => 1
 );
 
-has 'qualifier' => (
+has 'taxon' => (
     is      => 'rw',
     isa     => 'Str',
-    default => '',
+    default => 'taxon:44689',
     lazy    => 1
 );
 
-has 'with_from' => (
+has [
+    qw/date with_from assigned_by qualifier go_id db_ref aspect gene_id gene_symbol evidence_code/
+    ] => (
     is      => 'rw',
     isa     => 'Str',
     default => '',
     lazy    => 1
-);
-
-has 'date' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => '',
-    lazy    => 1
-);
-
-has 'evidence_code' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => '',
-    lazy    => 1
-);
-
-has [qw/db_ref aspect db gene_id gene_symbol/] => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => '',
-    lazy    => 1
-);
+    );
 
 sub print {
     my ($self) = @_;
@@ -380,7 +409,9 @@ sub print {
         . $self->db_ref . "\t"
         . $self->evidence_code . "\t"
         . $self->with_from . "\t"
-        . $self->aspect . "\n";
+        . $self->aspect . "\t"
+        . $self->taxon . "\t"
+        . $self->date . "\n";
     print $row;
 }
 
