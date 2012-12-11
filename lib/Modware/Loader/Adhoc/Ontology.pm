@@ -25,7 +25,7 @@ has 'db_namespace' =>
 sub load_engine {
     my ($self) = @_;
     $self->meta->make_mutable;
-    my $engine = 'Modware::Loader::Role::Ontology::With'
+    my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $self->chado->storage->sqlt_type );
     ensure_all_roles( $self, $engine );
     $self->meta->make_immutable;
