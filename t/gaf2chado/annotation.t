@@ -12,7 +12,7 @@ describe 'An Annotation object' => sub {
     it 'should have attributes' => sub {
         has_attribute_ok( $annotation, $_ )
             for
-            qw/db gene_id gene_symbol qualifier go_id db_ref evidence_code with_from aspect date /;
+            qw/db gene_id gene_symbol qualifier go_id db_ref evidence_code with_from aspect taxon date assigned_by/;
     };
 
 };
