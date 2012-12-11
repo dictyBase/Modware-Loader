@@ -4,6 +4,7 @@ use namespace::autoclean;
 use Moose::Role;
 
 requires 'schema';
+requires 'ontology';
 
 has '_cvrow' => (
     is      => 'rw',
@@ -110,6 +111,21 @@ sub find_or_create_db_id {
         ->find_or_create( { name => $name } );
     $self->set_dbrow( $name, $row );
     $row->db_id;
+}
+
+sub _normalize_id {
+    my ( $self, $id ) = @_;
+    my ( $db_id, $accession );
+    if ( $self->has_idspace( $id ) ) {
+        my @parsed = $self->parse_id( $id );
+        $db_id     = $self->find_or_create_db_id( $parsed[0] );
+        $accession = $parsed[1];
+    }
+    else {
+        $db_id     = $self->find_or_create_db_id( $self->ontology->default_namespace );
+        $accession = $id;
+    }
+    return ($db_id, $accession);
 }
 
 1;
