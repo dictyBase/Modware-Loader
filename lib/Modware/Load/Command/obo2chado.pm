@@ -50,13 +50,13 @@ sub execute {
     );
 
     $loader->merge_ontology;
-
     if ( $self->dry_run ) {
         $logger->info("Nothing saved in database");
     }
     else {
         $guard->commit;
     }
+    $self->schema->storage->disconnect;
 }
 1;
 
