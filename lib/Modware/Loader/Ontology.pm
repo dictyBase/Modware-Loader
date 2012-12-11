@@ -7,8 +7,6 @@ use Moose::Util qw/ensure_all_roles/;
 use feature qw/switch/;
 use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
-use Encode;
-use utf8;
 use Module::Load::Conditional qw/check_install/;
 with 'Modware::Role::WithDataStash' =>
     { create_stash_for => [qw/term relationship/] };
@@ -250,15 +248,16 @@ sub merge_ontology {
         = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
     $logger->info("updated $cvterm_names cvterm names");
 
+    #create new terms both in dbxref and cvterm tables
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
     $logger->info("created $dbxrefs dbxrefs");
-
     if ($dbxrefs) {
         my $cvterms
-            = $storage->dbh_do( sub { $self->create_cvterms_debug(@_) } );
+            = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
         $logger->info("created $cvterms cvterms");
     }
 
+    #create relationships
     my $relationships
         = $storage->dbh_do( sub { $self->create_relations(@_) } );
     $logger->info("created $relationships relationships");

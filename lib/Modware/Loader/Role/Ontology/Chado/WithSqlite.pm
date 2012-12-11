@@ -13,6 +13,12 @@ has cache_threshold =>
 
 sub transform_schema { }
 
+sub after_loading_in_staging {
+	my ($self, $storage, $dbh) = @_; 
+	$dbh->do(q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete)});
+	$dbh->do(q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
+}
+
 sub create_temp_statements {
     my ( $self, $storage ) = @_;
     $storage->dbh->do(
@@ -52,6 +58,8 @@ sub drop_temp_statements {
     $storage->dbh->do(qq{DELETE FROM temp_cvterm});
     $storage->dbh->do(qq{DELETE FROM temp_accession});
     $storage->dbh->do(qq{DELETE FROM temp_cvterm_relationship});
+    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
+    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
 }
 
 sub delete_non_existing_terms {
@@ -176,8 +184,6 @@ sub update_cvterm_names {
     }, { Slice => {} }
     );
     for my $frow (@$data) {
-        $self->logger->info(
-            sprintf( "old:%s\tnew:%s", $frow->{oname}, $frow->{fname} ) );
         my $dbrow
             = $self->schema->resultset('Cv::Cvterm')
             ->find( $frow->{cvterm_id} )
@@ -215,7 +221,6 @@ sub update_cvterms {
 }
 
 sub merge_comments {
-    return 0;
 }
 
 sub create_relations {
