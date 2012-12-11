@@ -1,4 +1,4 @@
-package Modware::Loader::Role::Ontology::WithSqlite;
+package Modware::Loader::Role::Ontology::Chado::WithSqlite;
 
 # Other modules:
 use namespace::autoclean;
