@@ -9,6 +9,7 @@ use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
 use Encode;
 use utf8;
+use Module::Load::Conditional qw/check_install/;
 with 'Modware::Role::WithDataStash' =>
     { create_stash_for => [qw/term relationship/] };
 
@@ -94,9 +95,15 @@ sub _load_engine {
     my ($self) = @_;
     my $schema = $self->schema;
     $self->meta->make_mutable;
-    my $engine = 'Modware::Loader::Role::Ontology::With'
+    my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
-    ensure_all_roles( $self, $engine );
+
+    my $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::With'
+        . ucfirst lc( $schema->storage->sqlt_type );
+    if ( !check_install( module => $tmp_engine ) ) {
+        $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::Generic';
+    }
+    ensure_all_roles( $self, ( $engine, $tmp_engine ) );
     $self->meta->make_immutable;
     $self->transform_schema;
 }
@@ -215,89 +222,6 @@ sub prepare_data_for_loading {
     my ($self) = @_;
     $self->load_cvterms_in_staging;
     $self->load_relationship_in_staging;
-}
-
-sub load_cvterms_in_staging {
-    my ($self)        = @_;
-    my $onto          = $self->ontology;
-    my $schema        = $self->schema;
-    my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
-
-    #Term
-    for my $term ( @{ $onto->get_relationship_types }, @{ $onto->get_terms } )
-    {
-        my $insert_hash = $self->_get_insert_term_hash($term);
-        $insert_hash->{cv_id}
-            = $term->namespace
-            ? $self->find_or_create_cvrow( $term->namespace )->cv_id
-            : $default_cv_id;
-        $self->add_to_term_cache($insert_hash);
-        if ( $self->count_entries_in_term_cache >= $self->cache_threshold ) {
-            $schema->resultset('TempCvterm')
-                ->populate( [ $self->entries_in_term_cache ] );
-            $self->clean_term_cache;
-        }
-    }
-
-    if ( $self->count_entries_in_term_cache ) {
-        $schema->resultset('TempCvterm')
-            ->populate( [ $self->entries_in_term_cache ] );
-        $self->clean_term_cache;
-    }
-}
-
-sub load_alt_ids_in_staging {
-}
-
-sub _get_insert_term_hash {
-    my ( $self,  $term )      = @_;
-    my ( $db_id, $accession ) = $self->_normalize_id( $term->id );
-    my $insert_hash;
-    $insert_hash->{accession} = $accession;
-    $insert_hash->{db_id}     = $db_id;
-    if ( my $text = $term->def->text ) {
-        $insert_hash->{definition} = encode( "UTF-8", $text );
-    }
-    $insert_hash->{is_relationshiptype}
-        = $term->isa('OBO::Core::RelationshipType') ? 1 : 0;
-    $insert_hash->{is_obsolete} = $term->is_obsolete ? 1 : 0;
-    $insert_hash->{name} = $term->name ? $term->name : $term->id;
-    $insert_hash->{comment} = $term->comment;
-    return $insert_hash;
-}
-
-sub load_relationship_in_staging {
-    my ($self) = @_;
-    my $onto   = $self->ontology;
-    my $schema = $self->schema;
-
-    for my $rel ( @{ $onto->get_relationships } ) {
-        my @object  = $self->_normalize_id( $rel->head->id );
-        my @subject = $self->_normalize_id( $rel->tail->id );
-        my @type    = $self->_normalize_id( $rel->type );
-
-        $self->add_to_relationship_cache(
-            {   object_db_id  => $object[0],
-                object        => $object[1],
-                subject_db_id => $subject[0],
-                subject       => $subject[1],
-                type_db_id    => $type[0],
-                type          => $type[1]
-            }
-        );
-        if ( $self->count_entries_in_relationship_cache
-            >= $self->cache_threshold )
-        {
-            $schema->resultset('TempCvtermRelationship')
-                ->populate( [ $self->entries_in_relationship_cache ] );
-            $self->clean_relationship_cache;
-        }
-    }
-    if ( $self->count_entries_in_relationship_cache ) {
-        $schema->resultset('TempCvtermRelationship')
-            ->populate( [ $self->entries_in_relationship_cache ] );
-        $self->clean_relationship_cache;
-    }
 }
 
 sub entries_in_staging {
