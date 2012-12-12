@@ -20,7 +20,7 @@ sub get_insert_term_hash {
     $insert_hash->{name} = $term->name ? $term->name : $term->id;
     if ($term->is_obsolete) {
     	$insert_hash->{is_obsolete} = 1;
-    	my $term_name = $insert_hash->{name}. sprintf " (obsolete %s)", $term->id;
+    	my $term_name = $insert_hash->{name}. sprintf(" (obsolete %s)", $term->id);
     	$insert_hash->{name} = $term_name;
     }
     else {

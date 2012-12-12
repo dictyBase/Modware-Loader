@@ -15,7 +15,7 @@ sub transform_schema { }
 
 sub after_loading_in_staging {
 	my ($self, $storage, $dbh) = @_; 
-	$dbh->do(q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete)});
+	$dbh->do(q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)});
 	$dbh->do(q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
 }
 
@@ -23,7 +23,7 @@ sub create_temp_statements {
     my ( $self, $storage ) = @_;
     $storage->dbh->do(
         qq{
-	        CREATE TABLE IF NOT EXISTS temp_cvterm (
+	        CREATE TEMP TABLE temp_cvterm (
                name varchar(1024) NOT NULL, 
                accession varchar(1024) NOT NULL, 
                is_obsolete integer NOT NULL DEFAULT 0, 
@@ -36,13 +36,13 @@ sub create_temp_statements {
     );
     $storage->dbh->do(
         qq{
-	        CREATE TABLE IF NOT EXISTS temp_accession (
+	        CREATE TEMP TABLE temp_accession (
                accession varchar(256) NOT NULL 
     )}
     );
     $storage->dbh->do(
         qq{
-	        CREATE TABLE IF NOT EXISTS temp_cvterm_relationship (
+	        CREATE TEMP TABLE temp_cvterm_relationship (
                subject varchar(256) NOT NULL, 
                object varchar(256) NOT NULL, 
                type varchar(256) NULL, 
@@ -55,11 +55,11 @@ sub create_temp_statements {
 
 sub drop_temp_statements {
     my ( $self, $storage ) = @_;
-    $storage->dbh->do(qq{DELETE FROM temp_cvterm});
-    $storage->dbh->do(qq{DELETE FROM temp_accession});
-    $storage->dbh->do(qq{DELETE FROM temp_cvterm_relationship});
-    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
-    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
+#    $storage->dbh->do(qq{DELETE FROM temp_cvterm});
+#    $storage->dbh->do(qq{DELETE FROM temp_accession});
+#    $storage->dbh->do(qq{DELETE FROM temp_cvterm_relationship});
+#    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
+#    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
 }
 
 sub delete_non_existing_terms {
