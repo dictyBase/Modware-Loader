@@ -71,25 +71,8 @@ sub execute {
                 $anno->print;
             }
             my $db_val = $anno->db_ref;
-            my $go_val = $anno->go_id;
             $db_val =~ s/^PMID://x;
-            $go_val =~ s/^GO://x;
             $anno->db_ref($db_val);
-            $anno->go_id($go_val);
-
-            my $cvterm_rs
-                = $schema->resultset('Cv::Cvterm')
-                ->search( { 'dbxref.accession' => $anno->go_id },
-                { join => [qw/dbxref/], select => [qw/cvterm_id/] } );
-
-            my $evterm_rs = $schema->resultset('Cv::Cvterm')->search(
-                {   'cv.name' => { -like => 'evidence_code%' },
-                    'cvtermsynonyms.synonym_' => $anno->evidence_code,
-                },
-                {   join   => [qw/cv cvtermsynonyms/],
-                    select => [qw/cvterm_id/]
-                },
-            );
 
             if ( $anno->db_ref eq '' ) {
                 $logger->error( 'No PubID ('
@@ -103,7 +86,7 @@ sub execute {
                 ->search( { uniquename => $anno->db_ref },
                 { select => 'pub_id' } );
 
-            if ( $cvterm_rs->count == 0 ) {
+            if ( $anno->cvterm_for_go == 0 ) {
                 $logger->error( "GO:"
                         . $anno->go_id
                         . " does not exist; associated with "
@@ -116,10 +99,8 @@ sub execute {
             $self->schema->txn_do(
                 sub {
                     if ( $pub_rs->count > 0 ) {
-                        my $anno_check
-                            = $self->find( $gene->feature_id,
-                            $cvterm_rs->first->cvterm_id,
-                            $pub_rs->first->pub_id );
+                        my $anno_check = $self->find( $gene->feature_id,
+                            $anno->cvterm_for_go, $pub_rs->first->pub_id );
                         my $rank = 0;
                         if ($anno_check) {
                             $rank = $anno_check->rank + 1;
@@ -128,7 +109,7 @@ sub execute {
                             = $schema->resultset('Sequence::FeatureCvterm')
                             ->find_or_create(
                             {   feature_id => $gene->feature_id,
-                                cvterm_id  => $cvterm_rs->first->cvterm_id,
+                                cvterm_id  => $anno->cvterm_for_go,
                                 pub_id     => $pub_rs->first->pub_id,
                                 rank       => $rank
                             }
@@ -136,7 +117,7 @@ sub execute {
 
                         $fcvt->create_related(
                             'feature_cvtermprops',
-                            {   type_id => $evterm_rs->first->cvterm_id,
+                            {   type_id => $anno->cvterm_for_evidence_code,
                                 value   => 1,
                                 rank    => $rank
                             }
@@ -151,16 +132,6 @@ sub execute {
                                 }
                             );
                         }
-
-                        print $gene->dbxref->accession . "\t"
-                            . $fcvt->feature_id . "\t"
-                            . $fcvt->feature_cvterm_id . "\t"
-                            . $anno->evidence_code . "\t"
-                            . $anno->with_from . "\t"
-                            . $gaf_manager->cvterm_date . "\t"
-                            . $anno->date . "\t"
-                            . $anno->assigned_by . "\t"
-                            . $rank . "\n";
 
                         if ( $anno->date ne '' ) {
                             $fcvt->create_related(
@@ -334,7 +305,7 @@ sub get_gene_ids {
         {   join     => [qw/type organism/],
             select   => [qw/feature_id uniquename type_id/],
             prefetch => 'dbxref',
-            rows     => 500
+			#rows     => 50
         }
     );
     return $gene_rs;
@@ -351,6 +322,9 @@ sub parse {
 
         my @row_vals = split( "\t", $line );
         my $anno = Annotation->new;
+        if ( $self->schema ) {
+            $anno->_schema( $self->schema );
+        }
         $anno->db( $row_vals[0] );
         $anno->gene_id( $row_vals[1] );
         $anno->gene_symbol( $row_vals[2] );
@@ -374,6 +348,12 @@ sub parse {
 package Annotation;
 
 use Moose;
+use MooseX::Attribute::Dependent;
+
+has '_schema' => (
+    is  => 'rw',
+    isa => 'Bio::Chado::Schema'
+);
 
 has 'db' => (
     is      => 'rw',
@@ -389,14 +369,63 @@ has 'taxon' => (
     lazy    => 1
 );
 
-has [
-    qw/date with_from assigned_by qualifier go_id db_ref aspect gene_id gene_symbol evidence_code/
-    ] => (
+has [qw/gene_id go_id db_ref evidence_code/] => (
+    is       => 'rw',
+    isa      => 'Str',
+    default  => '',
+    lazy     => 1,
+    required => 1,
+);
+
+has [qw/date with_from assigned_by qualifier aspect gene_symbol/] => (
     is      => 'rw',
     isa     => 'Str',
     default => '',
     lazy    => 1
-    );
+);
+
+has 'cvterm_for_go' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => sub {
+        my ($self) = @_;
+        my $id = $self->go_id;
+        $id =~ s/^GO://x;
+        my $gors
+            = $self->_schema->resultset('Cv::Cvterm')
+            ->search( { 'dbxref.accession' => $id },
+            { join => 'dbxref', select => [qw/cvterm_id/] } );
+        if ( $gors->count > 0 ) {
+            return $gors->first->cvterm_id;
+        }
+        else {
+            return 0;
+        }
+    },
+    lazy => 1,
+
+    #predicate  => 'has_cvterm_for_go',
+    required   => 1,
+    dependency => All [ 'go_id', '_schema' ]
+);
+
+has 'cvterm_for_evidence_code' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => sub {
+        my ($self) = @_;
+        my $evrs = $self->_schema->resultset('Cv::Cvterm')->search(
+            {   'cv.name' => { -like => 'evidence_code%' },
+                'cvtermsynonyms.synonym_' => $self->evidence_code
+            },
+            { join => [qw/cv cvtermsynonyms/], select => 'cvterm_id' }
+        );
+        return $evrs->first->cvterm_id;
+    },
+    lazy       => 1,
+    required   => 1,
+    dependency => All [ 'evidence_code', '_schema' ]
+);
 
 sub print {
     my ($self) = @_;
@@ -411,7 +440,8 @@ sub print {
         . $self->with_from . "\t"
         . $self->aspect . "\t"
         . $self->taxon . "\t"
-        . $self->date . "\n";
+        . $self->date . "\t"
+        . $self->assigned_by . "\n";
     print $row;
 }
 
@@ -429,13 +459,13 @@ version 0.0.4
 
 =head1 SYNOPSIS
  
-perl modware-load ebigaf2dictychado -c config.yaml --print_gaf
+	perl modware-load ebigaf2dictychado -c config.yaml --print_gaf
 
-perl modware-load ebigaf2dictychado -c config.yaml --prune 
+	perl modware-load ebigaf2dictychado -c config.yaml --prune 
 
 =head1 REQUIRED ARGUMENTS
 
--c, --configfile 		Config file with required arguments
+	-c, --configfile 		Config file with required arguments
 
 =head1 DESCRIPTION
 
