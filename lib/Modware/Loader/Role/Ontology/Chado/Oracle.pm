@@ -26,7 +26,7 @@ sub create_temp_statements {
     my ( $self, $storage ) = @_;
     $storage->dbh->do(
         qq{
-	        CREATE TEMP TABLE temp_cvterm (
+	        CREATE GLOBAL TEMPORARY TABLE temp_cvterm (
                name varchar2(1024) NOT NULL, 
                accession varchar2(256) NOT NULL, 
                is_obsolete number DEFAULT '0' NOT NULL, 
@@ -39,13 +39,13 @@ sub create_temp_statements {
     );
     $storage->dbh->do(
         qq{
-	        CREATE TEMP TABLE temp_accession (
+	        CREATE GLOBAL TEMPORARY TABLE temp_accession (
                accession varchar2(256) NOT NULL 
     )}
     );
     $storage->dbh->do(
         qq{
-	        CREATE TEMP TABLE temp_cvterm_relationship (
+	        CREATE GLOBAL TEMPORARY  TABLE temp_cvterm_relationship (
                subject varchar2(256) NOT NULL, 
                object varchar2(256) NOT NULL, 
                type varchar2(256) NOT NULL, 
@@ -58,13 +58,11 @@ sub create_temp_statements {
 
 sub drop_temp_statements {
     my ( $self, $storage ) = @_;
-    #    $storage->dbh->do(qq{DELETE FROM temp_cvterm});
-    #    $storage->dbh->do(qq{DELETE FROM temp_accession});
-    #    $storage->dbh->do(qq{DELETE FROM temp_cvterm_relationship});
-    #    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
-    #    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
-    $storage->dbh->do(qq{ANALYZE  cvterm});
-    $storage->dbh->do(qq{ANALYZE dbxref});
+    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
+    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
+    $storage->dbh->do(qq{DROP TABLE temp_cvterm});
+    $storage->dbh->do(qq{DROP TABLE temp_accession});
+    $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship});
 }
 
 sub delete_non_existing_terms {
