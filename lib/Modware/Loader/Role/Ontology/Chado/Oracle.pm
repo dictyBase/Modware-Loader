@@ -174,7 +174,7 @@ sub update_cvterm_names {
     my ( $self, $storage, $dbh ) = @_;
     my $row = $dbh->do(
         q{
-    	UPDATE cvterm SET name = fresh.fname FROM (
+    	MERGE INTO cvterm USING (
     	   SELECT tmcv.name fname, cvterm.name oname, cvterm.cvterm_id
     		 FROM cvterm
     		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
@@ -183,9 +183,11 @@ sub update_cvterm_names {
     		 	AND 
     		 	dbxref.db_id = tmcv.db_id
     		 )
-    	) AS fresh
-    	WHERE fresh.fname != fresh.oname
-    	AND cvterm.cvterm_id = fresh.cvterm_id
+    	) fresh
+    	ON (cvterm.cvterm_id = fresh.cvterm_id)
+    	WHEN MATCHED THEN UPDATE 
+    	  SET cvterm.name = fresh.fname
+    	  WHERE fresh.fname != fresh.oname
     });
     return  $row;
 }
@@ -194,17 +196,20 @@ sub update_cvterms {
     my ( $self, $storage, $dbh ) = @_;
     my $row = $dbh->do(
         q{
-            UPDATE cvterm SET definition = fresh.definition, 
-              is_obsolete = fresh.is_obsolete FROM (
-    		SELECT cvterm.cvterm_id, cvterm.name, tmcv.definition, tmcv.is_obsolete 
+            MERGE INTO cvterm USING (
+    		SELECT cvterm.cvterm_id, tmcv.definition, tmcv.is_obsolete 
     		 FROM cvterm
     		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
     		 INNER JOIN temp_cvterm tmcv ON (
     		 	dbxref.accession = tmcv.accession
     		 	AND 
     		 	dbxref.db_id = tmcv.db_id
-    		 ) ) AS fresh
-    		WHERE cvterm.cvterm_id = fresh.cvterm_id
+    		 ) ) eterm
+    		  ON (cvterm.cvterm_id = eterm.cvterm_id)
+    		  WHEN MATCHED THEN UPDATE 
+    		  	SET cvterm.is_obsolete = eterm.is_obsolete, 
+    		  	    cvterm.definition = eterm.definition
+    		  	 
     });
     return  $row;
 }
