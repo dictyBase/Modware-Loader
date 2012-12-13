@@ -13,9 +13,8 @@ has cache_threshold =>
 
 
 sub transform_schema {
-    my ($self) = @_;
-    my $schema = $self->schema;
-    my $source = $self->schema->source('Cv::Cvtermsynonym');
+    my ($self, $schema) = @_;
+    my $source = $schema->source('Cv::Cvtermsynonym');
     $source->remove_column('synonym');
     $source->add_column(
         'synonym_' => {
@@ -24,6 +23,16 @@ sub transform_schema {
             size        => 1024
         }
     );
+
+    my $cvterm_source = $schema->source('Cv::Cvterm');
+    $cvterm_source->remove_column('definition');
+    $cvterm_source->add_column(
+        'definition' => {
+            data_type   => 'clob',
+            is_nullable => 1
+        }
+    );
+
     my @sources = (
         'Cv::Cvprop',     'Cv::Cvtermprop',
         'Cv::Dbxrefprop', 'Sequence::Featureprop',

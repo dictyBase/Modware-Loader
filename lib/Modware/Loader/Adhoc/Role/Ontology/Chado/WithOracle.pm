@@ -14,6 +14,16 @@ sub transform_schema {
             size        => 1024
         }
     );
+
+    my $cvterm_source = $schema->source('Cv::Cvterm');
+    $cvterm_source->remove_column('definition');
+    $cvterm_source->add_column(
+        'definition' => {
+            data_type   => 'clob',
+            is_nullable => 1
+        }
+    );
+
     my @sources = (
         'Cv::Cvprop',     'Cv::Cvtermprop',
         'Cv::Dbxrefprop', 'Sequence::Featureprop',

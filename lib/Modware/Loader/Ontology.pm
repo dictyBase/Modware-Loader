@@ -31,8 +31,8 @@ has 'schema' => (
     isa     => 'Bio::Chado::Schema',
     writer  => 'set_schema',
     trigger => sub {
-        my ($self) = @_;
-        $self->_load_engine;
+        my ($self, $schema) = @_;
+        $self->_load_engine($schema);
     }
 );
 
@@ -90,8 +90,7 @@ sub _check_cvprop_or_die {
 }
 
 sub _load_engine {
-    my ($self) = @_;
-    my $schema = $self->schema;
+    my ($self, $schema)  = @_;
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
@@ -103,7 +102,7 @@ sub _load_engine {
     }
     ensure_all_roles( $self, ( $engine, $tmp_engine ) );
     $self->meta->make_immutable;
-    $self->transform_schema;
+    $self->transform_schema($schema);
 }
 
 sub is_ontology_in_db {
