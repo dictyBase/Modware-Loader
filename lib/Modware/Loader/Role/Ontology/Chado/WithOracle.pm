@@ -70,7 +70,7 @@ sub create_temp_statements {
                is_obsolete number DEFAULT '0' NOT NULL, 
                is_relationshiptype number DEFAULT '0' NOT NULL, 
                definition clob, 
-               comment clob, 
+               cmmnt clob, 
                cv_id number NOT NULL, 
                db_id number NOT NULL
     )}

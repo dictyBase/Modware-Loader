@@ -11,7 +11,7 @@ __PACKAGE__->add_columns(
 __PACKAGE__->add_columns(
     'accession' => { data_type => 'varchar', size => 1024 } );
 __PACKAGE__->add_columns( 'definition' => { data_type => 'text' } );
-__PACKAGE__->add_columns( 'comment' => { data_type => 'text' } );
+__PACKAGE__->add_columns( 'cmmnt' => { data_type => 'text' } );
 __PACKAGE__->add_columns(
     'is_relationshiptype' => { data_type => 'int', default => 0 } );
 __PACKAGE__->add_columns(

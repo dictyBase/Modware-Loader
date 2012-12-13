@@ -32,7 +32,7 @@ sub create_temp_statements {
                is_obsolete integer NOT NULL DEFAULT 0, 
                is_relationshiptype integer NOT NULL DEFAULT 0, 
                definition text, 
-               comment text, 
+               cmmnt text, 
                cv_id integer NOT NULL, 
                db_id integer NOT NULL
     )}

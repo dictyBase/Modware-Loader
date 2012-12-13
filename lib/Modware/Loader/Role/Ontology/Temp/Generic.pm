@@ -26,7 +26,7 @@ sub get_insert_term_hash {
     else {
     	$insert_hash->{is_obsolete} = 0;
     }
-    $insert_hash->{comment} = $term->comment;
+    $insert_hash->{cmmnt} = $term->comment;
     return $insert_hash;
 }
 
