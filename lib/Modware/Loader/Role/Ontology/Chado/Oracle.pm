@@ -63,13 +63,14 @@ sub drop_temp_statements {
     $storage->dbh->do(qq{DROP TABLE temp_cvterm});
     $storage->dbh->do(qq{DROP TABLE temp_accession});
     $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship});
+    $storage->dbh->do(qq{DROP TABLE temp_term_delete});
 }
 
 sub delete_non_existing_terms {
     my ( $self, $storage, $dbh ) = @_;
     $dbh->do(
         q{
-			CREATE TEMP TABLE temp_term_delete AS
+			CREATE GLOBAL TEMPORARY TABLE temp_term_delete AS
 				SELECT cvterm.cvterm_id, dbxref.dbxref_id FROM cvterm
 				INNER JOIN dbxref ON cvterm.dbxref_id=dbxref.dbxref_id
 				LEFT JOIN temp_cvterm tmcv ON (
@@ -85,13 +86,12 @@ sub delete_non_existing_terms {
     );
 
     $dbh->do(
-        q{ DELETE FROM cvterm USING temp_term_delete td WHERE cvterm.cvterm_id = td.cvterm_id}
+        q{ DELETE FROM cvterm WHERE cvterm.cvterm_id IN( SELECT cvterm_id FROM
+        temp_term_delete )}
     );
     my $rows = $dbh->do(
-        q{ DELETE FROM dbxref USING temp_term_delete td 
-             WHERE
-	         dbxref.dbxref_id = td.dbxref_id
-	      }
+        q{ DELETE FROM dbxref  WHERE dbxref.dbxref_id IN (SELECT dbxref_id FROM
+        temp_term_delete)}
     );
     return $rows;
 }
