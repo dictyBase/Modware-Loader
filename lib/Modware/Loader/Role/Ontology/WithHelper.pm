@@ -6,6 +6,19 @@ use Moose::Role;
 requires 'schema';
 requires 'ontology';
 
+
+has '_cvrow_id' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => ['Hash'],
+    default => sub { {} },
+    handles => {
+        get_cvrow_id => 'get',
+        set_cvrow_id => 'set',
+        has_cvrow_id => 'defined'
+    }
+);
+
 has '_cvrow' => (
     is      => 'rw',
     isa     => 'HashRef',
@@ -46,21 +59,36 @@ has '_dbrow' => (
 
 sub find_or_create_dbrow {
     my ( $self, $db ) = @_;
-    my $schema = $self->schema;
-    my $dbrow  = $schema->resultset('General::Db')
+    if ($self->has_dbrow($db)) {
+    	return $self->get_dbrow($db);
+    }
+    my $dbrow  = $self->schema->resultset('General::Db')
         ->find_or_create( { name => $db } );
-    $self->set_dbrow( $db, $dbrow ) if !$self->has_dbrow($db);
+    $self->set_dbrow( $db, $dbrow ); 
     return $dbrow;
 }
 
 sub find_or_create_cvrow {
     my ( $self, $cv ) = @_;
+    if ($self->has_cvrow($cv)) {
+    	return $self->get_cvrow($cv);
+    }
+    my $cvrow
+        = $self->schema->resultset('Cv::Cv')->find_or_create( { name => $cv } );
+    $self->set_cvrow( $cv, $cvrow );
+    return $cvrow;
+}
+
+sub find_or_create_cvrow_id {
+    my ( $self, $cv ) = @_;
     my $schema = $self->schema;
+    if ($self->has_cvrow_id($cv)) {
+    	return $self->get_cvrow_id($cv);
+    }
     my $cvrow
         = $schema->resultset('Cv::Cv')->find_or_create( { name => $cv } );
-    $self->set_cvrow( $cv, $cvrow )
-        if !$self->has_cvrow($cv);
-    return $cvrow;
+    $self->set_cvrow_id( $cv, $cvrow->cv_id );
+    return $cvrow->cv_id;
 }
 
 sub find_or_create_cvterm_namespace {
@@ -127,6 +155,31 @@ sub _normalize_id {
         $accession = $id;
     }
     return ($db_id, $accession);
+}
+
+sub get_insert_term_hash {
+    my ( $self,  $term )      = @_;
+    my ( $db_id, $accession ) = $self->_normalize_id( $term->id );
+    my $insert_hash;
+    $insert_hash->{accession} = $accession;
+    $insert_hash->{db_id}     = $db_id;
+    if ( my $text = $term->def->text ) {
+        $insert_hash->{definition} = encode( "UTF-8", $text );
+    }
+    $insert_hash->{is_relationshiptype}
+        = $term->isa('OBO::Core::RelationshipType') ? 1 : 0;
+    $insert_hash->{name} = $term->name ? $term->name : $term->id;
+    if ( $term->is_obsolete ) {
+        $insert_hash->{is_obsolete} = 1;
+        my $term_name
+            = $insert_hash->{name} . sprintf( " (obsolete %s)", $term->id );
+        $insert_hash->{name} = $term_name;
+    }
+    else {
+        $insert_hash->{is_obsolete} = 0;
+    }
+    $insert_hash->{cmmnt} = $term->comment;
+    return $insert_hash;
 }
 
 1;
