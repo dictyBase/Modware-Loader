@@ -58,7 +58,7 @@ sub _around_connection {
 }
 
 has 'cvrow_in_db' =>
-    ( is => 'rw', isa => 'DBIx::Class::Row', write => 'set_cvrow_in_db' );
+    ( is => 'rw', isa => 'DBIx::Class::Row', writer => 'set_cvrow_in_db' );
 
 sub is_ontology_in_db {
     my ( $self, $namespace, $partial_lookup ) = @_;

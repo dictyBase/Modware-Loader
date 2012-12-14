@@ -66,5 +66,5 @@ __END__
 
 =head1 NAME
 
-Modware::Load::Command::obo2chado -  Load ontology from obo flat file to chado database
+Modware::Load::Command::dropontofromchado -  Drop ontology from chado database (use sparingly)
  
