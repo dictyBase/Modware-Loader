@@ -293,6 +293,31 @@ sub create_relations {
     return $rows;
 }
 
+sub drop_on_delete_statements {
+	my ($self, $storage) = @_;
+	$storage->dbh->do(q{TRUNCATE TABLE temp_dbxref_delete});
+	$storage->dbh->do(q{DROP TABLE temp_dbxref_delete});
+}
+
+sub delete_dbxrefs {
+    my ( $self, $storage, $dbh) = @_;
+    my $rows = $dbh->do(q{
+    	DELETE FROM dbxref WHERE EXISTS (
+    		SELECT * FROM temp_dbxref_delete
+    	)
+    });
+    return $rows;
+}
+
+sub delete_cvterms {
+    my ( $self, $storage, $dbh , $cv_id) = @_;
+    $dbh->do(q{ CREATE GLOBAL TEMPORARY TABLE temp_dbxref_delete 
+                ON COMMIT PRESERVE ROWS AS
+                 SELECT cvterm.dbxref_id FROM cvterm
+                 WHERE cvterm.cv_id = ?}, undef,  $cv_id);
+    $dbh->do(q{ DELETE FROM cv where cv_id = ?},  undef,  $cv_id);
+}
+
 1;    # Magic true value required at end of module
 
 __END__
