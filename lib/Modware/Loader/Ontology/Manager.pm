@@ -30,7 +30,6 @@ sub _load_engine {
     $self->meta->make_immutable;
 }
 
-
 has 'connect_info' => (
     is      => 'rw',
     isa     => 'Modware::Storage::Connection',
@@ -47,7 +46,8 @@ sub _around_connection {
     my $extra_attr   = $connect_info->extra_attribute;
 
     my $opt = {
-        on_disconnect_do => sub { $self->drop_on_delete_statements(@_) }
+        on_disconnect_do => sub { $self->drop_on_delete_statements(@_) },
+        on_connect_do    => sub { $self->create_on_delete_statements(@_) }
     };
     $opt->{on_connect_call} = $extra_attr->{on_connect_do}
         if defined $extra_attr->{on_connect_do};
@@ -74,13 +74,13 @@ sub is_ontology_in_db {
 }
 
 sub delete_ontology {
-	my ($self) = @_;
-	my $cv_id = $self->cvrow_in_db->cv_id;
-	my $storage = $self->schema->storage;
+    my ($self)  = @_;
+    my $cv_id   = $self->cvrow_in_db->cv_id;
+    my $storage = $self->schema->storage;
 
-	$storage->dbh_do(sub { $self->delete_cvterms(@_)}, $cv_id);
-	my $dbxrefs = $storage->dbh_do(sub { $self->delete_dbxrefs(@_)});
-	$self->logger->debug("deleted $dbxrefs dbxrefs");
+    $storage->dbh_do( sub { $self->delete_cvterms(@_) }, $cv_id );
+    my $dbxrefs = $storage->dbh_do( sub { $self->delete_dbxrefs(@_) } );
+    $self->logger->debug("deleted $dbxrefs dbxrefs");
 
 }
 
