@@ -2,6 +2,8 @@ package Modware::Loader::Role::Ontology::WithHelper;
 
 use namespace::autoclean;
 use Moose::Role;
+use Encode;
+use utf8;
 
 requires 'schema';
 requires 'ontology';
