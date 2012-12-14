@@ -8,8 +8,6 @@ use feature qw/say/;
 # Module implementation
 #
 
-has cache_threshold =>
-    ( is => 'rw', isa => 'Int', lazy => 1, default => 5000 );
 
 
 sub transform_schema {
@@ -53,11 +51,11 @@ sub transform_schema {
 
 sub after_loading_in_staging {
     my ( $self, $storage, $dbh ) = @_;
-    $dbh->do(
-        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
-    );
-    $dbh->do(
-        q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
+#    $dbh->do(
+#        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
+#    );
+#    $dbh->do(
+#        q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
 }
 
 sub create_temp_statements {
@@ -69,17 +67,17 @@ sub create_temp_statements {
                accession varchar2(256) NOT NULL, 
                is_obsolete number DEFAULT '0' NOT NULL, 
                is_relationshiptype number DEFAULT '0' NOT NULL, 
-               definition clob, 
-               cmmnt clob, 
+               definition varchar2(4000), 
+               cmmnt varchar2(4000), 
                cv_id number NOT NULL, 
                db_id number NOT NULL
-    )}
+    ) ON COMMIT PRESERVE ROWS }
     );
     $storage->dbh->do(
         qq{
 	        CREATE GLOBAL TEMPORARY TABLE temp_accession (
                accession varchar2(256) NOT NULL 
-    )}
+    ) ON COMMIT PRESERVE ROWS }
     );
     $storage->dbh->do(
         qq{
@@ -90,14 +88,16 @@ sub create_temp_statements {
                subject_db_id number NOT NULL, 
                object_db_id number NOT NULL, 
                type_db_id number NOT NULL
-    )}
+    ) ON COMMIT PRESERVE ROWS }
     );
 }
 
 sub drop_temp_statements {
     my ( $self, $storage ) = @_;
-    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
-    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_accession});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm_relationship});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_term_delete});
     $storage->dbh->do(qq{DROP TABLE temp_cvterm});
     $storage->dbh->do(qq{DROP TABLE temp_accession});
     $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship});
@@ -108,7 +108,8 @@ sub delete_non_existing_terms {
     my ( $self, $storage, $dbh ) = @_;
     $dbh->do(
         q{
-			CREATE GLOBAL TEMPORARY TABLE temp_term_delete AS
+			CREATE GLOBAL TEMPORARY TABLE temp_term_delete 
+			 ON COMMIT PRESERVE ROWS AS
 				SELECT cvterm.cvterm_id, dbxref.dbxref_id FROM cvterm
 				INNER JOIN dbxref ON cvterm.dbxref_id=dbxref.dbxref_id
 				LEFT JOIN temp_cvterm tmcv ON (
@@ -262,7 +263,6 @@ sub create_relations {
         INSERT INTO cvterm_relationship(object_id, subject_id, type_id)
 		SELECT object.cvterm_id, subject.cvterm_id, type.cvterm_id
         FROM temp_cvterm_relationship tmprel
-
         INNER JOIN dbxref dbobject ON (
         	dbobject.accession = tmprel.object AND
         	dbobject.db_id = tmprel.object_db_id 
@@ -284,7 +284,8 @@ sub create_relations {
         INNER JOIN cvterm type ON
         type.dbxref_id = dbtype.dbxref_id
              
-      EXCEPT
+	   MINUS
+
       SELECT cvrel.object_id, cvrel.subject_id, cvrel.type_id
       FROM cvterm_relationship cvrel
     }
