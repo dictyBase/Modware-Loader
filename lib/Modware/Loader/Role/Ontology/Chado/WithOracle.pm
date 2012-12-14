@@ -293,6 +293,15 @@ sub create_relations {
     return $rows;
 }
 
+sub create_on_delete_statements {
+	my ($self, $storage) = @_;
+	$storage->dbh->do(q{
+		CREATE GLOBAL TEMPORARY TABLE temp_dbxref_delete (
+			dbxref_id number NOT NULL
+		) ON COMMIT PRESERVE ROWS
+	});
+}
+
 sub drop_on_delete_statements {
 	my ($self, $storage) = @_;
 	$storage->dbh->do(q{TRUNCATE TABLE temp_dbxref_delete});
@@ -306,13 +315,13 @@ sub delete_dbxrefs {
     		SELECT * FROM temp_dbxref_delete
     	)
     });
+	$storage->dbh->do(q{TRUNCATE TABLE temp_dbxref_delete});
     return $rows;
 }
 
 sub delete_cvterms {
     my ( $self, $storage, $dbh , $cv_id) = @_;
-    $dbh->do(q{ CREATE GLOBAL TEMPORARY TABLE temp_dbxref_delete 
-                ON COMMIT PRESERVE ROWS AS
+    $dbh->do(q{ INSERT INTO temp_dbxref_delete(dbxref_id) 
                  SELECT cvterm.dbxref_id FROM cvterm
                  WHERE cvterm.cv_id = ?}, undef,  $cv_id);
     $dbh->do(q{ DELETE FROM cv where cv_id = ?},  undef,  $cv_id);
