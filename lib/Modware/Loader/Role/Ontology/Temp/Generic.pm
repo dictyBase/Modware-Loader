@@ -2,33 +2,6 @@ package Modware::Loader::Role::Ontology::Temp::Generic;
 
 use namespace::autoclean;
 use Moose::Role;
-use Encode;
-use utf8;
-
-
-sub get_insert_term_hash {
-    my ( $self,  $term )      = @_;
-    my ( $db_id, $accession ) = $self->_normalize_id( $term->id );
-    my $insert_hash;
-    $insert_hash->{accession} = $accession;
-    $insert_hash->{db_id}     = $db_id;
-    if ( my $text = $term->def->text ) {
-        $insert_hash->{definition} = encode( "UTF-8", $text );
-    }
-    $insert_hash->{is_relationshiptype}
-        = $term->isa('OBO::Core::RelationshipType') ? 1 : 0;
-    $insert_hash->{name} = $term->name ? $term->name : $term->id;
-    if ($term->is_obsolete) {
-    	$insert_hash->{is_obsolete} = 1;
-    	my $term_name = $insert_hash->{name}. sprintf(" (obsolete %s)", $term->id);
-    	$insert_hash->{name} = $term_name;
-    }
-    else {
-    	$insert_hash->{is_obsolete} = 0;
-    }
-    $insert_hash->{cmmnt} = $term->comment;
-    return $insert_hash;
-}
 
 sub load_cvterms_in_staging {
     my ($self)        = @_;
