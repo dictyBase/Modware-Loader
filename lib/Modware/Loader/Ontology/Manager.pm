@@ -64,7 +64,7 @@ sub is_ontology_in_db {
     my ( $self, $namespace, $partial_lookup ) = @_;
     my $query = { name => $namespace };
     if ($partial_lookup) {
-        $query = { name => { 'like' => $query . '%' } };
+        $query = { name => { 'like' => $namespace . '%' } };
     }
     my $row = $self->schema->resultset('Cv::Cv')->find($query);
     if ($row) {
@@ -79,6 +79,8 @@ sub delete_ontology {
     my $storage = $self->schema->storage;
 
     $storage->dbh_do( sub { $self->delete_cvterms(@_) }, $cv_id );
+    $self->logger->debug("deleted cvterms");
+
     my $dbxrefs = $storage->dbh_do( sub { $self->delete_dbxrefs(@_) } );
     $self->logger->debug("deleted $dbxrefs dbxrefs");
 
