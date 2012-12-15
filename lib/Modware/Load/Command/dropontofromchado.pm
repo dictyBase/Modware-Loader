@@ -46,16 +46,18 @@ sub execute {
 NAME:
     for my $name ( @{ $self->namespace } ) {
 
-        if ( !$manager->is_ontology_in_db( $name, $self->partial_lookup ) ) {
+        my $cvrow = $manager->is_ontology_in_db( $name, $self->partial_lookup );
+        if (!$cvrow) {
             $logger->error("This ontology do not exist in database");
             next NAME;
         }
 
         #enable transaction
 
-        $logger->info("start deleting ontology $name");
+		my $actual_name = $cvrow->name;
+        $logger->info("start deleting ontology $actual_name");
         $manager->delete_ontology;
-        $logger->info("deleted ontology $name");
+        $logger->info("deleted ontology $actual_name");
     }
     $guard->commit;
     $self->schema->storage->disconnect;
