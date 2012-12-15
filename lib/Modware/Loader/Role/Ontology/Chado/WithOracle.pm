@@ -8,10 +8,8 @@ use feature qw/say/;
 # Module implementation
 #
 
-
-
 sub transform_schema {
-    my ($self, $schema) = @_;
+    my ( $self, $schema ) = @_;
     my $source = $schema->source('Cv::Cvtermsynonym');
     $source->remove_column('synonym');
     $source->add_column(
@@ -51,6 +49,7 @@ sub transform_schema {
 
 sub after_loading_in_staging {
     my ( $self, $storage, $dbh ) = @_;
+
 #    $dbh->do(
 #        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
 #    );
@@ -227,8 +226,9 @@ sub update_cvterm_names {
     	WHEN MATCHED THEN UPDATE 
     	  SET cvterm.name = fresh.fname
     	  WHERE fresh.fname != fresh.oname
-    });
-    return  $row;
+    }
+    );
+    return $row;
 }
 
 sub update_cvterms {
@@ -249,8 +249,9 @@ sub update_cvterms {
     		  	SET cvterm.is_obsolete = eterm.is_obsolete, 
     		  	    cvterm.definition = eterm.definition
     		  	 
-    });
-    return  $row;
+    }
+    );
+    return $row;
 }
 
 sub merge_comments {
@@ -294,37 +295,47 @@ sub create_relations {
 }
 
 sub create_on_delete_statements {
-	my ($self, $storage) = @_;
-	$storage->dbh->do(q{
-		CREATE GLOBAL TEMPORARY TABLE temp_dbxref_delete (
-			dbxref_id number NOT NULL
+    my ( $self, $storage ) = @_;
+    $storage->dbh->do(
+        q{
+		CREATE GLOBAL TEMPORARY TABLE temp_dbid (
+			db_id number NOT NULL
 		) ON COMMIT PRESERVE ROWS
-	});
+	}
+    );
 }
 
 sub drop_on_delete_statements {
-	my ($self, $storage) = @_;
-	$storage->dbh->do(q{TRUNCATE TABLE temp_dbxref_delete});
-	$storage->dbh->do(q{DROP TABLE temp_dbxref_delete});
+    my ( $self, $storage ) = @_;
+    $storage->dbh->do(q{TRUNCATE TABLE temp_dbid});
+    $storage->dbh->do(q{DROP TABLE temp_dbid});
 }
 
 sub delete_dbxrefs {
-    my ( $self, $storage, $dbh) = @_;
-    my $rows = $dbh->do(q{
-    	DELETE FROM dbxref WHERE EXISTS (
-    		SELECT * FROM temp_dbxref_delete
+    my ( $self, $storage, $dbh ) = @_;
+    my $rows = $dbh->do(
+        q{
+    	DELETE FROM dbxref WHERE db_id IN (
+    		SELECT db_id FROM temp_dbid
     	)
-    });
-	$storage->dbh->do(q{TRUNCATE TABLE temp_dbxref_delete});
+    }
+    );
+    $storage->dbh->do(q{TRUNCATE TABLE temp_dbid});
     return $rows;
 }
 
 sub delete_cvterms {
-    my ( $self, $storage, $dbh , $cv_id) = @_;
-    $dbh->do(q{ INSERT INTO temp_dbxref_delete(dbxref_id) 
-                 SELECT cvterm.dbxref_id FROM cvterm
-                 WHERE cvterm.cv_id = ?}, undef,  $cv_id);
-    $dbh->do(q{ DELETE FROM cv where cv_id = ?},  undef,  $cv_id);
+    my ( $self, $storage, $dbh, $cv_id ) = @_;
+    my $sth = $dbh->prepare(
+        q{ INSERT INTO temp_dbid(db_id) 
+        SELECT namespace.db_id FROM (
+        SELECT count(dbxref.dbxref_id) ,  dbxref.db_id FROM dbxref
+        JOIN cvterm ON dbxref.dbxref_id = cvterm.dbxref_id
+        WHERE cvterm.cv_id = ?
+        group by dbxref.db_id ) namespace });
+    $sth->execute($cv_id);
+    $sth = $dbh->prepare( q{ DELETE FROM cv where cv_id = ?} );
+    $sth->execute($cv_id);
 }
 
 1;    # Magic true value required at end of module
