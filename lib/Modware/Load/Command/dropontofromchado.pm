@@ -56,7 +56,7 @@ NAME:
 
 		my $actual_name = $cvrow->name;
         $logger->info("start deleting ontology $actual_name");
-        $manager->delete_ontology;
+        $manager->delete_ontology($cvrow);
         $logger->info("deleted ontology $actual_name");
     }
     $guard->commit;
