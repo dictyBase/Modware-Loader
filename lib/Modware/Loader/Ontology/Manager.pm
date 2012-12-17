@@ -57,9 +57,6 @@ sub _around_connection {
     $self->schema->storage->debug( $connect_info->schema_debug );
 }
 
-has 'cvrow_in_db' =>
-    ( is => 'rw', isa => 'DBIx::Class::Row', writer => 'set_cvrow_in_db' );
-
 sub is_ontology_in_db {
     my ( $self, $namespace, $partial_lookup ) = @_;
     my $query = { name => $namespace };
@@ -68,14 +65,13 @@ sub is_ontology_in_db {
     }
     my $row = $self->schema->resultset('Cv::Cv')->find($query);
     if ($row) {
-        $self->set_cvrow_in_db($row);
         return $row;
     }
 }
 
 sub delete_ontology {
-    my ($self)  = @_;
-    my $cv_id   = $self->cvrow_in_db->cv_id;
+    my ($self, $cvrow)  = @_;
+    my $cv_id   = $cvrow->cv_id;
     my $storage = $self->schema->storage;
 
     $storage->dbh_do( sub { $self->delete_cvterms(@_) }, $cv_id );
