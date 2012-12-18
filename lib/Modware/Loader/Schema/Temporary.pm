@@ -45,7 +45,7 @@ __PACKAGE__->add_columns(
 1;
 
 
-package Modware::Loader::Schema::Temporary::CvtermSynonym;
+package Modware::Loader::Schema::Temporary::Cvtermsynonym;
 
 __PACKAGE__->table('temp_cvterm_synonym');
 __PACKAGE__->add_columns(

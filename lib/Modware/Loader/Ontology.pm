@@ -9,7 +9,7 @@ use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
 use Module::Load::Conditional qw/check_install/;
 with 'Modware::Role::WithDataStash' =>
-    { create_stash_for => [qw/term relationship/] };
+    { create_stash_for => [qw/term relationship synonym/] };
 
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
@@ -79,6 +79,8 @@ sub _register_schema_classes {
         'TempCvterm' => 'Modware::Loader::Schema::Temporary::Cvterm' );
     $schema->register_class( 'TempCvtermRelationship' =>
             'Modware::Loader::Schema::Temporary::CvtermRelationship' );
+    $schema->register_class( 'TempCvtermsynonym' =>
+            'Modware::Loader::Schema::Temporary::Cvtermsynonym' );
 }
 
 sub _check_cvprop_or_die {
