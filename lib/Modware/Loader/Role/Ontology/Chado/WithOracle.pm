@@ -1,4 +1,4 @@
-package Modware::Loader::Role::Ontology::Chado::WithPostgresql;
+package Modware::Loader::Role::Ontology::Chado::WithOracle;
 
 # Other modules:
 use namespace::autoclean;
@@ -8,72 +8,107 @@ use feature qw/say/;
 # Module implementation
 #
 
-has cache_threshold =>
-    ( is => 'rw', isa => 'Int', lazy => 1, default => 5000 );
+sub transform_schema {
+    my ( $self, $schema ) = @_;
+    my $source = $schema->source('Cv::Cvtermsynonym');
+    $source->remove_column('synonym');
+    $source->add_column(
+        'synonym_' => {
+            data_type   => 'varchar',
+            is_nullable => 0,
+            size        => 1024
+        }
+    );
 
-sub transform_schema { }
+    my $cvterm_source = $schema->source('Cv::Cvterm');
+    $cvterm_source->remove_column('definition');
+    $cvterm_source->add_column(
+        'definition' => {
+            data_type   => 'clob',
+            is_nullable => 1
+        }
+    );
+
+    my @sources = (
+        'Cv::Cvprop',     'Cv::Cvtermprop',
+        'Cv::Dbxrefprop', 'Sequence::Featureprop',
+        'Sequence::FeatureCvtermprop'
+    );
+    for my $name (@sources) {
+        my $result_source = $schema->source($name);
+        next if !$result_source->has_column('value');
+        $result_source->remove_column('value');
+        $result_source->add_column(
+            'value' => {
+                data_type   => 'clob',
+                is_nullable => 1
+            }
+        );
+    }
+}
 
 sub after_loading_in_staging {
     my ( $self, $storage, $dbh ) = @_;
-    $dbh->do(
-        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
-    );
-    $dbh->do(
-        q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
+
+#    $dbh->do(
+#        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
+#    );
+#    $dbh->do(
+#        q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
 }
 
 sub create_temp_statements {
     my ( $self, $storage ) = @_;
     $storage->dbh->do(
         qq{
-	        CREATE TEMP TABLE temp_cvterm (
-               name varchar(1024) NOT NULL, 
-               accession varchar(256) NOT NULL, 
-               is_obsolete integer NOT NULL DEFAULT 0, 
-               is_relationshiptype integer NOT NULL DEFAULT 0, 
-               definition text, 
-               cmmnt text, 
-               cv_id integer NOT NULL, 
-               db_id integer NOT NULL
-    )}
+	        CREATE GLOBAL TEMPORARY TABLE temp_cvterm (
+               name varchar2(1024) NOT NULL, 
+               accession varchar2(256) NOT NULL, 
+               is_obsolete number DEFAULT '0' NOT NULL, 
+               is_relationshiptype number DEFAULT '0' NOT NULL, 
+               definition varchar2(4000), 
+               cmmnt varchar2(4000), 
+               cv_id number NOT NULL, 
+               db_id number NOT NULL
+    ) ON COMMIT PRESERVE ROWS }
     );
     $storage->dbh->do(
         qq{
-	        CREATE TEMP TABLE temp_accession (
-               accession varchar(256) NOT NULL 
-    )}
+	        CREATE GLOBAL TEMPORARY TABLE temp_accession (
+               accession varchar2(256) NOT NULL 
+    ) ON COMMIT PRESERVE ROWS }
     );
     $storage->dbh->do(
         qq{
-	        CREATE TEMP TABLE temp_cvterm_relationship (
-               subject varchar(256) NOT NULL, 
-               object varchar(256) NOT NULL, 
-               type varchar(256) NOT NULL, 
-               subject_db_id integer NOT NULL, 
-               object_db_id integer NOT NULL, 
-               type_db_id integer NOT NULL
-    )}
+	        CREATE GLOBAL TEMPORARY  TABLE temp_cvterm_relationship (
+               subject varchar2(256) NOT NULL, 
+               object varchar2(256) NOT NULL, 
+               type varchar2(256) NOT NULL, 
+               subject_db_id number NOT NULL, 
+               object_db_id number NOT NULL, 
+               type_db_id number NOT NULL
+    ) ON COMMIT PRESERVE ROWS }
     );
-    $storage->dbh->do(qq{ANALYZE  cvterm});
-    $storage->dbh->do(qq{ANALYZE dbxref});
 }
 
 sub drop_temp_statements {
     my ( $self, $storage ) = @_;
-    #    $storage->dbh->do(qq{DELETE FROM temp_cvterm});
-    #    $storage->dbh->do(qq{DELETE FROM temp_accession});
-    #    $storage->dbh->do(qq{DELETE FROM temp_cvterm_relationship});
-    #    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
-    #    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
-    $storage->dbh->do(qq{ANALYZE  cvterm});
-    $storage->dbh->do(qq{ANALYZE dbxref});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_accession});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm_relationship});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_term_delete});
+    $storage->dbh->do(qq{DROP TABLE temp_cvterm});
+    $storage->dbh->do(qq{DROP TABLE temp_accession});
+    $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship});
+    $storage->dbh->do(qq{DROP TABLE temp_term_delete});
 }
 
 sub delete_non_existing_terms {
     my ( $self, $storage, $dbh ) = @_;
     $dbh->do(
         q{
-			CREATE TEMP TABLE temp_term_delete AS
+			CREATE GLOBAL TEMPORARY TABLE temp_term_delete 
+			 ON COMMIT PRESERVE ROWS AS
 				SELECT cvterm.cvterm_id, dbxref.dbxref_id FROM cvterm
 				INNER JOIN dbxref ON cvterm.dbxref_id=dbxref.dbxref_id
 				LEFT JOIN temp_cvterm tmcv ON (
@@ -89,13 +124,12 @@ sub delete_non_existing_terms {
     );
 
     $dbh->do(
-        q{ DELETE FROM cvterm USING temp_term_delete td WHERE cvterm.cvterm_id = td.cvterm_id}
+        q{ DELETE FROM cvterm WHERE cvterm.cvterm_id IN( SELECT cvterm_id FROM
+        temp_term_delete )}
     );
     my $rows = $dbh->do(
-        q{ DELETE FROM dbxref USING temp_term_delete td 
-             WHERE
-	         dbxref.dbxref_id = td.dbxref_id
-	      }
+        q{ DELETE FROM dbxref  WHERE dbxref.dbxref_id IN (SELECT dbxref_id FROM
+        temp_term_delete)}
     );
     return $rows;
 }
@@ -178,7 +212,7 @@ sub update_cvterm_names {
     my ( $self, $storage, $dbh ) = @_;
     my $row = $dbh->do(
         q{
-    	UPDATE cvterm SET name = fresh.fname FROM (
+    	MERGE INTO cvterm USING (
     	   SELECT tmcv.name fname, cvterm.name oname, cvterm.cvterm_id
     		 FROM cvterm
     		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
@@ -187,30 +221,37 @@ sub update_cvterm_names {
     		 	AND 
     		 	dbxref.db_id = tmcv.db_id
     		 )
-    	) AS fresh
-    	WHERE fresh.fname != fresh.oname
-    	AND cvterm.cvterm_id = fresh.cvterm_id
-    });
-    return  $row;
+    	) fresh
+    	ON (cvterm.cvterm_id = fresh.cvterm_id)
+    	WHEN MATCHED THEN UPDATE 
+    	  SET cvterm.name = fresh.fname
+    	  WHERE fresh.fname != fresh.oname
+    }
+    );
+    return $row;
 }
 
 sub update_cvterms {
     my ( $self, $storage, $dbh ) = @_;
     my $row = $dbh->do(
         q{
-            UPDATE cvterm SET definition = fresh.definition, 
-              is_obsolete = fresh.is_obsolete FROM (
-    		SELECT cvterm.cvterm_id, cvterm.name, tmcv.definition, tmcv.is_obsolete 
+            MERGE INTO cvterm USING (
+    		SELECT cvterm.cvterm_id, tmcv.definition, tmcv.is_obsolete 
     		 FROM cvterm
     		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
     		 INNER JOIN temp_cvterm tmcv ON (
     		 	dbxref.accession = tmcv.accession
     		 	AND 
     		 	dbxref.db_id = tmcv.db_id
-    		 ) ) AS fresh
-    		WHERE cvterm.cvterm_id = fresh.cvterm_id
-    });
-    return  $row;
+    		 ) ) eterm
+    		  ON (cvterm.cvterm_id = eterm.cvterm_id)
+    		  WHEN MATCHED THEN UPDATE 
+    		  	SET cvterm.is_obsolete = eterm.is_obsolete, 
+    		  	    cvterm.definition = eterm.definition
+    		  	 
+    }
+    );
+    return $row;
 }
 
 sub merge_comments {
@@ -223,7 +264,6 @@ sub create_relations {
         INSERT INTO cvterm_relationship(object_id, subject_id, type_id)
 		SELECT object.cvterm_id, subject.cvterm_id, type.cvterm_id
         FROM temp_cvterm_relationship tmprel
-
         INNER JOIN dbxref dbobject ON (
         	dbobject.accession = tmprel.object AND
         	dbobject.db_id = tmprel.object_db_id 
@@ -245,12 +285,57 @@ sub create_relations {
         INNER JOIN cvterm type ON
         type.dbxref_id = dbtype.dbxref_id
              
-      EXCEPT
+	   MINUS
+
       SELECT cvrel.object_id, cvrel.subject_id, cvrel.type_id
       FROM cvterm_relationship cvrel
     }
     );
     return $rows;
+}
+
+sub create_on_delete_statements {
+    my ( $self, $storage ) = @_;
+    $storage->dbh->do(
+        q{
+		CREATE GLOBAL TEMPORARY TABLE temp_dbid (
+			db_id number NOT NULL
+		) ON COMMIT PRESERVE ROWS
+	}
+    );
+}
+
+sub drop_on_delete_statements {
+    my ( $self, $storage ) = @_;
+    $storage->dbh->do(q{TRUNCATE TABLE temp_dbid});
+    $storage->dbh->do(q{DROP TABLE temp_dbid});
+}
+
+sub delete_dbxrefs {
+    my ( $self, $storage, $dbh ) = @_;
+    my $rows = $dbh->do(
+        q{
+    	DELETE FROM dbxref WHERE db_id IN (
+    		SELECT db_id FROM temp_dbid
+    	)
+    }
+    );
+    $storage->dbh->do(q{TRUNCATE TABLE temp_dbid});
+    return $rows;
+}
+
+sub delete_cvterms {
+    my ( $self, $storage, $dbh, $cv_id ) = @_;
+    my $sth = $dbh->prepare(
+        q{ INSERT INTO temp_dbid(db_id) 
+        SELECT namespace.db_id FROM (
+        SELECT count(dbxref.dbxref_id) ,  dbxref.db_id FROM dbxref
+        JOIN cvterm ON dbxref.dbxref_id = cvterm.dbxref_id
+        WHERE cvterm.cv_id = ?
+        group by dbxref.db_id ) namespace });
+    $sth->execute($cv_id);
+    $sth = $dbh->prepare( q{ DELETE FROM cv where cv_id = ?} );
+    $sth->execute($cv_id);
 }
 
 1;    # Magic true value required at end of module

@@ -31,8 +31,8 @@ has 'schema' => (
     isa     => 'Bio::Chado::Schema',
     writer  => 'set_schema',
     trigger => sub {
-        my ($self) = @_;
-        $self->_load_engine;
+        my ( $self, $schema ) = @_;
+        $self->_load_engine($schema);
     }
 );
 
@@ -90,8 +90,7 @@ sub _check_cvprop_or_die {
 }
 
 sub _load_engine {
-    my ($self) = @_;
-    my $schema = $self->schema;
+    my ( $self, $schema ) = @_;
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
@@ -103,7 +102,7 @@ sub _load_engine {
     }
     ensure_all_roles( $self, ( $engine, $tmp_engine ) );
     $self->meta->make_immutable;
-    $self->transform_schema;
+    $self->transform_schema($schema);
 }
 
 sub is_ontology_in_db {
@@ -120,9 +119,10 @@ sub is_ontology_new_version {
     my ($self) = @_;
     my $onto_datetime
         = $self->_date_parser->parse_datetime( $self->ontology->date );
-    my $db_datetime = $self->_date_parser->parse_datetime(
-        $self->_get_ontology_date_from_db );
+    my $value = $self->_get_ontology_date_from_db;
+    return $onto_datetime if !$value;
 
+    my $db_datetime = $self->_date_parser->parse_datetime($value);
     if ( $onto_datetime > $db_datetime ) {
         return $onto_datetime;
     }
@@ -252,8 +252,7 @@ sub merge_ontology {
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
     $logger->info("created $dbxrefs dbxrefs");
     if ($dbxrefs) {
-        my $cvterms
-            = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
+        my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
         $logger->info("created $cvterms cvterms");
     }
 

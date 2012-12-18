@@ -1,7 +1,14 @@
-package Modware::Loader::Role::Ontology::Temp::Generic;
+package Modware::Loader::Role::Ontology::Temp::WithOracle;
 
 use namespace::autoclean;
 use Moose::Role;
+use Encode;
+use utf8;
+
+
+has cache_threshold =>
+    ( is => 'rw', isa => 'Int', lazy => 1, default => 8000 );
+
 
 sub load_cvterms_in_staging {
     my ($self)        = @_;
@@ -15,7 +22,7 @@ sub load_cvterms_in_staging {
         my $insert_hash = $self->get_insert_term_hash($term);
         $insert_hash->{cv_id}
             = $term->namespace
-            ? $self->find_or_create_cvrow( $term->namespace )->cv_id
+            ? $self->find_or_create_cvrow_id( $term->namespace )
             : $default_cv_id;
         $self->add_to_term_cache($insert_hash);
         if ( $self->count_entries_in_term_cache >= $self->cache_threshold ) {
@@ -24,7 +31,6 @@ sub load_cvterms_in_staging {
             $self->clean_term_cache;
         }
     }
-
     if ( $self->count_entries_in_term_cache ) {
         $schema->resultset('TempCvterm')
             ->populate( [ $self->entries_in_term_cache ] );

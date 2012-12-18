@@ -14,7 +14,10 @@ has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 has 'chado' => (
     is      => 'rw',
     isa     => 'Bio::Chado::Schema',
-    trigger => sub { my $self = shift; $self->load_engine(@_) }
+    trigger => sub { 
+         my ($self, $schema) = @_; 
+         $self->load_engine($schema) 
+    }
 );
 has 'cv_namespace' =>
     ( is => 'rw', isa => 'Bio::Chado::Schema::Result::Cv::Cv' );
@@ -23,13 +26,13 @@ has 'db_namespace' =>
 
 # revisit
 sub load_engine {
-    my ($self) = @_;
+    my ($self, $schema) = @_;
     $self->meta->make_mutable;
-    my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
+    my $engine = 'Modware::Loader::Adhoc::Role::Ontology::Chado::With'
         . ucfirst lc( $self->chado->storage->sqlt_type );
     ensure_all_roles( $self, $engine );
     $self->meta->make_immutable;
-    $self->transform_schema;
+    $self->transform_schema($schema);
 }
 
 sub update_or_create_term {
