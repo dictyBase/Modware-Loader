@@ -17,24 +17,20 @@ sub load_cvterms_in_staging {
             = $term->namespace
             ? $self->find_or_create_cvrow( $term->namespace )->cv_id
             : $default_cv_id;
+
+        #synonyms
+        my $synonym_insert_hash
+            = $self->get_synonym_term_hash( $term, $insert_hash );
         $self->add_to_term_cache($insert_hash);
-		
-		#synonyms
-		my $synonym_insert_hash = $self->get_synonym_term_hash($term, $insert_hash);
-		$self->add_to_synonym_cache($synonym_insert_hash);
+        $self->add_to_synonym_cache($synonym_insert_hash);
 
-        if ( $self->count_entries_in_term_cache >= $self->cache_threshold ) {
-            $schema->resultset('TempCvterm')
-                ->populate( [ $self->entries_in_term_cache ] );
-            $self->clean_term_cache;
-        }
+        $self->load_cache( 'term',    'TempCvterm' );
+        $self->load_cache( 'synonym', 'TempCvtermsynonym' );
     }
 
-    if ( $self->count_entries_in_term_cache ) {
-        $schema->resultset('TempCvterm')
-            ->populate( [ $self->entries_in_term_cache ] );
-        $self->clean_term_cache;
-    }
+    $self->load_cache( 'term',    'TempCvterm' );
+    $self->load_cache( 'synonym', 'TempCvtermsynonym' );
+
 }
 
 sub load_relationship_in_staging {
@@ -75,14 +71,14 @@ sub load_alt_ids_in_staging {
 }
 
 sub load_cache {
-	my ($self, $cache,  $result_class) = @_;
-	my $count = 'count_entries_in_'.$cache.'_cache';
-	return if $self->$count < $self->cache_threshold;
+    my ( $self, $cache, $result_class ) = @_;
+    my $count = 'count_entries_in_' . $cache . '_cache';
+    return if $self->$count < $self->cache_threshold;
 
-	my $entries = 'entries_in_'.$cache.'_cache';
-	my $clean = 'clean_'.$cache.'_cache';
-	$self->resultset($result_class)->populate([$self->$entries]);
-	$self->$clean;
+    my $entries = 'entries_in_' . $cache . '_cache';
+    my $clean   = 'clean_' . $cache . '_cache';
+    $self->schema->resultset($result_class)->populate( [ $self->$entries ] );
+    $self->$clean;
 }
 
 1;
