@@ -44,5 +44,16 @@ __PACKAGE__->add_columns(
     'type_db_id' => { data_type => 'int', nullable => 0 } );
 1;
 
+
+package Modware::Loader::Schema::Temporary::CvtermSynonym;
+
+__PACKAGE__->table('temp_cvterm_synonym');
+__PACKAGE__->add_columns(
+    'accession' => { data_type => 'varchar', size => 256 } );
+__PACKAGE__->add_columns(
+    'syn' => { data_type => 'varchar', size => 1024 } );
+__PACKAGE__->add_columns(
+    'syn_type' => { data_type => 'varchar', size => 10 } );
+
 1;    # Magic true value required at end of module
 
