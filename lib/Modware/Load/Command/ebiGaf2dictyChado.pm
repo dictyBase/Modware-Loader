@@ -47,6 +47,8 @@ sub execute {
 
     my $gaf_manager = GAFManager->new;
     $gaf_manager->schema($schema);
+    $gaf_manager->logger($logger);
+
     $logger->info('Retrieving gene IDs from dictyBase');
     my $gene_rs = $gaf_manager->get_gene_ids();
 
@@ -57,118 +59,93 @@ sub execute {
     else {
         $logger->info( $gene_rs->count . " gene IDs retrieved" );
     }
+    my $guard     = $self->schema->storage->txn_scope_guard;
     my $ebi_query = EBIQuery->new;
     while ( my $gene = $gene_rs->next ) {
 
         my $gaf         = $ebi_query->query_ebi( $gene->dbxref->accession );
         my @annotations = $gaf_manager->parse($gaf);
 
-        #sleep 0.75;
-
         foreach my $anno (@annotations) {
 
             if ( $self->print_gaf ) {
                 $anno->print;
             }
-            my $db_val = $anno->db_ref;
-            $db_val =~ s/^PMID://x;
-            $anno->db_ref($db_val);
 
-            if ( $anno->db_ref eq '' ) {
-                $logger->error( 'No PubID ('
-                        . $anno->db_ref
-                        . ') for GO:'
-                        . $anno->go_id );
-                next;
+            my $anno_check = $self->find( $gene->feature_id,
+                $anno->cvterm_for_go, $anno->pub_for_dbref );
+            my $rank = 0;
+            if ($anno_check) {
+                $rank = $anno_check->rank + 1;
             }
-            my $pub_rs
-                = $schema->resultset('Pub::Pub')
-                ->search( { uniquename => $anno->db_ref },
-                { select => 'pub_id' } );
+            my $fcvt
+                = $schema->resultset('Sequence::FeatureCvterm')
+                ->find_or_create(
+                {   feature_id => $gene->feature_id,
+                    cvterm_id  => $anno->cvterm_for_go,
+                    pub_id     => $anno->pub_for_dbref,
+                    rank       => $rank
+                }
+                );
 
-            if ( $anno->cvterm_for_go == 0 ) {
-                $logger->error( "GO:"
-                        . $anno->go_id
-                        . " does not exist; associated with "
-                        . $gene->dbxref->accession . " ("
-                        . $gene->uniquename
-                        . ")" );
-                next;
-            }
-
-            $self->schema->txn_do(
-                sub {
-                    if ( $pub_rs->count > 0 ) {
-                        my $anno_check = $self->find( $gene->feature_id,
-                            $anno->cvterm_for_go, $pub_rs->first->pub_id );
-                        my $rank = 0;
-                        if ($anno_check) {
-                            $rank = $anno_check->rank + 1;
-                        }
-                        my $fcvt
-                            = $schema->resultset('Sequence::FeatureCvterm')
-                            ->find_or_create(
-                            {   feature_id => $gene->feature_id,
-                                cvterm_id  => $anno->cvterm_for_go,
-                                pub_id     => $pub_rs->first->pub_id,
-                                rank       => $rank
-                            }
-                            );
-
-                        $fcvt->create_related(
-                            'feature_cvtermprops',
-                            {   type_id => $anno->cvterm_for_evidence_code,
-                                value   => 1,
-                                rank    => $rank
-                            }
-                        );
-
-                        if ( $anno->qualifier ne '' ) {
-                            $fcvt->create_related(
-                                'feature_cvtermprops',
-                                {   type_id => $gaf_manager->cvterm_qualifier,
-                                    value   => $anno->qualifier,
-                                    rank    => $rank
-                                }
-                            );
-                        }
-
-                        if ( $anno->date ne '' ) {
-                            $fcvt->create_related(
-                                'feature_cvtermprops',
-                                {   type_id => $gaf_manager->cvterm_date,
-                                    value   => $anno->date,
-                                    rank    => $rank
-                                }
-                            );
-                        }
-
-                        if ( $anno->with_from ne '' ) {
-                            $fcvt->create_related(
-                                'feature_cvtermprops',
-                                {   type_id => $gaf_manager->cvterm_with_from,
-                                    value   => $anno->with_from,
-                                    rank    => $rank
-                                }
-                            );
-                        }
-
-                        if ( $anno->assigned_by ne '' ) {
-                            $fcvt->create_related(
-                                'feature_cvtermprops',
-                                {   type_id =>
-                                        $gaf_manager->cvterm_assigned_by,
-                                    value => $anno->assigned_by,
-                                    rank  => $rank
-                                }
-                            );
-                        }
-
-                    }
+            $fcvt->create_related(
+                'feature_cvtermprops',
+                {   type_id => $anno->cvterm_for_evidence_code,
+                    value   => 1,
+                    rank    => $rank
                 }
             );
+
+            if ( $anno->qualifier ne '' ) {
+                $fcvt->create_related(
+                    'feature_cvtermprops',
+                    {   type_id => $gaf_manager->cvterm_qualifier,
+                        value   => $anno->qualifier,
+                        rank    => $rank
+                    }
+                );
+            }
+
+            if ( $anno->date ne '' ) {
+                $fcvt->create_related(
+                    'feature_cvtermprops',
+                    {   type_id => $gaf_manager->cvterm_date,
+                        value   => $anno->date,
+                        rank    => $rank
+                    }
+                );
+            }
+
+            if ( $anno->with_from ne '' ) {
+                $fcvt->create_related(
+                    'feature_cvtermprops',
+                    {   type_id => $gaf_manager->cvterm_with_from,
+                        value   => $anno->with_from,
+                        rank    => $rank
+                    }
+                );
+            }
+
+            if ( $anno->assigned_by ne '' ) {
+                $fcvt->create_related(
+                    'feature_cvtermprops',
+                    {   type_id => $gaf_manager->cvterm_assigned_by,
+                        value   => $anno->assigned_by,
+                        rank    => $rank
+                    }
+                );
+            }
         }
     }
+    $guard->commit;
+
+    my $update_count
+        = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
+    $logger->info( $update_count
+            . " annotations inserted for "
+            . $gene_rs->count
+            . " genes" );
+
 }
 
 sub find {
@@ -195,8 +172,7 @@ has 'ebi_base_url' => (
     default => sub {
         my ($self) = @_;
         'http://www.ebi.ac.uk/QuickGO/GAnnotation?format='
-            . $self->format
-            . '&ref=PMID:*&db='
+            . $self->format . '&db='
             . $self->db
             . '&protein=';
     },
@@ -239,13 +215,18 @@ package GAFManager;
 use Moose;
 use MooseX::Attribute::Dependent;
 
+has 'logger' => (
+    is  => 'rw',
+    isa => 'Log::Log4perl::Logger'
+);
+
 has 'schema' => (
     is  => 'rw',
     isa => 'Bio::Chado::Schema',
 );
 
 has 'cvterm_date' => (
-    is      => 'ro',
+    is      => 'rw',
     isa     => 'Int',
     default => sub {
         my ($self) = @_;
@@ -258,7 +239,7 @@ has 'cvterm_date' => (
 );
 
 has 'cvterm_with_from' => (
-    is      => 'ro',
+    is      => 'rw',
     isa     => 'Int',
     default => sub {
         my ($self) = @_;
@@ -271,7 +252,7 @@ has 'cvterm_with_from' => (
 );
 
 has 'cvterm_assigned_by' => (
-    is      => 'ro',
+    is      => 'rw',
     isa     => 'Int',
     default => sub {
         my ($self) = @_;
@@ -284,7 +265,7 @@ has 'cvterm_assigned_by' => (
 );
 
 has 'cvterm_qualifier' => (
-    is      => 'ro',
+    is      => 'rw',
     isa     => 'Int',
     default => sub {
         my ($self) = @_;
@@ -305,7 +286,8 @@ sub get_gene_ids {
         {   join     => [qw/type organism/],
             select   => [qw/feature_id uniquename type_id/],
             prefetch => 'dbxref',
-			#rows     => 50
+
+            #rows     => 500
         }
     );
     return $gene_rs;
@@ -325,6 +307,9 @@ sub parse {
         if ( $self->schema ) {
             $anno->_schema( $self->schema );
         }
+        if ( $self->logger ) {
+            $anno->_logger( $self->logger );
+        }
         $anno->db( $row_vals[0] );
         $anno->gene_id( $row_vals[1] );
         $anno->gene_symbol( $row_vals[2] );
@@ -338,8 +323,17 @@ sub parse {
         $anno->date( $row_vals[13] );
         $anno->assigned_by( $row_vals[14] );
 
-        push( @annotations, $anno );
+        if ( $anno->is_valid() ) {
+            push( @annotations, $anno );
+        }
     }
+
+    #if ( scalar @annotations ) {
+    #    $self->logger->info(
+    #              scalar @annotations
+    #            . " annotations parsed for "
+    #            . $annotations[0]->gene_id );
+    #}
     return @annotations;
 }
 
@@ -349,6 +343,11 @@ package Annotation;
 
 use Moose;
 use MooseX::Attribute::Dependent;
+
+has '_logger' => (
+    is  => 'rw',
+    isa => 'Log::Log4perl::Logger'
+);
 
 has '_schema' => (
     is  => 'rw',
@@ -370,18 +369,36 @@ has 'taxon' => (
 );
 
 has [qw/gene_id go_id db_ref evidence_code/] => (
-    is       => 'rw',
-    isa      => 'Str',
-    default  => '',
-    lazy     => 1,
-    required => 1,
+    is  => 'rw',
+    isa => 'Str',
 );
 
 has [qw/date with_from assigned_by qualifier aspect gene_symbol/] => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => '',
-    lazy    => 1
+    is  => 'rw',
+    isa => 'Str',
+);
+
+has 'pub_for_dbref' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => sub {
+        my ($self) = @_;
+        my $id = $self->db_ref;
+        $id =~ s/^[A-Z_]{4,7}://x;
+        my $rs = $self->_schema->resultset('Pub::Pub')
+            ->search( { uniquename => $id }, { select => 'pub_id' } );
+        if ( $rs->count > 0 ) {
+            return $rs->first->pub_id;
+        }
+        else {
+            $self->_logger->warn(
+                $self->db_ref . " does NOT exist (" . $self->gene_id . ")" );
+            return 0;
+        }
+    },
+    lazy       => 1,
+    required   => 1,
+    dependency => All [ 'db_ref', '_schema' ]
 );
 
 has 'cvterm_for_go' => (
@@ -391,20 +408,23 @@ has 'cvterm_for_go' => (
         my ($self) = @_;
         my $id = $self->go_id;
         $id =~ s/^GO://x;
-        my $gors
-            = $self->_schema->resultset('Cv::Cvterm')
-            ->search( { 'dbxref.accession' => $id },
-            { join => 'dbxref', select => [qw/cvterm_id/] } );
+        my $gors = $self->_schema->resultset('Cv::Cvterm')->search(
+            { 'dbxref.accession' => $id, 'db.name' => 'GO' },
+            { join => { dbxref => 'db' }, select => [qw/cvterm_id/] }
+        );
         if ( $gors->count > 0 ) {
             return $gors->first->cvterm_id;
         }
         else {
+            $self->_logger->warn( "Cvterm for "
+                    . $self->go_id
+                    . " does NOT exist ("
+                    . $self->gene_id
+                    . ")" );
             return 0;
         }
     },
-    lazy => 1,
-
-    #predicate  => 'has_cvterm_for_go',
+    lazy       => 1,
     required   => 1,
     dependency => All [ 'go_id', '_schema' ]
 );
@@ -420,12 +440,36 @@ has 'cvterm_for_evidence_code' => (
             },
             { join => [qw/cv cvtermsynonyms/], select => 'cvterm_id' }
         );
-        return $evrs->first->cvterm_id;
+        if ( $evrs->count > 0 ) {
+            return $evrs->first->cvterm_id;
+        }
+        else {
+            $self->_logger->warn( "Cvterm for "
+                    . $self->evidence_code
+                    . " does NOT exist ("
+                    . $self->gene_id
+                    . ")" );
+            return 0;
+        }
     },
     lazy       => 1,
     required   => 1,
     dependency => All [ 'evidence_code', '_schema' ]
 );
+
+sub is_valid {
+    my ($self) = @_;
+
+    if (   !$self->cvterm_for_go == 0
+        && !$self->cvterm_for_evidence_code == 0
+        && !$self->pub_for_dbref == 0 )
+    {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
 
 sub print {
     my ($self) = @_;
@@ -433,15 +477,19 @@ sub print {
         = $self->db . "\t"
         . $self->gene_id . "\t"
         . $self->gene_symbol . "\t"
-        . $self->qualifier . "\t"
+
+        #. $self->qualifier . "\t"
         . $self->go_id . "\t"
         . $self->db_ref . "\t"
         . $self->evidence_code . "\t"
-        . $self->with_from . "\t"
+
+        #. $self->with_from . "\t"
         . $self->aspect . "\t"
-        . $self->taxon . "\t"
-        . $self->date . "\t"
-        . $self->assigned_by . "\n";
+
+        #. $self->taxon . "\t"
+        #. $self->date . "\t"
+        #. $self->assigned_by
+        . "\n";
     print $row;
 }
 
