@@ -19,10 +19,10 @@ sub load_cvterms_in_staging {
             : $default_cv_id;
 
         #synonyms
-        my $synonym_insert_hash
+        my $synonym_insert_array
             = $self->get_synonym_term_hash( $term, $insert_hash );
         $self->add_to_term_cache($insert_hash);
-        $self->add_to_synonym_cache($synonym_insert_hash);
+        $self->add_to_synonym_cache($_) for @$synonym_insert_array;
 
         $self->load_cache( 'term',    'TempCvterm' );
         $self->load_cache( 'synonym', 'TempCvtermsynonym' );
