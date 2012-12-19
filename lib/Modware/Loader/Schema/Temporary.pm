@@ -46,6 +46,7 @@ __PACKAGE__->add_columns(
 
 
 package Modware::Loader::Schema::Temporary::Cvtermsynonym;
+use base qw/DBIx::Class::Core/;
 
 __PACKAGE__->table('temp_cvterm_synonym');
 __PACKAGE__->add_columns(
