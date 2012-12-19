@@ -56,7 +56,7 @@ sub create_temp_statements {
 	        CREATE TEMP TABLE temp_cvterm_synonym (
                accession varchar(256) NOT NULL, 
                syn varchar(1024) NOT NULL, 
-               syn_type varchar(10) NOT NULL
+               syn_scope varchar(10) NOT NULL
     )}
     );
 }
