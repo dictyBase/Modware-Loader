@@ -340,6 +340,14 @@ sub delete_cvterms {
 
 1;    # Magic true value required at end of module
 
+sub create_synonyms {
+	return 0;
+}
+
+sub update_synonyms {
+	return 0;
+}
+
 __END__
 
 =head1 NAME

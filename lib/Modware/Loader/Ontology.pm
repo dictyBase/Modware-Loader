@@ -9,7 +9,7 @@ use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
 use Module::Load::Conditional qw/check_install/;
 with 'Modware::Role::WithDataStash' =>
-    { create_stash_for => [qw/term relationship/] };
+    { create_stash_for => [qw/term relationship synonym/] };
 
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
@@ -79,6 +79,8 @@ sub _register_schema_classes {
         'TempCvterm' => 'Modware::Loader::Schema::Temporary::Cvterm' );
     $schema->register_class( 'TempCvtermRelationship' =>
             'Modware::Loader::Schema::Temporary::CvtermRelationship' );
+    $schema->register_class( 'TempCvtermsynonym' =>
+            'Modware::Loader::Schema::Temporary::Cvtermsynonym' );
 }
 
 sub _check_cvprop_or_die {
@@ -248,12 +250,36 @@ sub merge_ontology {
         = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
     $logger->info("updated $cvterm_names cvterm names");
 
+    my $syn_update = $storage->dbh_do(sub { $self->update_synonyms(@_)});
+    $logger->info("updated $syn_update synonyms");
+
     #create new terms both in dbxref and cvterm tables
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
     $logger->info("created $dbxrefs dbxrefs");
     if ($dbxrefs) {
         my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
         $logger->info("created $cvterms cvterms");
+
+        my $synonyms = $storage->dbh_do( sub { $self->create_synonyms(@_) } );
+        $logger->info("created $synonyms synonyms");
+    }
+
+    #create relationships
+    my $relationships
+        = $storage->dbh_do( sub { $self->create_relations(@_) } );
+    $logger->info("created $relationships relationships");
+
+}
+
+with 'Modware::Loader::Role::Ontology::WithHelper';
+__PACKAGE__->meta->make_immutable;
+
+1;    # Magic true value required at end of module
+
+__END__
+
+=head1 NAME
+
     }
 
     #create relationships

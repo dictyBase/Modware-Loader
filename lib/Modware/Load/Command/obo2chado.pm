@@ -49,8 +49,9 @@ sub execute {
     $loader->prepare_data_for_loading;
 
     $logger->info(
-        sprintf "terms:%d\trelationships:%d in staging tables",
+        sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
         $loader->entries_in_staging('TempCvterm'),
+        $loader->entries_in_staging('TempCvtermsynonym'),
         $loader->entries_in_staging('TempCvtermRelationship')
     );
 
