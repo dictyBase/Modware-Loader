@@ -7,10 +7,9 @@ use Moose::Util qw/ensure_all_roles/;
 use feature qw/switch/;
 use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
-use DBI;
-use Encode;
-use utf8;
-use Data::Dumper;
+use Module::Load::Conditional qw/check_install/;
+with 'Modware::Role::WithDataStash' =>
+    { create_stash_for => [qw/term relationship/] };
 
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
@@ -32,8 +31,8 @@ has 'schema' => (
     isa     => 'Bio::Chado::Schema',
     writer  => 'set_schema',
     trigger => sub {
-        my ($self) = @_;
-        $self->_load_engine;
+        my ( $self, $schema ) = @_;
+        $self->_load_engine($schema);
     }
 );
 
@@ -91,14 +90,19 @@ sub _check_cvprop_or_die {
 }
 
 sub _load_engine {
-    my ($self) = @_;
-    my $schema = $self->schema;
+    my ( $self, $schema ) = @_;
     $self->meta->make_mutable;
-    my $engine = 'Modware::Loader::Role::Ontology::With'
+    my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
-    ensure_all_roles( $self, $engine );
+
+    my $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::With'
+        . ucfirst lc( $schema->storage->sqlt_type );
+    if ( !check_install( module => $tmp_engine ) ) {
+        $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::Generic';
+    }
+    ensure_all_roles( $self, ( $engine, $tmp_engine ) );
     $self->meta->make_immutable;
-    $self->transform_schema;
+    $self->transform_schema($schema);
 }
 
 sub is_ontology_in_db {
@@ -115,9 +119,10 @@ sub is_ontology_new_version {
     my ($self) = @_;
     my $onto_datetime
         = $self->_date_parser->parse_datetime( $self->ontology->date );
-    my $db_datetime = $self->_date_parser->parse_datetime(
-        $self->_get_ontology_date_from_db );
+    my $value = $self->_get_ontology_date_from_db;
+    return $onto_datetime if !$value;
 
+    my $db_datetime = $self->_date_parser->parse_datetime($value);
     if ( $onto_datetime > $db_datetime ) {
         return $onto_datetime;
     }
@@ -212,51 +217,12 @@ sub find_or_create_namespaces {
 }
 
 sub prepare_data_for_loading {
-    my ($self)        = @_;
-    my $onto          = $self->ontology;
-    my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
-    my $schema        = $self->schema;
-    my $insert_array;
+    my ($self) = @_;
+    $self->load_cvterms_in_staging;
+    $self->load_relationship_in_staging;
+    $self->schema->storage->dbh_do(
+        sub { $self->after_loading_in_staging(@_) } );
 
-    #Term
-    for my $term ( @{ $onto->get_relationship_types, $onto->get_terms } ) {
-        my $insert_hash = $self->_get_insert_term_hash($term);
-        $insert_hash->{cv_id}
-            = $term->namespace
-            ? $self->find_or_create_cvrow( $term->namespace )->cv_id
-            : $default_cv_id;
-        $self->add_to_cache($insert_hash);
-        if ( $self->count_entries_in_cache >= $self->cache_threshold ) {
-            $schema->resultset('TempCvterm')
-                ->populate( [ $self->entries_in_cache ] );
-            $self->clean_cache;
-        }
-    }
-    if ( $self->count_entries_in_cache ) {
-        $schema->resultset('TempCvterm')
-            ->populate( [ $self->entries_in_cache ] );
-        $self->clean_cache;
-    }
-
-    #Relationship
-    for my $rel ( @{ $onto->get_relationships } ) {
-        $self->add_to_cache(
-            {   object  => $rel->head->name,
-                subject => $rel->tail->name,
-                type    => $rel->type
-            }
-        );
-        if ( $self->count_entries_in_cache >= $self->cache_threshold ) {
-            $schema->resultset('TempCvtermRelationship')
-                ->populate( [ $self->entries_in_cache ] );
-            $self->clean_cache;
-        }
-    }
-    if ( $self->count_entries_in_cache ) {
-        $schema->resultset('TempCvtermRelationship')
-            ->populate( [ $self->entries_in_cache ] );
-        $self->clean_cache;
-    }
 }
 
 sub entries_in_staging {
@@ -264,45 +230,36 @@ sub entries_in_staging {
     return $self->schema->resultset($name)->count( {} );
 }
 
-sub _get_insert_term_hash {
-    my ( $self, $term ) = @_;
-    my ( $db_id, $accession );
-    if ( $self->has_idspace( $term->id ) ) {
-        my @parsed = $self->parse_id( $term->id );
-        $db_id     = $self->find_or_create_db_id( $parsed[0] );
-        $accession = $parsed[1];
-    }
-    else {
-        $db_id     = $self->find_or_create_db_id( $self->cv_namespace->name );
-        $accession = $term->id;
-    }
-
-    my $insert_hash;
-    $insert_hash->{accession}  = $accession;
-    $insert_hash->{db_id}      = $db_id;
-    $insert_hash->{definition} = encode( "UTF-8", $term->def->text )
-        if $term->def;
-    $insert_hash->{is_relationshiptype} = 1
-        if $term->isa('OBO::Core::RelationshipType');
-    $insert_hash->{is_obsolete} = 1 if $term->is_obsolete;
-    $insert_hash->{name} = $term->name ? $term->name : $term->id;
-    $insert_hash->{comment} = $term->comment;
-    return $insert_hash;
-}
-
 sub merge_ontology {
     my ($self)  = @_;
     my $storage = $self->schema->storage;
     my $logger  = $self->logger;
-    my $default_cv_id = $self->get_cvrow( $self->ontology->default_namespace )->cv_id;
 
-    my $dbxrefs = $storage->dbh_do( sub { $self->merge_dbxrefs(@_) } );
-    my $cvterms = $storage->dbh_do( sub { $self->merge_cvterms(@_) }, $default_cv_id );
+    #remove terms that are pruned(present in database but not in file)
+    my $deleted_terms
+        = $storage->dbh_do( sub { $self->delete_non_existing_terms(@_) } );
+    $logger->info("deleted $deleted_terms terms");
+
+    #This has to be run first in order to get the list of existing cvterms
+    #particularly before the staging and live tables get synced
+    my $updated_terms = $storage->dbh_do( sub { $self->update_cvterms(@_) } );
+    $logger->info("updated $updated_terms cvterms");
+    my $cvterm_names
+        = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
+    $logger->info("updated $cvterm_names cvterm names");
+
+    #create new terms both in dbxref and cvterm tables
+    my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
+    $logger->info("created $dbxrefs dbxrefs");
+    if ($dbxrefs) {
+        my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
+        $logger->info("created $cvterms cvterms");
+    }
+
+    #create relationships
     my $relationships
-        = $storage->dbh_do( sub { $self->merge_relations(@_) } );
-
-   $logger->info( sprintf "Loaded dbxrefs:%d\tterms:%d\trelationships:%d",
-        $dbxrefs, $cvterms, $relationships );
+        = $storage->dbh_do( sub { $self->create_relations(@_) } );
+    $logger->info("created $relationships relationships");
 
 }
 

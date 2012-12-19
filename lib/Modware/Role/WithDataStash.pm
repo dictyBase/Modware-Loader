@@ -1,4 +1,4 @@
-package Modware::Role::Chado::Helper::BCS::WithDataStash;
+package Modware::Role::WithDataStash;
 
 # Other modules:
 use namespace::autoclean;
@@ -21,7 +21,7 @@ role {
             traits  => [qw/Array/],
             handles => {
                 'add_to_' . $name . '_cache'           => 'push',
-                'clean_' . $name . '_cache'            => 'clean',
+                'clean_' . $name . '_cache'            => 'clear',
                 'entries_in_' . $name . '_cache'       => 'elements',
                 'count_entries_in_' . $name . '_cache' => 'count'
             },
@@ -47,6 +47,9 @@ to be consumed with BCS's populate method]
 
 with Modware::Role::Chado::Helper::WithDataStash => 
        { create_stash_for => [qw/cvterm relationship/] };
+
+
+
 
 
 

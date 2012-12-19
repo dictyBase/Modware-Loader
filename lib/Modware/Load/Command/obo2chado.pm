@@ -21,7 +21,11 @@ sub execute {
     my ($self)   = @_;
     my $logger   = $self->logger;
     my $loader   = Modware::Loader::Ontology->new;
+
+    $logger->info("start parsing file ", $self->input);
     my $ontology = OBO::Parser::OBOParser->new->work( $self->input );
+	$logger->info("parsing done");
+
     $loader->set_logger($logger);
     $loader->set_ontology($ontology);
     $loader->set_schema( $self->schema );
@@ -41,6 +45,7 @@ sub execute {
     $loader->find_or_create_namespaces;
 
     #transaction for loading in staging temp tables
+    $logger->info("start loading in staging");
     $loader->prepare_data_for_loading;
 
     $logger->info(
@@ -49,14 +54,16 @@ sub execute {
         $loader->entries_in_staging('TempCvtermRelationship')
     );
 
+	$logger->info("start loading in chado");
     $loader->merge_ontology;
-
     if ( $self->dry_run ) {
         $logger->info("Nothing saved in database");
     }
     else {
         $guard->commit;
     }
+    $self->schema->storage->disconnect;
+    $logger->info("loaded ", $self->input,  " in chado");
 }
 1;
 
