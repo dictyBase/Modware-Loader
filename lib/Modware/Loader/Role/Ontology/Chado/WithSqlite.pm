@@ -51,6 +51,14 @@ sub create_temp_statements {
                type_db_id integer NOT NULL
     )}
     );
+    $storage->dbh->do(
+        qq{
+	        CREATE TEMP TABLE temp_cvterm_synonym (
+               accession varchar(256) NOT NULL, 
+               syn varchar(1024) NOT NULL, 
+               syn_type varchar(10) NOT NULL
+    )}
+    );
 }
 
 sub drop_temp_statements {
