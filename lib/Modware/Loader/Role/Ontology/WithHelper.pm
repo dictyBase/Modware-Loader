@@ -184,4 +184,18 @@ sub get_insert_term_hash {
     return $insert_hash;
 }
 
+
+sub get_synonym_term_hash {
+	my ($self, $term, $term_insert_hash) = @_;
+	my $insert_array;
+	for my $syn($t->synonym_set) {
+		push @$insert_array,  {
+			accession => $term_insert_hash->{accession}, 
+			syn => $syn->def->text, 
+			syn_scope =. $syn->scope
+		}
+	}
+	return $insert_array;
+}
+
 1;
