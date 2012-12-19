@@ -256,6 +256,27 @@ sub merge_ontology {
     if ($dbxrefs) {
         my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
         $logger->info("created $cvterms cvterms");
+
+        my $synonyms = $storage->dbh_do( sub { $self->create_synonyms(@_) } );
+        $logger->info("created $synonyms synonyms");
+    }
+
+    #create relationships
+    my $relationships
+        = $storage->dbh_do( sub { $self->create_relations(@_) } );
+    $logger->info("created $relationships relationships");
+
+}
+
+with 'Modware::Loader::Role::Ontology::WithHelper';
+__PACKAGE__->meta->make_immutable;
+
+1;    # Magic true value required at end of module
+
+__END__
+
+=head1 NAME
+
     }
 
     #create relationships

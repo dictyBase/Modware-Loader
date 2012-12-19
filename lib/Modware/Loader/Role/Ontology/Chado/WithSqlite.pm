@@ -56,7 +56,8 @@ sub create_temp_statements {
 	        CREATE TEMP TABLE temp_cvterm_synonym (
                accession varchar(256) NOT NULL, 
                syn varchar(1024) NOT NULL, 
-               syn_scope_id integer NOT NULL
+               syn_scope_id integer NOT NULL, 
+               db_id integer NOT NULL
     )}
     );
 }
@@ -151,9 +152,21 @@ sub create_cvterms {
 
 sub create_synonyms {
 	my ($self, $storage, $dbh) = @_;
-	$dbh->do(q{
+	my $row = $dbh->do(q{
+	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
+		SELECT tsyn.syn, tsyn.syn_scope_id, cvterm.cvterm_id
+		FROM temp_cvterm_synonym tsyn
+		INNER JOIN temp_accession tmacc ON
+		    tsyn.accession = tmacc.accession
+		INNER JOIN dbxref ON (
+			dbxref.accession = tsyn.accession
+			AND dbxref.db_id = tsyn.db_id
+		)
+		INNER JOIN cvterm ON
+		    dbxref.dbxref_id = cvterm.dbxref_id
 		
 	});
+	return $row;
 }
 
 sub create_cvterms_debug {

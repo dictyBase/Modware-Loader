@@ -192,7 +192,8 @@ sub get_synonym_term_hash {
 		push @$insert_array,  {
 			accession => $term_insert_hash->{accession}, 
 			syn => $syn->def->text, 
-			syn_scope_id => $self->find_or_create_cvrow_id($syn->scope)
+			syn_scope_id => $self->find_or_create_cvrow_id($syn->scope), 
+			db_id => $term_insert_hash->{db_id}
 		}
 	}
 	return $insert_array;
