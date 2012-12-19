@@ -54,7 +54,7 @@ __PACKAGE__->add_columns(
 __PACKAGE__->add_columns(
     'syn' => { data_type => 'varchar', size => 1024 } );
 __PACKAGE__->add_columns(
-    'syn_scope' => { data_type => 'varchar', size => 10 } );
+    'syn_scope_id' => { data_type => 'integer', nullable => 0 } );
 
 1;    # Magic true value required at end of module
 

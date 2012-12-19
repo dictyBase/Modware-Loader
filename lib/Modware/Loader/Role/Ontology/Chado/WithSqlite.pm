@@ -56,7 +56,7 @@ sub create_temp_statements {
 	        CREATE TEMP TABLE temp_cvterm_synonym (
                accession varchar(256) NOT NULL, 
                syn varchar(1024) NOT NULL, 
-               syn_scope varchar(10) NOT NULL
+               syn_scope_id integer NOT NULL
     )}
     );
 }
@@ -147,6 +147,13 @@ sub create_cvterms {
 			}
     );
     return $rows;
+}
+
+sub create_synonyms {
+	my ($self, $storage, $dbh) = @_;
+	$dbh->do(q{
+		
+	});
 }
 
 sub create_cvterms_debug {
