@@ -250,6 +250,9 @@ sub merge_ontology {
         = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
     $logger->info("updated $cvterm_names cvterm names");
 
+    my $syn_update = $storage->dbh_do(sub { $self->update_synonyms(@_)});
+    $logger->info("updated $syn_update synonyms");
+
     #create new terms both in dbxref and cvterm tables
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
     $logger->info("created $dbxrefs dbxrefs");

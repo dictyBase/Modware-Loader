@@ -14,9 +14,12 @@ has cache_threshold =>
 sub transform_schema { }
 
 sub after_loading_in_staging {
-	my ($self, $storage, $dbh) = @_; 
-	$dbh->do(q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)});
-	$dbh->do(q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
+    my ( $self, $storage, $dbh ) = @_;
+    $dbh->do(
+        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
+    );
+    $dbh->do(
+        q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
 }
 
 sub create_temp_statements {
@@ -64,17 +67,18 @@ sub create_temp_statements {
 
 sub drop_temp_statements {
     my ( $self, $storage ) = @_;
-#    $storage->dbh->do(qq{DELETE FROM temp_cvterm});
-#    $storage->dbh->do(qq{DELETE FROM temp_accession});
-#    $storage->dbh->do(qq{DELETE FROM temp_cvterm_relationship});
-#    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
-#    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
+
+    #    $storage->dbh->do(qq{DELETE FROM temp_cvterm});
+    #    $storage->dbh->do(qq{DELETE FROM temp_accession});
+    #    $storage->dbh->do(qq{DELETE FROM temp_cvterm_relationship});
+    #    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
+    #    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
 }
 
 sub delete_non_existing_terms {
-	my ($self, $storage, $dbh) = @_;
-	my $data = $dbh->selectall_arrayref(
-		q{
+    my ( $self, $storage, $dbh ) = @_;
+    my $data = $dbh->selectall_arrayref(
+        q{
 			SELECT cvterm.cvterm_id, dbxref.dbxref_id FROM cvterm
 			INNER JOIN dbxref ON cvterm.dbxref_id=dbxref.dbxref_id
 			LEFT JOIN temp_cvterm tmcv ON (
@@ -86,15 +90,16 @@ sub delete_non_existing_terms {
 			AND tmcv.db_id IS NULL
 			AND cvterm.cv_id IN (SELECT cv_id FROM temp_cvterm)
 			AND dbxref.db_id IN (SELECT db_id FROM temp_cvterm)
-		},  {Slice => {}}
-	);
-	
-	my $schema = $self->schema;
-	for my $row(@$data) {
-		$schema->resultset('Cv::Cvterm')->find($row->{cvterm_id})->delete;
-		$schema->resultset('General::Dbxref')->find($row->{dbxref_id})->delete;
-	}
-	return scalar @$data;
+		}, { Slice => {} }
+    );
+
+    my $schema = $self->schema;
+    for my $row (@$data) {
+        $schema->resultset('Cv::Cvterm')->find( $row->{cvterm_id} )->delete;
+        $schema->resultset('General::Dbxref')->find( $row->{dbxref_id} )
+            ->delete;
+    }
+    return scalar @$data;
 }
 
 sub create_dbxrefs {
@@ -151,8 +156,9 @@ sub create_cvterms {
 }
 
 sub create_synonyms {
-	my ($self, $storage, $dbh) = @_;
-	my $row = $dbh->do(q{
+    my ( $self, $storage, $dbh ) = @_;
+    my $row = $dbh->do(
+        q{
 	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
 		SELECT tsyn.syn, tsyn.syn_scope_id, cvterm.cvterm_id
 		FROM temp_cvterm_synonym tsyn
@@ -165,8 +171,58 @@ sub create_synonyms {
 		INNER JOIN cvterm ON
 		    dbxref.dbxref_id = cvterm.dbxref_id
 		
-	});
-	return $row;
+	}
+    );
+    return $row;
+}
+
+sub update_synonyms {
+    my ( $self, $storage, $dbh ) = @_;
+
+    #First create a temp table with synonym that needs update
+    $dbh->do(
+        q{
+		 CREATE TEMP TABLE temp_synonym_update AS
+	       SELECT cvterm.cvterm_id,syn2.syn,syn2.syn_scope_id 
+    		FROM (
+    		 SELECT count(cvsyn.synonym) syncount, dbxref.accession 
+    		 FROM cvterm
+    		 INNER JOIN cvtermsynonym cvsyn ON cvsyn.cvterm_id = cvterm.cvterm_id
+    		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
+    		 WHERE cvterm.is_obsolete = 0
+    		 GROUP BY dbxref.accession
+            ) esyn 
+			INNER JOIN (
+             SELECT count(tsyn.syn) syncount, tsyn.accession
+             FROM temp_cvterm_synonym tsyn
+    		 GROUP BY tsyn.accession 
+    		) nsyn ON
+    		  esyn.accession = nsyn.accession
+    		  INNER JOIN temp_cvterm_synonym syn2 ON 
+    		    syn2.accession = nsyn.accession
+    		  INNER JOIN dbxref ON (
+    		  	dbxref.accession = syn2.accession
+    		  	AND
+    		  	dbxref.db_id = syn2.db_id
+    		  )
+    		  INNER JOIN cvterm ON
+    		    cvterm.dbxref_id = dbxref.dbxref_id
+    		WHERE   	
+    		esyn.syncount < nsyn.syncount
+	}
+    );
+
+    #Now delete all synonyms
+    $dbh->do(
+        q{ DELETE FROM cvtermsynonym WHERE cvterm_id IN (SELECT cvterm_id FROM temp_synonym_update)}
+    );
+
+    #Now insert the new batch
+    my $rows = $dbh->do(q{
+	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
+	    SELECT syn,syn_scope_id,cvterm_id FROM temp_synonym_update 
+    });
+    return $rows;
 }
 
 sub create_cvterms_debug {
