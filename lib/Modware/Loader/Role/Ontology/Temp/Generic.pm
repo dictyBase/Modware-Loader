@@ -17,14 +17,13 @@ sub load_cvterms_in_staging {
             = $term->namespace
             ? $self->find_or_create_cvrow( $term->namespace )->cv_id
             : $default_cv_id;
+        $self->add_to_term_cache($insert_hash);
+        $self->load_cache( 'term',    'TempCvterm' );
 
         #synonyms
         my $synonym_insert_array
             = $self->get_synonym_term_hash( $term, $insert_hash );
-        $self->add_to_term_cache($insert_hash);
-        $self->add_to_synonym_cache($_) for @$synonym_insert_array;
-
-        $self->load_cache( 'term',    'TempCvterm' );
+        $self->add_to_synonym_cache(@$synonym_insert_array);
         $self->load_cache( 'synonym', 'TempCvtermsynonym' );
     }
 
