@@ -30,7 +30,7 @@ around 'load_cvterms_in_staging' => sub {
 
 after 'load_cvterms_in_staging' => sub {
 	my ($self) = @_;
-    $self->load_cache( 'synonym', 'TempCvtermsynonym', 1 );
+    $self->load_cache( 'synonym', 'TempCvtermsynonym' );
 };
 
 sub create_temp_statements {
