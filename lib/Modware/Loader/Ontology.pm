@@ -19,7 +19,6 @@ has 'connect_info' => (
         my ($self) = @_;
         $self->_around_connection;
         $self->_register_schema_classes;
-        $self->_check_cvprop_or_die;
     }
 );
 
@@ -80,12 +79,13 @@ sub _register_schema_classes {
             'Modware::Loader::Schema::Temporary::Cvtermsynonym' );
 }
 
-sub _check_cvprop_or_die {
+sub is_cvprop_present {
     my ($self) = @_;
     my $row = $self->schema->resultset('Cv::Cv')
         ->find( { name => 'cv_property' } );
-    croak "cv_property ontology is not loaded\n" if !$row;
+    return !$row;
     $self->set_cvrow( 'cv_property', $row );
+    return $row;
 }
 
 sub _load_engine {
