@@ -50,12 +50,6 @@ sub create_temp_statements {
     );
     $storage->dbh->do(
         qq{
-	        CREATE TEMP TABLE temp_accession (
-               accession varchar(256) NOT NULL 
-    )}
-    );
-    $storage->dbh->do(
-        qq{
 	        CREATE TEMP TABLE temp_cvterm_relationship (
                subject varchar(256) NOT NULL, 
                object varchar(256) NOT NULL, 

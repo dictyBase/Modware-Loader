@@ -42,7 +42,7 @@ sub create_dbxrefs {
     my ( $self, $storage, $dbh ) = @_;
     $dbh->do(
         q{
-    		INSERT INTO temp_accession(accession)
+    		CREATE TEMP TABLE temp_accession AS
 			SELECT tmcv.accession FROM temp_cvterm tmcv
 			LEFT JOIN dbxref ON (
 			     tmcv.accession = dbxref.accession
