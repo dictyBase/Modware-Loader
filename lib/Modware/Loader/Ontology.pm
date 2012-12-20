@@ -215,6 +215,16 @@ sub load_data_in_staging {
     $self->load_relationship_in_staging;
 }
 
+after 'load_data_in_staging' => sub {
+	my ($self) = @_;
+    $self->logger->debug(
+        sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
+        $self->entries_in_staging('TempCvterm'),
+        $self->entries_in_staging('TempCvtermsynonym'),
+        $self->entries_in_staging('TempCvtermRelationship')
+    );
+};
+
 sub entries_in_staging {
     my ( $self, $name ) = @_;
     return $self->schema->resultset($name)->count( {} );
@@ -228,15 +238,15 @@ sub merge_ontology {
     #remove terms that are pruned(present in database but not in file)
     my $deleted_terms
         = $storage->dbh_do( sub { $self->delete_non_existing_terms(@_) } );
-    $logger->info("deleted $deleted_terms terms");
+    $logger->debug("deleted $deleted_terms terms");
 
     #This has to be run first in order to get the list of existing cvterms
     #particularly before the staging and live tables get synced
     my $updated_terms = $storage->dbh_do( sub { $self->update_cvterms(@_) } );
-    $logger->info("updated $updated_terms cvterms");
+    $logger->debug("updated $updated_terms cvterms");
     my $cvterm_names
         = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
-    $logger->info("updated $cvterm_names cvterm names");
+    $logger->debug("updated $cvterm_names cvterm names");
 
     if ( defined $arg{update_hooks} ) {
         $storage->dbh_do($_) for @{ $arg->{update_hooks} };
@@ -244,10 +254,10 @@ sub merge_ontology {
 
     #create new terms both in dbxref and cvterm tables
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
-    $logger->info("created $dbxrefs dbxrefs");
+    $logger->debug("created $dbxrefs dbxrefs");
     if ($dbxrefs) {
         my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
-        $logger->info("created $cvterms cvterms");
+        $logger->debug("created $cvterms cvterms");
 
         if ( defined $arg{create_hooks} ) {
             $storage->dbh_do($_) for @{ $arg->{create_hooks} };

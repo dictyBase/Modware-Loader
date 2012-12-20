@@ -48,12 +48,6 @@ sub execute {
     $logger->info("start loading in staging");
     $loader->load_data_in_staging;
 
-    $logger->info(
-        sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
-        $loader->entries_in_staging('TempCvterm'),
-        $loader->entries_in_staging('TempCvtermsynonym'),
-        $loader->entries_in_staging('TempCvtermRelationship')
-    );
 
 	$logger->info("start loading in chado");
     $loader->merge_ontology;
