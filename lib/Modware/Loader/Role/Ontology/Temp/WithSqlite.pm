@@ -2,8 +2,6 @@ package Modware::Loader::Role::Ontology::Temp::WithSqlite;
 
 use namespace::autoclean;
 use Moose::Role;
-use Encode;
-use utf8;
 with 'Modware::Loader::Role::Ontology::Temp::Generic';
 
 has cache_threshold =>
@@ -33,7 +31,7 @@ around 'load_cvterms_in_staging' => sub {
 after 'load_cvterms_in_staging' => sub {
 	my ($self) = @_;
     $self->load_cache( 'synonym', 'TempCvtermsynonym', 1 );
-}
+};
 
 sub create_temp_statements {
     my ( $self, $storage ) = @_;

@@ -83,7 +83,7 @@ sub is_cvprop_present {
     my ($self) = @_;
     my $row = $self->schema->resultset('Cv::Cv')
         ->find( { name => 'cv_property' } );
-    return !$row;
+    return if !$row;
     $self->set_cvrow( 'cv_property', $row );
     return $row;
 }
@@ -93,7 +93,10 @@ sub _load_engine {
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
-    ensure_all_roles( $self, $engine, $tmp_engine );
+    my $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::With'
+        . ucfirst lc( $schema->storage->sqlt_type );
+    ensure_all_roles( $self, ($engine, $tmp_engine) );
+
     $self->meta->make_immutable;
     $self->transform_schema($schema);
 }
@@ -249,7 +252,7 @@ sub merge_ontology {
     $logger->debug("updated $cvterm_names cvterm names");
 
     if ( defined $arg{update_hooks} ) {
-        $storage->dbh_do($_) for @{ $arg->{update_hooks} };
+        $storage->dbh_do($_) for @{ $arg{update_hooks} };
     }
 
     #create new terms both in dbxref and cvterm tables
@@ -260,14 +263,14 @@ sub merge_ontology {
         $logger->debug("created $cvterms cvterms");
 
         if ( defined $arg{create_hooks} ) {
-            $storage->dbh_do($_) for @{ $arg->{create_hooks} };
+            $storage->dbh_do($_) for @{ $arg{create_hooks} };
         }
     }
 
     #create relationships
     my $relationships
         = $storage->dbh_do( sub { $self->create_relations(@_) } );
-    $logger->info("created $relationships relationships");
+    $logger->debug("created $relationships relationships");
 }
 
 sub finish {
