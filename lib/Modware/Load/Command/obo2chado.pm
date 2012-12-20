@@ -46,7 +46,7 @@ sub execute {
 
     #transaction for loading in staging temp tables
     $logger->info("start loading in staging");
-    $loader->prepare_data_for_loading;
+    $loader->load_data_in_staging;
 
     $logger->info(
         sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",

@@ -218,7 +218,7 @@ sub find_or_create_namespaces {
 
 }
 
-sub prepare_data_for_loading {
+sub load_data_in_staging {
     my ($self) = @_;
     $self->load_cvterms_in_staging;
     $self->load_relationship_in_staging;
