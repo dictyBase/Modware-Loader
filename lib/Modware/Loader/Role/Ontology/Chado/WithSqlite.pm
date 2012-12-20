@@ -10,6 +10,14 @@ use feature qw/say/;
 
 sub transform_schema { }
 
+around 'merge_ontology' => sub {
+    my $orig = shift;
+    my $self = shift;
+    $self->$orig(
+        create_hooks => [ sub { $self->create_synonyms(@_) } ],
+        update_hooks => [ sub { $self->update_synonyms(@_) } ]
+    );
+};
 
 sub delete_non_existing_terms {
     my ( $self, $storage, $dbh ) = @_;
@@ -109,6 +117,7 @@ sub create_synonyms {
 		
 	}
     );
+    $self->logger->debug("created $row synonyms");
     return $row;
 }
 
@@ -154,10 +163,13 @@ sub update_synonyms {
     );
 
     #Now insert the new batch
-    my $rows = $dbh->do(q{
+    my $rows = $dbh->do(
+        q{
 	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
 	    SELECT syn,syn_scope_id,cvterm_id FROM temp_synonym_update 
-    });
+    }
+    );
+    $self->logger->debug("updated $rows synonyms");
     return $rows;
 }
 
