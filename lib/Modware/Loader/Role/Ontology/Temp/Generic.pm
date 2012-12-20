@@ -3,6 +3,16 @@ package Modware::Loader::Role::Ontology::Temp::Generic;
 use namespace::autoclean;
 use Moose::Role;
 
+has '_cvterm_dependency_stack' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    traits  => [qw/Array/],
+    handles => {
+        'register_cvterm_hook' => 'push',
+        'all_cvterms_hook'     => 'elements'
+    }
+);
+
 sub load_cvterms_in_staging {
     my ($self)        = @_;
     my $onto          = $self->ontology;
@@ -19,17 +29,24 @@ sub load_cvterms_in_staging {
             : $default_cv_id;
         $self->add_to_term_cache($insert_hash);
         $self->load_cache( 'term', 'TempCvterm', 1 );
-
-        #synonyms
-        my $synonym_insert_array
-            = $self->get_synonym_term_hash( $term, $insert_hash );
-        $self->add_to_synonym_cache(@$synonym_insert_array);
-        $self->load_cache( 'synonym', 'TempCvtermsynonym', 1 );
+        #hooks to run that depends on cvterms
+        for my $coderef($self->all_cvterms_hook) {
+        	$coderef->($term, $insert_hash);
+        }
     }
+}
 
+after 'load_cvterms_in_staging' => sub {
+	my ($self) = @_;
     $self->load_cache( 'term',    'TempCvterm' );
-    $self->load_cache( 'synonym', 'TempCvtermsynonym' );
+}
 
+sub load_synonyms_in_staging {
+    my ( $self, $term, $insert_hash ) = @_;
+    my $synonym_insert_array
+        = $self->get_synonym_term_hash( $term, $insert_hash );
+    $self->add_to_synonym_cache(@$synonym_insert_array);
+    $self->load_cache( 'synonym', 'TempCvtermsynonym', 1 );
 }
 
 sub load_relationship_in_staging {
