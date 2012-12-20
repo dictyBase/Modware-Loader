@@ -96,13 +96,7 @@ sub _load_engine {
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
-
-    my $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::With'
-        . ucfirst lc( $schema->storage->sqlt_type );
-    if ( !check_install( module => $tmp_engine ) ) {
-        $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::Generic';
-    }
-    ensure_all_roles( $self, ( $engine, $tmp_engine ) );
+    ensure_all_roles( $self, $engine, $tmp_engine );
     $self->meta->make_immutable;
     $self->transform_schema($schema);
 }
