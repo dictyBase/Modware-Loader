@@ -2,8 +2,6 @@ package Modware::Loader::Role::Ontology::Temp::WithOracle;
 
 use namespace::autoclean;
 use Moose::Role;
-use Encode;
-use utf8;
 
 with 'Modware::Loader::Role::Ontology::Temp::Generic';
 
