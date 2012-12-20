@@ -2,6 +2,8 @@ package Modware::Loader::Role::Ontology::Temp::WithSqlite;
 
 use namespace::autoclean;
 use Moose::Role;
+use Encode;
+use utf8;
 with 'Modware::Loader::Role::Ontology::Temp::Generic';
 
 has cache_threshold =>
