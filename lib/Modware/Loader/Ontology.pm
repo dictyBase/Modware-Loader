@@ -270,6 +270,13 @@ sub merge_ontology {
     $logger->info("created $relationships relationships");
 }
 
+sub finish {
+	my ($self) = @_;
+	$self->schema->storage->disconnect;
+}
+
+
+
 with 'Modware::Loader::Role::Ontology::WithHelper';
 __PACKAGE__->meta->make_immutable;
 

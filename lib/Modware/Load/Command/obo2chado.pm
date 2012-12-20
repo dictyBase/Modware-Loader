@@ -57,7 +57,7 @@ sub execute {
     else {
         $guard->commit;
     }
-    $self->schema->storage->disconnect;
+    $loader->finish;
     $logger->info("loaded ", $self->input,  " in chado");
 }
 1;
