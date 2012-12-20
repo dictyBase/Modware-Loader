@@ -221,7 +221,7 @@ sub entries_in_staging {
 }
 
 sub merge_ontology {
-    my ($self)  = @_;
+    my ( $self, %arg ) = @_;
     my $storage = $self->schema->storage;
     my $logger  = $self->logger;
 
@@ -238,8 +238,9 @@ sub merge_ontology {
         = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
     $logger->info("updated $cvterm_names cvterm names");
 
-    my $syn_update = $storage->dbh_do(sub { $self->update_synonyms(@_)});
-    $logger->info("updated $syn_update synonyms");
+    if ( defined $arg{update_hooks} ) {
+        $storage->dbh_do($_) for @{ $arg->{update_hooks} };
+    }
 
     #create new terms both in dbxref and cvterm tables
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
@@ -248,15 +249,15 @@ sub merge_ontology {
         my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
         $logger->info("created $cvterms cvterms");
 
-        my $synonyms = $storage->dbh_do( sub { $self->create_synonyms(@_) } );
-        $logger->info("created $synonyms synonyms");
+        if ( defined $arg{create_hooks} ) {
+            $storage->dbh_do($_) for @{ $arg->{create_hooks} };
+        }
     }
 
     #create relationships
     my $relationships
         = $storage->dbh_do( sub { $self->create_relations(@_) } );
     $logger->info("created $relationships relationships");
-
 }
 
 with 'Modware::Loader::Role::Ontology::WithHelper';
