@@ -3,18 +3,8 @@ package Modware::Loader::Role::Ontology::Temp::Generic;
 use namespace::autoclean;
 use Moose::Role;
 
-has '_cvterm_dependency_stack' => (
-    is      => 'rw',
-    isa     => 'ArrayRef',
-    traits  => [qw/Array/],
-    handles => {
-        'register_cvterm_hook' => 'push',
-        'all_cvterms_hook'     => 'elements'
-    }
-);
-
 sub load_cvterms_in_staging {
-    my ($self)        = @_;
+    my ( $self, $hooks ) = @_;
     my $onto          = $self->ontology;
     my $schema        = $self->schema;
     my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
@@ -29,17 +19,18 @@ sub load_cvterms_in_staging {
             : $default_cv_id;
         $self->add_to_term_cache($insert_hash);
         $self->load_cache( 'term', 'TempCvterm', 1 );
+
         #hooks to run that depends on cvterms
-        for my $coderef($self->all_cvterms_hook) {
-        	$coderef->($term, $insert_hash);
+        if ( defined @$hooks ) {
+            $_->( $term, $insert_hash ) for @$hooks;
         }
     }
 }
 
 after 'load_cvterms_in_staging' => sub {
-	my ($self) = @_;
-    $self->load_cache( 'term',    'TempCvterm' );
-}
+    my ($self) = @_;
+    $self->load_cache( 'term', 'TempCvterm' );
+};
 
 sub load_synonyms_in_staging {
     my ( $self, $term, $insert_hash ) = @_;

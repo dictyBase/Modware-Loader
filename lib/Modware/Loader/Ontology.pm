@@ -222,9 +222,6 @@ sub load_data_in_staging {
     my ($self) = @_;
     $self->load_cvterms_in_staging;
     $self->load_relationship_in_staging;
-    $self->schema->storage->dbh_do(
-        sub { $self->after_loading_in_staging(@_) } );
-
 }
 
 sub entries_in_staging {

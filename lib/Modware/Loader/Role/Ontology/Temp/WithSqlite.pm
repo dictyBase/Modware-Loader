@@ -2,17 +2,35 @@ package Modware::Loader::Role::Ontology::Temp::WithSqlite;
 
 use namespace::autoclean;
 use Moose::Role;
+with 'Modware::Loader::Role::Ontology::Temp::Generic';
 
 has cache_threshold =>
     ( is => 'rw', isa => 'Int', lazy => 1, default => 4000 );
 
-sub after_loading_in_staging {
-    my ( $self, $storage, $dbh ) = @_;
-    $dbh->do(
-        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
+after 'load_data_in_staging' => sub {
+    my ($self) = @_;
+    $self->schema->storage->dbh_do(
+        sub {
+            my ( $storage, $dbh ) = @_;
+            $dbh->do(
+                q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
+            );
+            $dbh->do(
+                q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)}
+            );
+        }
     );
-    $dbh->do(
-        q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
+};
+
+around 'load_cvterms_in_staging' => sub {
+    my $orig = shift;
+    my $self = shift;
+    $self->$orig( @_, [ sub { $self->load_synonyms_in_staging(@_) } ] );
+};
+
+after 'load_cvterms_in_staging' => sub {
+	my ($self) = @_;
+    $self->load_cache( 'synonym', 'TempCvtermsynonym', 1 );
 }
 
 sub create_temp_statements {
@@ -60,6 +78,5 @@ sub create_temp_statements {
 
 sub drop_temp_statements {
 }
-
 
 1;
