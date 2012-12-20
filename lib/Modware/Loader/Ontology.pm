@@ -7,9 +7,6 @@ use Moose::Util qw/ensure_all_roles/;
 use feature qw/switch/;
 use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
-use Module::Load::Conditional qw/check_install/;
-with 'Modware::Role::WithDataStash' =>
-    { create_stash_for => [qw/term relationship synonym/] };
 
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );

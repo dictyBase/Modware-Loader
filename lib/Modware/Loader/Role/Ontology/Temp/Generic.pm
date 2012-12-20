@@ -2,6 +2,8 @@ package Modware::Loader::Role::Ontology::Temp::Generic;
 
 use namespace::autoclean;
 use Moose::Role;
+with 'Modware::Role::WithDataStash' =>
+    { create_stash_for => [qw/term relationship synonym/] };
 
 sub load_cvterms_in_staging {
     my ( $self, $hooks ) = @_;
@@ -88,6 +90,46 @@ sub load_cache {
     my $clean   = 'clean_' . $cache . '_cache';
     $self->schema->resultset($result_class)->populate( [ $self->$entries ] );
     $self->$clean;
+}
+
+
+sub get_insert_term_hash {
+    my ( $self,  $term )      = @_;
+    my ( $db_id, $accession ) = $self->_normalize_id( $term->id );
+    my $insert_hash;
+    $insert_hash->{accession} = $accession;
+    $insert_hash->{db_id}     = $db_id;
+    if ( my $text = $term->def->text ) {
+        $insert_hash->{definition} = encode( "UTF-8", $text );
+    }
+    $insert_hash->{is_relationshiptype}
+        = $term->isa('OBO::Core::RelationshipType') ? 1 : 0;
+    $insert_hash->{name} = $term->name ? $term->name : $term->id;
+    if ( $term->is_obsolete ) {
+        $insert_hash->{is_obsolete} = 1;
+        my $term_name
+            = $insert_hash->{name} . sprintf( " (obsolete %s)", $term->id );
+        $insert_hash->{name} = $term_name;
+    }
+    else {
+        $insert_hash->{is_obsolete} = 0;
+    }
+    $insert_hash->{cmmnt} = $term->comment;
+    return $insert_hash;
+}
+
+sub get_synonym_term_hash {
+	my ($self, $term, $term_insert_hash) = @_;
+	my $insert_array;
+	for my $syn($term->synonym_set) {
+		push @$insert_array,  {
+			accession => $term_insert_hash->{accession}, 
+			syn => $syn->def->text, 
+			syn_scope_id => $self->find_or_create_cvrow_id($syn->scope), 
+			db_id => $term_insert_hash->{db_id}
+		}
+	}
+	return $insert_array;
 }
 
 1;
