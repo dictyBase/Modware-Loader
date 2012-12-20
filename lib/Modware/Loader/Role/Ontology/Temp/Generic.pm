@@ -2,6 +2,8 @@ package Modware::Loader::Role::Ontology::Temp::Generic;
 
 use namespace::autoclean;
 use Moose::Role;
+use Encode;
+use utf8;
 with 'Modware::Role::WithDataStash' =>
     { create_stash_for => [qw/term relationship synonym/] };
 
