@@ -12,8 +12,8 @@ before 'merge_ontology' => sub {
     my ($self) = @_;
     $self->schema->storage->dbh_do(
         sub {
-            my ($storage) = @_;
-            $storage->dbh->do(
+            my ($storage, $dbh) = @_;
+            $dbh->do(
                 qq{
 	           CREATE GLOBAL TEMPORARY TABLE temp_accession (
                   accession varchar2(256) NOT NULL 
@@ -27,9 +27,9 @@ after 'merge_ontology' => sub {
     my ($self) = @_;
     $self->schema->storage->dbh_do(
         sub {
-            my ($storage) = @_;
-            $storage->dbh->do(qq{TRUNCATE TABLE temp_accession});
-            $storage->dbh->do(qq{DROP TABLE temp_accession});
+            my ($storage, $dbh) = @_;
+            $dbh->do(qq{TRUNCATE TABLE temp_accession});
+            $dbh->do(qq{DROP TABLE temp_accession});
         }
     );
 };
