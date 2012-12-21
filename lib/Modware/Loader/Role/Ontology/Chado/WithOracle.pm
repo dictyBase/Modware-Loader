@@ -8,6 +8,32 @@ use feature qw/say/;
 # Module implementation
 #
 
+before 'merge_ontology' => sub {
+    my ($self) = @_;
+    $self->schema->storage->dbh_do(
+        sub {
+            my ($storage, $dbh) = @_;
+            $dbh->do(
+                qq{
+	           CREATE GLOBAL TEMPORARY TABLE temp_accession (
+                  accession varchar2(256) NOT NULL 
+    			) ON COMMIT PRESERVE ROWS }
+            );
+        }
+    );
+};
+
+after 'merge_ontology' => sub {
+    my ($self) = @_;
+    $self->schema->storage->dbh_do(
+        sub {
+            my ($storage, $dbh) = @_;
+            $dbh->do(qq{TRUNCATE TABLE temp_accession});
+            $dbh->do(qq{DROP TABLE temp_accession});
+        }
+    );
+};
+
 sub transform_schema {
     my ( $self, $schema ) = @_;
     my $source = $schema->source('Cv::Cvtermsynonym');
@@ -45,62 +71,6 @@ sub transform_schema {
             }
         );
     }
-}
-
-sub after_loading_in_staging {
-    my ( $self, $storage, $dbh ) = @_;
-
-#    $dbh->do(
-#        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
-#    );
-#    $dbh->do(
-#        q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
-}
-
-sub create_temp_statements {
-    my ( $self, $storage ) = @_;
-    $storage->dbh->do(
-        qq{
-	        CREATE GLOBAL TEMPORARY TABLE temp_cvterm (
-               name varchar2(1024) NOT NULL, 
-               accession varchar2(256) NOT NULL, 
-               is_obsolete number DEFAULT '0' NOT NULL, 
-               is_relationshiptype number DEFAULT '0' NOT NULL, 
-               definition varchar2(4000), 
-               cmmnt varchar2(4000), 
-               cv_id number NOT NULL, 
-               db_id number NOT NULL
-    ) ON COMMIT PRESERVE ROWS }
-    );
-    $storage->dbh->do(
-        qq{
-	        CREATE GLOBAL TEMPORARY TABLE temp_accession (
-               accession varchar2(256) NOT NULL 
-    ) ON COMMIT PRESERVE ROWS }
-    );
-    $storage->dbh->do(
-        qq{
-	        CREATE GLOBAL TEMPORARY  TABLE temp_cvterm_relationship (
-               subject varchar2(256) NOT NULL, 
-               object varchar2(256) NOT NULL, 
-               type varchar2(256) NOT NULL, 
-               subject_db_id number NOT NULL, 
-               object_db_id number NOT NULL, 
-               type_db_id number NOT NULL
-    ) ON COMMIT PRESERVE ROWS }
-    );
-}
-
-sub drop_temp_statements {
-    my ( $self, $storage ) = @_;
-    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm});
-    $storage->dbh->do(qq{TRUNCATE TABLE temp_accession});
-    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm_relationship});
-    $storage->dbh->do(qq{TRUNCATE TABLE temp_term_delete});
-    $storage->dbh->do(qq{DROP TABLE temp_cvterm});
-    $storage->dbh->do(qq{DROP TABLE temp_accession});
-    $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship});
-    $storage->dbh->do(qq{DROP TABLE temp_term_delete});
 }
 
 sub delete_non_existing_terms {
@@ -332,21 +302,14 @@ sub delete_cvterms {
         SELECT count(dbxref.dbxref_id) ,  dbxref.db_id FROM dbxref
         JOIN cvterm ON dbxref.dbxref_id = cvterm.dbxref_id
         WHERE cvterm.cv_id = ?
-        group by dbxref.db_id ) namespace });
+        group by dbxref.db_id ) namespace }
+    );
     $sth->execute($cv_id);
-    $sth = $dbh->prepare( q{ DELETE FROM cv where cv_id = ?} );
+    $sth = $dbh->prepare(q{ DELETE FROM cv where cv_id = ?});
     $sth->execute($cv_id);
 }
 
 1;    # Magic true value required at end of module
-
-sub create_synonyms {
-	return 0;
-}
-
-sub update_synonyms {
-	return 0;
-}
 
 __END__
 

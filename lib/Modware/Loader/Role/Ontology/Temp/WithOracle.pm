@@ -2,77 +2,58 @@ package Modware::Loader::Role::Ontology::Temp::WithOracle;
 
 use namespace::autoclean;
 use Moose::Role;
-use Encode;
-use utf8;
 
+with 'Modware::Loader::Role::Ontology::Temp::Generic';
 
 has cache_threshold =>
     ( is => 'rw', isa => 'Int', lazy => 1, default => 8000 );
 
-
-sub load_cvterms_in_staging {
-    my ($self)        = @_;
-    my $onto          = $self->ontology;
-    my $schema        = $self->schema;
-    my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
-
-    #Term
-    for my $term ( @{ $onto->get_relationship_types }, @{ $onto->get_terms } )
-    {
-        my $insert_hash = $self->get_insert_term_hash($term);
-        $insert_hash->{cv_id}
-            = $term->namespace
-            ? $self->find_or_create_cvrow_id( $term->namespace )
-            : $default_cv_id;
-        $self->add_to_term_cache($insert_hash);
-        if ( $self->count_entries_in_term_cache >= $self->cache_threshold ) {
-            $schema->resultset('TempCvterm')
-                ->populate( [ $self->entries_in_term_cache ] );
-            $self->clean_term_cache;
-        }
-    }
-    if ( $self->count_entries_in_term_cache ) {
-        $schema->resultset('TempCvterm')
-            ->populate( [ $self->entries_in_term_cache ] );
-        $self->clean_term_cache;
-    }
-}
-
-sub load_relationship_in_staging {
+after 'load_data_in_staging' => sub {
     my ($self) = @_;
-    my $onto   = $self->ontology;
-    my $schema = $self->schema;
+    $self->logger->debug(
+        sprintf "terms:%d\trelationships:%d in staging tables",
+        $self->entries_in_staging('TempCvterm'),
+        $self->entries_in_staging('TempCvtermRelationship')
+    );
+};
 
-    for my $rel ( @{ $onto->get_relationships } ) {
-        my @object  = $self->_normalize_id( $rel->head->id );
-        my @subject = $self->_normalize_id( $rel->tail->id );
-        my @type    = $self->_normalize_id( $rel->type );
+sub create_temp_statements {
+    my ( $self, $storage ) = @_;
+    $storage->dbh->do(
+        qq{
+	        CREATE GLOBAL TEMPORARY TABLE temp_cvterm (
+               name varchar2(1024) NOT NULL, 
+               accession varchar2(256) NOT NULL, 
+               is_obsolete number DEFAULT '0' NOT NULL, 
+               is_relationshiptype number DEFAULT '0' NOT NULL, 
+               definition varchar2(4000), 
+               cmmnt varchar2(4000), 
+               cv_id number NOT NULL, 
+               db_id number NOT NULL
+    ) ON COMMIT PRESERVE ROWS }
+    );
 
-        $self->add_to_relationship_cache(
-            {   object_db_id  => $object[0],
-                object        => $object[1],
-                subject_db_id => $subject[0],
-                subject       => $subject[1],
-                type_db_id    => $type[0],
-                type          => $type[1]
-            }
-        );
-        if ( $self->count_entries_in_relationship_cache
-            >= $self->cache_threshold )
-        {
-            $schema->resultset('TempCvtermRelationship')
-                ->populate( [ $self->entries_in_relationship_cache ] );
-            $self->clean_relationship_cache;
-        }
-    }
-    if ( $self->count_entries_in_relationship_cache ) {
-        $schema->resultset('TempCvtermRelationship')
-            ->populate( [ $self->entries_in_relationship_cache ] );
-        $self->clean_relationship_cache;
-    }
+    $storage->dbh->do(
+        qq{
+	        CREATE GLOBAL TEMPORARY  TABLE temp_cvterm_relationship (
+               subject varchar2(256) NOT NULL, 
+               object varchar2(256) NOT NULL, 
+               type varchar2(256) NOT NULL, 
+               subject_db_id number NOT NULL, 
+               object_db_id number NOT NULL, 
+               type_db_id number NOT NULL
+    ) ON COMMIT PRESERVE ROWS }
+    );
 }
 
-sub load_alt_ids_in_staging {
+sub drop_temp_statements {
+    my ( $self, $storage ) = @_;
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm_relationship});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_term_delete});
+    $storage->dbh->do(qq{DROP TABLE temp_cvterm});
+    $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship});
+    $storage->dbh->do(qq{DROP TABLE temp_term_delete});
 }
 
 1;

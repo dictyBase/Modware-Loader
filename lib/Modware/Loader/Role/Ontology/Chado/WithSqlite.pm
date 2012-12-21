@@ -8,72 +8,16 @@ use feature qw/say/;
 # Module implementation
 #
 
-has cache_threshold =>
-    ( is => 'rw', isa => 'Int', lazy => 1, default => 2000 );
-
 sub transform_schema { }
 
-sub after_loading_in_staging {
-    my ( $self, $storage, $dbh ) = @_;
-    $dbh->do(
-        q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
+around 'merge_ontology' => sub {
+    my $orig = shift;
+    my $self = shift;
+    $self->$orig(
+        create_hooks => [ sub { $self->create_synonyms(@_) } ],
+        update_hooks => [ sub { $self->update_synonyms(@_) } ]
     );
-    $dbh->do(
-        q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)});
-}
-
-sub create_temp_statements {
-    my ( $self, $storage ) = @_;
-    $storage->dbh->do(
-        qq{
-	        CREATE TEMP TABLE temp_cvterm (
-               name varchar(1024) NOT NULL, 
-               accession varchar(1024) NOT NULL, 
-               is_obsolete integer NOT NULL DEFAULT 0, 
-               is_relationshiptype integer NOT NULL DEFAULT 0, 
-               definition varchar(4000), 
-               cmmnt varchar(4000), 
-               cv_id integer NOT NULL, 
-               db_id integer NOT NULL
-    )}
-    );
-    $storage->dbh->do(
-        qq{
-	        CREATE TEMP TABLE temp_accession (
-               accession varchar(256) NOT NULL 
-    )}
-    );
-    $storage->dbh->do(
-        qq{
-	        CREATE TEMP TABLE temp_cvterm_relationship (
-               subject varchar(256) NOT NULL, 
-               object varchar(256) NOT NULL, 
-               type varchar(256) NULL, 
-               subject_db_id integer NOT NULL, 
-               object_db_id integer NOT NULL, 
-               type_db_id integer NOT NULL
-    )}
-    );
-    $storage->dbh->do(
-        qq{
-	        CREATE TEMP TABLE temp_cvterm_synonym (
-               accession varchar(256) NOT NULL, 
-               syn varchar(1024) NOT NULL, 
-               syn_scope_id integer NOT NULL, 
-               db_id integer NOT NULL
-    )}
-    );
-}
-
-sub drop_temp_statements {
-    my ( $self, $storage ) = @_;
-
-    #    $storage->dbh->do(qq{DELETE FROM temp_cvterm});
-    #    $storage->dbh->do(qq{DELETE FROM temp_accession});
-    #    $storage->dbh->do(qq{DELETE FROM temp_cvterm_relationship});
-    #    $storage->dbh->do(qq{DROP INDEX uniq_name_idx});
-    #    $storage->dbh->do(qq{DROP INDEX uniq_accession_idx});
-}
+};
 
 sub delete_non_existing_terms {
     my ( $self, $storage, $dbh ) = @_;
@@ -106,7 +50,7 @@ sub create_dbxrefs {
     my ( $self, $storage, $dbh ) = @_;
     $dbh->do(
         q{
-    		INSERT INTO temp_accession(accession)
+    		CREATE TEMP TABLE temp_accession AS
 			SELECT tmcv.accession FROM temp_cvterm tmcv
 			LEFT JOIN dbxref ON (
 			     tmcv.accession = dbxref.accession
@@ -173,6 +117,7 @@ sub create_synonyms {
 		
 	}
     );
+    $self->logger->debug("created $row synonyms");
     return $row;
 }
 
@@ -218,10 +163,13 @@ sub update_synonyms {
     );
 
     #Now insert the new batch
-    my $rows = $dbh->do(q{
+    my $rows = $dbh->do(
+        q{
 	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
 	    SELECT syn,syn_scope_id,cvterm_id FROM temp_synonym_update 
-    });
+    }
+    );
+    $self->logger->debug("updated $rows synonyms");
     return $rows;
 }
 

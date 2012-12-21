@@ -18,18 +18,22 @@ has 'dry_run' => (
 );
 
 sub execute {
-    my ($self)   = @_;
-    my $logger   = $self->logger;
-    my $loader   = Modware::Loader::Ontology->new;
+    my ($self) = @_;
+    my $logger = $self->logger;
+    my $loader = Modware::Loader::Ontology->new;
 
-    $logger->info("start parsing file ", $self->input);
+    $logger->info( "start parsing file ", $self->input );
     my $ontology = OBO::Parser::OBOParser->new->work( $self->input );
-	$logger->info("parsing done");
+    $logger->info("parsing done");
 
     $loader->set_logger($logger);
     $loader->set_ontology($ontology);
     $loader->set_schema( $self->schema );
     $loader->set_connect_info( $self->connect_info );
+
+    #check for presence of cvprop ontology
+    $logger->logdie("cvprop ontology is not loaded!!! cannot continue")
+        if !$loader->is_cvprop_present;
 
     #enable transaction
     # check if it is a new version
@@ -46,16 +50,9 @@ sub execute {
 
     #transaction for loading in staging temp tables
     $logger->info("start loading in staging");
-    $loader->prepare_data_for_loading;
+    $loader->load_data_in_staging;
 
-    $logger->info(
-        sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
-        $loader->entries_in_staging('TempCvterm'),
-        $loader->entries_in_staging('TempCvtermsynonym'),
-        $loader->entries_in_staging('TempCvtermRelationship')
-    );
-
-	$logger->info("start loading in chado");
+    $logger->info("start loading in chado");
     $loader->merge_ontology;
     if ( $self->dry_run ) {
         $logger->info("Nothing saved in database");
@@ -63,8 +60,8 @@ sub execute {
     else {
         $guard->commit;
     }
-    $self->schema->storage->disconnect;
-    $logger->info("loaded ", $self->input,  " in chado");
+    $loader->finish;
+    $logger->info( "loaded ", $self->input, " in chado" );
 }
 1;
 

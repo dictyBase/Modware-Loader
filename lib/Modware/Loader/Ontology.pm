@@ -7,9 +7,6 @@ use Moose::Util qw/ensure_all_roles/;
 use feature qw/switch/;
 use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
-use Module::Load::Conditional qw/check_install/;
-with 'Modware::Role::WithDataStash' =>
-    { create_stash_for => [qw/term relationship synonym/] };
 
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
@@ -22,7 +19,6 @@ has 'connect_info' => (
         my ($self) = @_;
         $self->_around_connection;
         $self->_register_schema_classes;
-        $self->_check_cvprop_or_die;
     }
 );
 
@@ -83,12 +79,13 @@ sub _register_schema_classes {
             'Modware::Loader::Schema::Temporary::Cvtermsynonym' );
 }
 
-sub _check_cvprop_or_die {
+sub is_cvprop_present {
     my ($self) = @_;
     my $row = $self->schema->resultset('Cv::Cv')
         ->find( { name => 'cv_property' } );
-    croak "cv_property ontology is not loaded\n" if !$row;
+    return if !$row;
     $self->set_cvrow( 'cv_property', $row );
+    return $row;
 }
 
 sub _load_engine {
@@ -96,13 +93,10 @@ sub _load_engine {
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
-
     my $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::With'
         . ucfirst lc( $schema->storage->sqlt_type );
-    if ( !check_install( module => $tmp_engine ) ) {
-        $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::Generic';
-    }
-    ensure_all_roles( $self, ( $engine, $tmp_engine ) );
+    ensure_all_roles( $self, ($engine, $tmp_engine) );
+
     $self->meta->make_immutable;
     $self->transform_schema($schema);
 }
@@ -218,57 +212,60 @@ sub find_or_create_namespaces {
 
 }
 
-sub prepare_data_for_loading {
+sub load_data_in_staging {
     my ($self) = @_;
     $self->load_cvterms_in_staging;
     $self->load_relationship_in_staging;
-    $self->schema->storage->dbh_do(
-        sub { $self->after_loading_in_staging(@_) } );
-
-}
-
-sub entries_in_staging {
-    my ( $self, $name ) = @_;
-    return $self->schema->resultset($name)->count( {} );
 }
 
 sub merge_ontology {
-    my ($self)  = @_;
+    my ( $self, %arg ) = @_;
     my $storage = $self->schema->storage;
     my $logger  = $self->logger;
 
     #remove terms that are pruned(present in database but not in file)
     my $deleted_terms
         = $storage->dbh_do( sub { $self->delete_non_existing_terms(@_) } );
-    $logger->info("deleted $deleted_terms terms");
+    $logger->debug("deleted $deleted_terms terms");
 
     #This has to be run first in order to get the list of existing cvterms
     #particularly before the staging and live tables get synced
     my $updated_terms = $storage->dbh_do( sub { $self->update_cvterms(@_) } );
-    $logger->info("updated $updated_terms cvterms");
+    $logger->debug("updated $updated_terms cvterms");
     my $cvterm_names
         = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
-    $logger->info("updated $cvterm_names cvterm names");
+    $logger->debug("updated $cvterm_names cvterm names");
 
-    my $syn_update = $storage->dbh_do(sub { $self->update_synonyms(@_)});
-    $logger->info("updated $syn_update synonyms");
+    if ( defined $arg{update_hooks} ) {
+        $storage->dbh_do($_) for @{ $arg{update_hooks} };
+    }
 
     #create new terms both in dbxref and cvterm tables
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
-    $logger->info("created $dbxrefs dbxrefs");
+    $logger->debug("created $dbxrefs dbxrefs");
     if ($dbxrefs) {
         my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
-        $logger->info("created $cvterms cvterms");
+        $logger->debug("created $cvterms cvterms");
 
-        my $synonyms = $storage->dbh_do( sub { $self->create_synonyms(@_) } );
-        $logger->info("created $synonyms synonyms");
+        if ( defined $arg{create_hooks} ) {
+            $storage->dbh_do($_) for @{ $arg{create_hooks} };
+        }
     }
 
     #create relationships
     my $relationships
         = $storage->dbh_do( sub { $self->create_relations(@_) } );
-    $logger->info("created $relationships relationships");
+    $logger->debug("created $relationships relationships");
+}
 
+sub finish {
+	my ($self) = @_;
+	$self->schema->storage->disconnect;
+}
+
+sub entries_in_staging {
+	my ($self, $resultset_class) = @_;
+	return $self->schema->resultset($resultset_class)->count({});
 }
 
 with 'Modware::Loader::Role::Ontology::WithHelper';
