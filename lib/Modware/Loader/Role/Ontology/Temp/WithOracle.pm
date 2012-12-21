@@ -71,11 +71,9 @@ sub drop_temp_statements {
     my ( $self, $storage ) = @_;
     $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm});
     $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm_relationship});
-    $storage->dbh->do(qq{TRUNCATE TABLE temp_term_delete});
     $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm_synonym});
     $storage->dbh->do(qq{DROP TABLE temp_cvterm});
     $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship});
-    $storage->dbh->do(qq{DROP TABLE temp_term_delete});
     $storage->dbh->do(qq{DROP TABLE temp_cvterm_synonym});
 }
 
