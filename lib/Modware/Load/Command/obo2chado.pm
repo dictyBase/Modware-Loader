@@ -32,13 +32,16 @@ sub execute {
     $loader->set_connect_info( $self->connect_info );
 
     #check for presence of cvprop ontology
-    $logger->logdie("cvprop ontology is not loaded!!! cannot continue")
-        if !$loader->is_cvprop_present;
+    if ( !$loader->is_cvprop_present ) {
+        $loader->finish;
+        $logger->logdie("cvprop ontology is not loaded!!! cannot continue");
+    }
 
     #enable transaction
     # check if it is a new version
     if ( $loader->is_ontology_in_db() ) {
         if ( !$loader->is_ontology_new_version() ) {
+            $loader->finish;
             $logger->logdie(
                 "This version of ontology already exist in database");
         }
