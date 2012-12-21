@@ -44,6 +44,15 @@ sub create_temp_statements {
                type_db_id number NOT NULL
     ) ON COMMIT PRESERVE ROWS }
     );
+
+   $storage->dbh->do(qq{
+	        CREATE GLOBAL TEMPORARY TABLE temp_cvterm_synonym (
+               accession varchar2(256) NOT NULL, 
+               syn varchar2(1024) NOT NULL, 
+               syn_scope_id number NOT NULL, 
+               db_id number NOT NULL
+    ) ON COMMIT PRESERVE ROWS }
+    );
 }
 
 sub drop_temp_statements {
@@ -51,9 +60,11 @@ sub drop_temp_statements {
     $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm});
     $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm_relationship});
     $storage->dbh->do(qq{TRUNCATE TABLE temp_term_delete});
+    $storage->dbh->do(qq{TRUNCATE TABLE temp_cvterm_synonym});
     $storage->dbh->do(qq{DROP TABLE temp_cvterm});
     $storage->dbh->do(qq{DROP TABLE temp_cvterm_relationship});
     $storage->dbh->do(qq{DROP TABLE temp_term_delete});
+    $storage->dbh->do(qq{DROP TABLE temp_cvterm_synonym});
 }
 
 1;
