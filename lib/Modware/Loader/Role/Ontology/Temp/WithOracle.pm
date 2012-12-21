@@ -8,6 +8,14 @@ with 'Modware::Loader::Role::Ontology::Temp::Generic';
 has cache_threshold =>
     ( is => 'rw', isa => 'Int', lazy => 1, default => 8000 );
 
+after 'load_data_in_staging' => sub {
+    my ($self) = @_;
+    $self->logger->debug(
+        sprintf "terms:%d\trelationships:%d in staging tables",
+        $self->entries_in_staging('TempCvterm'),
+        $self->entries_in_staging('TempCvtermRelationship')
+    );
+};
 
 sub create_temp_statements {
     my ( $self, $storage ) = @_;

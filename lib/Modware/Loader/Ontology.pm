@@ -218,21 +218,6 @@ sub load_data_in_staging {
     $self->load_relationship_in_staging;
 }
 
-after 'load_data_in_staging' => sub {
-	my ($self) = @_;
-    $self->logger->debug(
-        sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
-        $self->entries_in_staging('TempCvterm'),
-        $self->entries_in_staging('TempCvtermsynonym'),
-        $self->entries_in_staging('TempCvtermRelationship')
-    );
-};
-
-sub entries_in_staging {
-    my ( $self, $name ) = @_;
-    return $self->schema->resultset($name)->count( {} );
-}
-
 sub merge_ontology {
     my ( $self, %arg ) = @_;
     my $storage = $self->schema->storage;
@@ -278,7 +263,10 @@ sub finish {
 	$self->schema->storage->disconnect;
 }
 
-
+sub entries_in_staging {
+	my ($self, $resultset_class) = @_;
+	return $self->schema->resultset($resultset_class)->count({});
+}
 
 with 'Modware::Loader::Role::Ontology::WithHelper';
 __PACKAGE__->meta->make_immutable;
