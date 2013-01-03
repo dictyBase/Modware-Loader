@@ -66,7 +66,7 @@ __PACKAGE__->add_columns(
 package Modware::Loader::Schema::Result::Temp::Ont::AltId;
 
 use strict;
-use base qw/Modware::Loader::Schema::Result::Temp::Ont::Xref/
+use base qw/Modware::Loader::Schema::Result::Temp::Ont::Xref/;
 __PACKAGE__->table('tmp_alt_ids');
 1;
 
