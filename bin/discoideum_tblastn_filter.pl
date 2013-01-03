@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
 
+package discoideum::tblastn;
 use strict;
 use Getopt::Long::Descriptive;
 use Cwd;
