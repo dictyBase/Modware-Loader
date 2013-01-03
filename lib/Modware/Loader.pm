@@ -8,7 +8,7 @@ __END__
 
 Modware::Loader -  Command line apps for Chado relational database 
 
-L<http://gmod.org/wiki/Introduction_to_Chado|Chado> is an open-source modular database
+L<Chado|http://gmod.org/wiki/Introduction_to_Chado> is an open-source modular database
 schema for biological data. This distribution provides L<MooseX::App::Cmd> based command
 line applications to import and export biological data from Chado database.
 
@@ -40,19 +40,19 @@ This is primarilly intended for authors/developers.
 
 =over
 
-=item
+=item *
 
 git checkout git://github.com/dictyBase/Modware-Loader.git
 
-=item
-
-Install L<Dist::Zilla> 
+=item *
   
 cpanm -n Dist::Zilla
 
-=item
+=item *
 
 dzil listdeps --author --missing | cpanm -n
+
+=item *
 
 dzil install
 
