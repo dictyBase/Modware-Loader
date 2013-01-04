@@ -15,46 +15,53 @@ line applications to import and export biological data from Chado database.
 
 =head1 INSTALLATION
 
+First you have to install L<BioPortal|https://github.com/dictyBase/BioPortal-WebService>
+distribution from github. Since none of this module is yet to ready for B<cpan>,  you have to install it
+directly from B<github>. For a stable release,  use any of the tarball from git B<tag> and
+for a developer release use the B<build/develop> branch. All the recepies below use the
+developer release,  suit your script accordingly if you want to use the stable one.
+
 =head2 Using cpanm
 
 =over
 
-=item  
+=item Single step
 
-Download a distribution tarball either from a git B<tag> or from <build/develop> branch.
+  $_> curl -o BioPortal-WebService.tar.gz -L -k \
+       https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
+       cpanm -n BioPortal-WebService.tar.gz  && \
+       curl -o Modware-Loader.tar.gz -L -k \
+       https://github.com/dictyBase/Modware-Loader/archive/build/develop.tar.gz && \
+       cpanm -n Modware-Loader.tar.gz && \
+       rm BioPortal-WebService.tar.gz Modware-Loader.tar.gz
 
-=item
+=item Manually
 
-cpanm <tarball>
+Download the BioPortal-Webservice and Modware-Loader tarballs and invoke B<cpanm> on them.
+Read the included B<INSTALL> file for details.
 
 =back
 
 =head2 Using Build.PL,  cpan and friends
 
-Download the disribution tarball and follow the instruction in the included B<INSTALL> file.
+Just follow the instuctions in the B<INSTALL> file.
 
-
-=head2 From the git repository
+=head2 Directly from the git repository
 
 This is primarilly intended for authors/developers.
 
 =over
 
-=item *
+    git checkout git://github.com/dictyBase/Modware-Loader.git
 
-git checkout git://github.com/dictyBase/Modware-Loader.git
+    cpanm -n Dist::Zilla
 
-=item *
-  
-cpanm -n Dist::Zilla
+    curl -o BioPortal-WebService.tar.gz -L -k \
+       https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
 
-=item *
+    dzil listdeps --author --missing | cpanm -n
 
-dzil listdeps --author --missing | cpanm -n
+    dzil install
 
-=item *
-
-dzil install
-
-=back 
+=back
 
