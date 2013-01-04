@@ -23,24 +23,26 @@ developer release,  suit your script accordingly if you want to use the stable o
 
 =head2 Using cpanm
 
+
+=head3 Single step
+
 =over
 
-=item Single step
-
   $_> curl -o BioPortal-WebService.tar.gz -L -k \
-       https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
-       cpanm -n BioPortal-WebService.tar.gz  && \
-       curl -o Modware-Loader.tar.gz -L -k \
-       https://github.com/dictyBase/Modware-Loader/archive/build/develop.tar.gz && \
-       cpanm -n Modware-Loader.tar.gz && \
-       rm BioPortal-WebService.tar.gz Modware-Loader.tar.gz
+     https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
+     cpanm -n BioPortal-WebService.tar.gz  && \
+     curl -o Modware-Loader.tar.gz -L -k \
+     https://github.com/dictyBase/Modware-Loader/archive/build/develop.tar.gz && \
+     cpanm -n Modware-Loader.tar.gz && \
+     rm BioPortal-WebService.tar.gz Modware-Loader.tar.gz
 
-=item Manually
+=back
+
+=head3 Manually
 
 Download the BioPortal-Webservice and Modware-Loader tarballs and invoke B<cpanm> on them.
 Read the included B<INSTALL> file for details.
 
-=back
 
 =head2 Using Build.PL,  cpan and friends
 
@@ -53,14 +55,10 @@ This is primarilly intended for authors/developers.
 =over
 
     git checkout git://github.com/dictyBase/Modware-Loader.git
-
     cpanm -n Dist::Zilla
-
     curl -o BioPortal-WebService.tar.gz -L -k \
        https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
-
     dzil listdeps --author --missing | cpanm -n
-
     dzil install
 
 =back
