@@ -12,7 +12,6 @@ use File::Basename;
 use Time::Piece;
 use YAML qw/LoadFile/;
 use Path::Class::File;
-use Modware::Factory::Chado::BCS;
 extends qw/MooseX::App::Cmd::Command/;
 with 'MooseX::ConfigFromFile';
 
