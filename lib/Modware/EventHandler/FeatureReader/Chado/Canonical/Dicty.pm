@@ -62,11 +62,11 @@ sub read_transcript {
     }
     else {
         my $new_rs;
-        if ( any { $_->secondary_dbxrefs eq 'dictyBase Curator' }
+        if ( any { $_->secondary_dbxrefs->first->accession eq 'dictyBase Curator' }
             $trans_rs2->all )
         {
             $new_rs = $trans_rs->search(
-                {   'db.name'         => 'GFF_source',
+                {   'db.name'          => 'GFF_source',
                     'dbxref.accession' => 'dictyBase Curator'
                 },
                 { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
@@ -74,7 +74,7 @@ sub read_transcript {
         }
         else {
             $new_rs = $trans_rs->search(
-                {   'db.name'         => 'GFF_source',
+                {   'db.name'          => 'GFF_source',
                     'dbxref.accession' => 'Sequencing Center'
                 },
                 { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
