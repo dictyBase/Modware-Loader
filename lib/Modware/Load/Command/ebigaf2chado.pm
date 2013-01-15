@@ -3,7 +3,7 @@ use autodie;
 use strict;
 use warnings;
 
-package Modware::Load::Command::ebiGaf2dictyChado;
+package Modware::Load::Command::ebigaf2chado;
 
 use Bio::Chado::Schema;
 use IO::String;
@@ -15,9 +15,9 @@ extends qw/Modware::Load::Chado/;
 has 'prune' => (
     is            => 'rw',
     isa           => 'Bool',
-    default       => 0,
+    default       => 1,
     lazy          => 1,
-    documentation => 'Delete all annotations before loading, default is OFF'
+    documentation => 'Delete all annotations before loading, default is ON'
 );
 
 has 'print_gaf' => (
@@ -25,14 +25,19 @@ has 'print_gaf' => (
     isa           => 'Bool',
     default       => 0,
     lazy          => 1,
-    documentation => 'Print GAF retrieved from EBI per gene ID'
+    documentation => 'Print GAF read from file per insert'
+);
+
+has 'file' => (
+    is            => 'rw',
+    isa           => 'Str',
+    documentation => 'Load GAF from this file',
 );
 
 sub execute {
     my ($self) = @_;
     my $logger = $self->logger;
     $logger->info( "Loading config from " . $self->configfile );
-    $logger->info( ref($self) );
     my $schema = $self->schema;
     if ( $self->prune ) {
         $logger->warn('Pruning all annotations.');
@@ -48,31 +53,30 @@ sub execute {
     my $gaf_manager = GAFManager->new;
     $gaf_manager->schema($schema);
     $gaf_manager->logger($logger);
+    $gaf_manager->init();
 
-    $logger->info('Retrieving gene IDs from dictyBase');
-    my $gene_rs = $gaf_manager->get_gene_ids();
+    my $guard = $self->schema->storage->txn_scope_guard;
 
-    if ( $gene_rs->count == 0 ) {
-        $logger->error('NO gene IDs retrieved');
-        exit;
+    my $io;
+    if ( $self->file ) {
+        $io = IO::File->new( $self->file, 'r' );
     }
     else {
-        $logger->info( $gene_rs->count . " gene IDs retrieved" );
+        my $ebi_query = EBIQuery->new;
+        my $response  = $ebi_query->query_ebi();
+        $io = IO::String->new;
+        $io->open($response);
     }
-    my $guard     = $self->schema->storage->txn_scope_guard;
-    my $ebi_query = EBIQuery->new;
-    while ( my $gene = $gene_rs->next ) {
-
-        my $gaf         = $ebi_query->query_ebi( $gene->dbxref->accession );
+    while ( my $gaf = $io->getline ) {
         my @annotations = $gaf_manager->parse($gaf);
-
+        if ( !@annotations ) {
+            next;
+        }
         foreach my $anno (@annotations) {
-
             if ( $self->print_gaf ) {
                 $anno->print;
             }
-
-            my $anno_check = $self->find( $gene->feature_id,
+            my $anno_check = $self->find( $anno->feature_id,
                 $anno->cvterm_for_go, $anno->pub_for_dbref );
             my $rank = 0;
             if ($anno_check) {
@@ -81,7 +85,7 @@ sub execute {
             my $fcvt
                 = $schema->resultset('Sequence::FeatureCvterm')
                 ->find_or_create(
-                {   feature_id => $gene->feature_id,
+                {   feature_id => $anno->feature_id,
                     cvterm_id  => $anno->cvterm_for_go,
                     pub_id     => $anno->pub_for_dbref,
                     rank       => $rank
@@ -141,11 +145,7 @@ sub execute {
 
     my $update_count
         = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
-    $logger->info( $update_count
-            . " annotations inserted for "
-            . $gene_rs->count
-            . " genes" );
-
+    $logger->info( $update_count . " annotations inserted" );
 }
 
 sub find {
@@ -173,8 +173,7 @@ has 'ebi_base_url' => (
         my ($self) = @_;
         'http://www.ebi.ac.uk/QuickGO/GAnnotation?format='
             . $self->format . '&db='
-            . $self->db
-            . '&protein=';
+            . $self->db;
     },
     lazy       => 1,
     dependency => All [ 'format', 'db' ]
@@ -202,8 +201,8 @@ has 'ua' => (
 );
 
 sub query_ebi {
-    my ( $self, $gene_id ) = @_;
-    my $response = $self->ua->get( $self->ebi_base_url . $gene_id );
+    my ($self) = @_;
+    my $response = $self->ua->get( $self->ebi_base_url );
     $response->is_success || die "NO GAF retrieved from EBI";
     return $response->decoded_content;
 }
@@ -226,72 +225,28 @@ has 'schema' => (
 );
 
 has 'cvterm_date' => (
-    is      => 'rw',
-    isa     => 'Int',
-    default => sub {
-        my ($self) = @_;
-        my $date_rs = $self->schema->resultset('Cv::Cvterm')
-            ->search( { name => 'date' } );
-        return $date_rs->first->cvterm_id;
-    },
-    lazy       => 1,
+    is  => 'rw',
+    isa => 'Int',
     dependency => All ['schema']
 );
 
 has 'cvterm_with_from' => (
-    is      => 'rw',
-    isa     => 'Int',
-    default => sub {
-        my ($self) = @_;
-        my $with_rs = $self->schema->resultset('Cv::Cvterm')
-            ->search( { name => 'with' } );
-        return $with_rs->first->cvterm_id;
-    },
-    lazy       => 1,
+    is  => 'rw',
+    isa => 'Int',
     dependency => All ['schema']
 );
 
 has 'cvterm_assigned_by' => (
-    is      => 'rw',
-    isa     => 'Int',
-    default => sub {
-        my ($self) = @_;
-        my $source_rs = $self->schema->resultset('Cv::Cvterm')
-            ->search( { name => 'source' } );
-        return $source_rs->first->cvterm_id;
-    },
-    lazy       => 1,
+    is  => 'rw',
+    isa => 'Int',
     dependency => All ['schema']
 );
 
 has 'cvterm_qualifier' => (
-    is      => 'rw',
-    isa     => 'Int',
-    default => sub {
-        my ($self) = @_;
-        my $qualifier_rs = $self->schema->resultset('Cv::Cvterm')
-            ->search( { name => 'qualifier' } );
-        return $qualifier_rs->first->cvterm_id;
-    },
-    lazy       => 1,
+    is  => 'rw',
+    isa => 'Int',
     dependency => All ['schema']
 );
-
-sub get_gene_ids {
-    my ($self) = @_;
-    my $gene_rs = $self->schema->resultset('Sequence::Feature')->search(
-        {   'type.name'            => 'gene',
-            'organism.common_name' => 'dicty'
-        },
-        {   join     => [qw/type organism/],
-            select   => [qw/feature_id uniquename type_id/],
-            prefetch => 'dbxref',
-
-            #rows     => 500
-        }
-    );
-    return $gene_rs;
-}
 
 sub parse {
     my ( $self, $gaf ) = @_;
@@ -327,14 +282,26 @@ sub parse {
             push( @annotations, $anno );
         }
     }
-
-    #if ( scalar @annotations ) {
-    #    $self->logger->info(
-    #              scalar @annotations
-    #            . " annotations parsed for "
-    #            . $annotations[0]->gene_id );
-    #}
     return @annotations;
+}
+
+sub init {
+    my ($self) = @_;
+    my $qualifier_rs = $self->schema->resultset('Cv::Cvterm')
+        ->search( { name => 'qualifier' } );
+    $self->cvterm_qualifier( $qualifier_rs->first->cvterm_id );
+
+    my $source_rs = $self->schema->resultset('Cv::Cvterm')
+        ->search( { name => 'source' } );
+    $self->cvterm_assigned_by( $source_rs->first->cvterm_id );
+
+    my $with_rs = $self->schema->resultset('Cv::Cvterm')
+        ->search( { name => 'with' } );
+    $self->cvterm_with_from( $with_rs->first->cvterm_id );
+
+    my $date_rs = $self->schema->resultset('Cv::Cvterm')
+        ->search( { name => 'date' } );
+    $self->cvterm_date( $date_rs->first->cvterm_id );
 }
 
 1;
@@ -376,6 +343,20 @@ has [qw/gene_id go_id db_ref evidence_code/] => (
 has [qw/date with_from assigned_by qualifier aspect gene_symbol/] => (
     is  => 'rw',
     isa => 'Str',
+);
+
+has 'feature_id' => (
+    is      => 'ro',
+    isa     => 'Int',
+    default => sub {
+        my ($self) = @_;
+        my $rs = $self->_schema->resultset('Sequence::Feature')->search(
+            { 'dbxref.accession' => $self->gene_id, 'type.name' => 'gene' },
+            { join => [qw/dbxref type/], select => 'feature_id' }
+        );
+        return $rs->first->feature_id;
+    },
+    lazy => 1
 );
 
 has 'pub_for_dbref' => (
@@ -499,21 +480,20 @@ __END__
 
 =head1 NAME
 
-C<Modware::Load::Command::ebiGaf2dictyChado> - Update dicty Chado with GAF from EBI
+C<Modware::Load::Command::ebigaf2chado> - Update dicty Chado with GAF from EBI
 
 =head1 VERSION
 
-version 0.0.4
+version 0.0.5
 
 =head1 SYNOPSIS
  
-	perl modware-load ebigaf2dictychado -c config.yaml --print_gaf
-
-	perl modware-load ebigaf2dictychado -c config.yaml --prune 
+	perl modware-load ebigaf2chado -c config.yaml --prune --file <go_annotations.gaf> --print_gaf 
 
 =head1 REQUIRED ARGUMENTS
 
 	-c, --configfile 		Config file with required arguments
+	--file 					File with GO annotations in GAF format
 
 =head1 DESCRIPTION
 
