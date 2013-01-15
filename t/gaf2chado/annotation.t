@@ -2,7 +2,7 @@
 use Test::Moose;
 use Test::Spec;
 
-BEGIN { require_ok('Modware::Load::Command::ebiGaf2dictyChado'); }
+BEGIN { require_ok('Modware::Load::Command::ebigaf2chado'); }
 
 describe 'An Annotation object' => sub {
     my $annotation;

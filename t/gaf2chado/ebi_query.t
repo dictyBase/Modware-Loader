@@ -3,7 +3,7 @@ use Test::Exception;
 use Test::Moose;
 use Test::Spec;
 
-BEGIN { require_ok('Modware::Load::Command::ebiGaf2dictyChado'); }
+BEGIN { require_ok('Modware::Load::Command::ebigaf2chado'); }
 
 describe "An EBI query object" => sub {
     my $ebi_query;
@@ -26,9 +26,6 @@ describe "An EBI query object" => sub {
     #dies_ok( sub { $ebi_query->query_ebi('') } );
     #};
 
-    it 'should return GAF as response' => sub {
-        lives_ok( sub { $ebi_query->query_ebi('DDB_G0272616') } );
-    };
 
 };
 runtests unless caller;
