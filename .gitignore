@@ -9,3 +9,5 @@ data/
 config/
 log/
 sqlnet.log
+tmp/
+perltidy.LOG
