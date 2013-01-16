@@ -15,9 +15,9 @@ extends qw/Modware::Load::Chado/;
 has 'prune' => (
     is            => 'rw',
     isa           => 'Bool',
-    default       => 1,
+    default       => 0,
     lazy          => 1,
-    documentation => 'Delete all annotations before loading, default is ON'
+    documentation => 'Delete all annotations before loading, default is OFF'
 );
 
 has 'print_gaf' => (
@@ -25,7 +25,7 @@ has 'print_gaf' => (
     isa           => 'Bool',
     default       => 0,
     lazy          => 1,
-    documentation => 'Print GAF read from file per insert'
+    documentation => 'Print GAF'
 );
 
 has 'file' => (
@@ -38,17 +38,7 @@ sub execute {
     my ($self) = @_;
     my $logger = $self->logger;
     $logger->info( "Loading config from " . $self->configfile );
-    my $schema = $self->schema;
-    if ( $self->prune ) {
-        $logger->warn('Pruning all annotations.');
-        my $prune_count
-            = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
-        $schema->txn_do(
-            sub { $schema->resultset('Sequence::FeatureCvterm')->delete_all }
-        );
-        $logger->info(
-            "Done! with pruning. " . $prune_count . " records deleted." );
-    }
+    my $schema = $self->transform( $self->schema );
 
     my $gaf_manager = GAFManager->new;
     $gaf_manager->schema($schema);
@@ -57,15 +47,36 @@ sub execute {
 
     my $guard = $self->schema->storage->txn_scope_guard;
 
+    if ( $self->prune ) {
+        $logger->warn('Pruning all annotations.');
+        my $prune_count
+            = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
+
+        #$schema->txn_do(
+        #sub { $schema->resultset('Sequence::FeatureCvterm')->delete_all }
+        #);
+        $schema->storage->dbh_do(
+            sub {
+                my ( $storage, $dbh ) = @_;
+                my $sth = $dbh->prepare(qq{DELETE FROM feature_cvterm});
+                $sth->execute;
+            }
+        );
+        $logger->info(
+            "Done! with pruning. " . $prune_count . " records deleted." );
+    }
+
     my $io;
     if ( $self->file ) {
         $io = IO::File->new( $self->file, 'r' );
+        $logger->info( "Reading from " . $self->file );
     }
     else {
         my $ebi_query = EBIQuery->new;
         my $response  = $ebi_query->query_ebi();
         $io = IO::String->new;
         $io->open($response);
+        $logger->info("No file provided. Querying EBI.");
     }
     while ( my $gaf = $io->getline ) {
         my @annotations = $gaf_manager->parse($gaf);
@@ -100,7 +111,7 @@ sub execute {
                 }
             );
 
-            if ( $anno->qualifier ne '' ) {
+            if ( $anno->qualifier ) {
                 $fcvt->create_related(
                     'feature_cvtermprops',
                     {   type_id => $gaf_manager->cvterm_qualifier,
@@ -110,7 +121,7 @@ sub execute {
                 );
             }
 
-            if ( $anno->date ne '' ) {
+            if ( $anno->date ) {
                 $fcvt->create_related(
                     'feature_cvtermprops',
                     {   type_id => $gaf_manager->cvterm_date,
@@ -120,7 +131,7 @@ sub execute {
                 );
             }
 
-            if ( $anno->with_from ne '' ) {
+            if ( $anno->with_from ) {
                 $fcvt->create_related(
                     'feature_cvtermprops',
                     {   type_id => $gaf_manager->cvterm_with_from,
@@ -130,7 +141,7 @@ sub execute {
                 );
             }
 
-            if ( $anno->assigned_by ne '' ) {
+            if ( $anno->assigned_by ) {
                 $fcvt->create_related(
                     'feature_cvtermprops',
                     {   type_id => $gaf_manager->cvterm_assigned_by,
@@ -146,6 +157,27 @@ sub execute {
     my $update_count
         = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
     $logger->info( $update_count . " annotations inserted" );
+}
+
+sub transform {
+    my ( $self, $schema ) = @_;
+    my $source = $schema->source('Sequence::FeatureCvtermprop');
+    $source->remove_column('value');
+    $source->add_column(
+        'value' => {
+            data_type   => 'clob',
+            is_nullable => 1
+        }
+    );
+    my $source2 = $schema->source('Pub::Pub');
+    $source2->remove_column('uniquename');
+    $source2->add_column(
+        'uniquename' => {
+            data_type   => 'varchar2',
+            is_nullable => 0
+        }
+    );
+    return $schema;
 }
 
 sub find {
@@ -164,33 +196,13 @@ package EBIQuery;
 
 use LWP::UserAgent;
 use Moose;
-use MooseX::Attribute::Dependent;
 
 has 'ebi_base_url' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => sub {
-        my ($self) = @_;
-        'http://www.ebi.ac.uk/QuickGO/GAnnotation?format='
-            . $self->format . '&db='
-            . $self->db;
-    },
-    lazy       => 1,
-    dependency => All [ 'format', 'db' ]
-);
-
-has 'format' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => 'gaf',
-    lazy    => 1
-);
-
-has 'db' => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => 'dictyBase',
-    lazy    => 1
+    is  => 'ro',
+    isa => 'Str',
+    default =>
+        'http://www.ebi.ac.uk/QuickGO/GAnnotation?format=gaf&db=dictyBase&limit=-1',
+    lazy => 1,
 );
 
 has 'ua' => (
@@ -212,7 +224,6 @@ sub query_ebi {
 package GAFManager;
 
 use Moose;
-use MooseX::Attribute::Dependent;
 
 has 'logger' => (
     is  => 'rw',
@@ -227,25 +238,21 @@ has 'schema' => (
 has 'cvterm_date' => (
     is  => 'rw',
     isa => 'Int',
-    dependency => All ['schema']
 );
 
 has 'cvterm_with_from' => (
     is  => 'rw',
     isa => 'Int',
-    dependency => All ['schema']
 );
 
 has 'cvterm_assigned_by' => (
     is  => 'rw',
     isa => 'Int',
-    dependency => All ['schema']
 );
 
 has 'cvterm_qualifier' => (
     is  => 'rw',
     isa => 'Int',
-    dependency => All ['schema']
 );
 
 sub parse {
@@ -379,7 +386,7 @@ has 'pub_for_dbref' => (
     },
     lazy       => 1,
     required   => 1,
-    dependency => All [ 'db_ref', '_schema' ]
+    dependency => All ['db_ref']
 );
 
 has 'cvterm_for_go' => (
@@ -407,7 +414,7 @@ has 'cvterm_for_go' => (
     },
     lazy       => 1,
     required   => 1,
-    dependency => All [ 'go_id', '_schema' ]
+    dependency => All ['go_id']
 );
 
 has 'cvterm_for_evidence_code' => (
@@ -435,7 +442,7 @@ has 'cvterm_for_evidence_code' => (
     },
     lazy       => 1,
     required   => 1,
-    dependency => All [ 'evidence_code', '_schema' ]
+    dependency => All ['evidence_code']
 );
 
 sub is_valid {
@@ -458,19 +465,15 @@ sub print {
         = $self->db . "\t"
         . $self->gene_id . "\t"
         . $self->gene_symbol . "\t"
-
-        #. $self->qualifier . "\t"
+        . $self->qualifier . "\t"
         . $self->go_id . "\t"
         . $self->db_ref . "\t"
         . $self->evidence_code . "\t"
-
-        #. $self->with_from . "\t"
+        . $self->with_from . "\t"
         . $self->aspect . "\t"
-
-        #. $self->taxon . "\t"
-        #. $self->date . "\t"
-        #. $self->assigned_by
-        . "\n";
+        . $self->taxon . "\t"
+        . $self->date . "\t"
+        . $self->assigned_by . "\n";
     print $row;
 }
 
@@ -484,16 +487,16 @@ C<Modware::Load::Command::ebigaf2chado> - Update dicty Chado with GAF from EBI
 
 =head1 VERSION
 
-version 0.0.5
+version 0.0.6
 
 =head1 SYNOPSIS
  
-	perl modware-load ebigaf2chado -c config.yaml --prune --file <go_annotations.gaf> --print_gaf 
+	perl modware-load ebigaf2chado -c config.yaml --prune --file <go_annotations.gaf> 
 
 =head1 REQUIRED ARGUMENTS
 
 	-c, --configfile 		Config file with required arguments
-	--file 					File with GO annotations in GAF format
+	--file 				File with GO annotations in GAF format
 
 =head1 DESCRIPTION
 
