@@ -142,7 +142,7 @@ sub fetch_logger {
     }
 
     my $layout = Log::Log4perl::Layout::PatternLayout->new(
-        "[%d{MM-dd-yyyy hh:mm}] %p > %F{1}:%L - %m%n");
+        "[%d{MM-dd-yyyy hh:mm:ss}] %p > %F{1}:%L - %m%n");
 
     my $log = Log::Log4perl->get_logger();
     $appender->layout($layout);
