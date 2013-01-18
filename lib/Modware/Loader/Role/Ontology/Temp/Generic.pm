@@ -94,7 +94,6 @@ sub load_cache {
     $self->$clean;
 }
 
-
 sub get_insert_term_hash {
     my ( $self,  $term )      = @_;
     my ( $db_id, $accession ) = $self->_normalize_id( $term->id );
@@ -121,17 +120,20 @@ sub get_insert_term_hash {
 }
 
 sub get_synonym_term_hash {
-	my ($self, $term, $term_insert_hash) = @_;
-	my $insert_array;
-	for my $syn($term->synonym_set) {
-		push @$insert_array,  {
-			accession => $term_insert_hash->{accession}, 
-			syn => $syn->def->text, 
-			syn_scope_id => $self->find_or_create_cvrow_id($syn->scope), 
-			db_id => $term_insert_hash->{db_id}
-		}
-	}
-	return $insert_array;
+    my ( $self, $term, $term_insert_hash ) = @_;
+    my $insert_array;
+    for my $syn ( $term->synonym_set ) {
+        push @$insert_array,
+            {
+            accession => $term_insert_hash->{accession},
+            syn       => $syn->def->text,
+            syn_scope_id =>
+                $self->find_or_create_cvterm_namespace( $syn->scope,
+                'synonym_type' )->cvterm_id,
+            db_id => $term_insert_hash->{db_id}
+            };
+    }
+    return $insert_array;
 }
 
 1;
