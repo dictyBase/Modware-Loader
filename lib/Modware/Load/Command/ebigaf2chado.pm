@@ -9,15 +9,19 @@ use Bio::Chado::Schema;
 use IO::String;
 use Moose;
 use namespace::autoclean;
+use Time::Piece;
 
 extends qw/Modware::Load::Chado/;
+
+has '+input'         => ( documentation => 'Name of the GAF file' );
+has '+input_handler' => ( traits        => [qw/NoGetopt/] );
 
 has 'prune' => (
     is            => 'rw',
     isa           => 'Bool',
-    default       => 0,
+    default       => 1,
     lazy          => 1,
-    documentation => 'Delete all annotations before loading, default is OFF'
+    documentation => 'Delete all annotations before loading, default is ON'
 );
 
 has 'print_gaf' => (
@@ -28,12 +32,12 @@ has 'print_gaf' => (
     documentation => 'Print GAF'
 );
 
-has 'file' => (
-    is            => 'rw',
-    isa           => 'Str',
-    documentation => 'Load GAF from this file',
-    required      => 1
-);
+#has 'file' => (
+#    is            => 'rw',
+#    isa           => 'Str',
+#    documentation => 'Load GAF from this file',
+#    required      => 1
+#);
 
 sub execute {
     my ($self) = @_;
@@ -65,9 +69,9 @@ sub execute {
     }
 
     my $io;
-    if ( $self->file ) {
-        $io = IO::File->new( $self->file, 'r' );
-        $logger->info( "Reading from " . $self->file );
+    if ( $self->input ) {
+        $io = IO::File->new( $self->input, 'r' );
+        $logger->info( "Reading from " . $self->input );
     }
     else {
         my $ebi_query = EBIQuery->new;
@@ -75,6 +79,9 @@ sub execute {
         $io = IO::String->new;
         $io->open($response);
         $logger->info("No file provided. Querying EBI.");
+        my $t = localtime;
+        my $bak_file = IO::File->new( 'dicty_' . $t->datetime . '.gaf', 'w' );
+        $bak_file->write();
     }
     while ( my $gaf = $io->getline ) {
         my @annotations = $gaf_manager->parse($gaf);
