@@ -32,6 +32,7 @@ has 'file' => (
     is            => 'rw',
     isa           => 'Str',
     documentation => 'Load GAF from this file',
+    required      => 1
 );
 
 sub execute {
@@ -52,9 +53,6 @@ sub execute {
         my $prune_count
             = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
 
-        #$schema->txn_do(
-        #sub { $schema->resultset('Sequence::FeatureCvterm')->delete_all }
-        #);
         $schema->storage->dbh_do(
             sub {
                 my ( $storage, $dbh ) = @_;
@@ -173,6 +171,14 @@ sub transform {
     $source2->remove_column('uniquename');
     $source2->add_column(
         'uniquename' => {
+            data_type   => 'varchar2',
+            is_nullable => 0
+        }
+    );
+    my $syn_src = $schema->source('Cv::Cvtermsynonym');
+    $syn_src->remove_column('synonym');
+    $syn_src->add_column(
+        'synonym_' => {
             data_type   => 'varchar2',
             is_nullable => 0
         }
@@ -422,12 +428,16 @@ has 'cvterm_for_evidence_code' => (
     isa     => 'Int',
     default => sub {
         my ($self) = @_;
-        my $evrs = $self->_schema->resultset('Cv::Cvterm')->search(
-            {   'cv.name' => { -like => 'evidence_code%' },
-                'cvtermsynonyms.synonym_' => $self->evidence_code
+        my $rs = $self->_schema->resultset('Cv::Cv')
+            ->search( { 'name' => { -like => 'evidence_code%' } } );
+        my $syn_rs = $rs->first->cvterms->search_related(
+            'cvtermsynonyms',
+            {   'type.name' => { -in => [qw/EXACT RELATED BROAD/] },
+                'cv.name'   => 'synonym_type'
             },
-            { join => [qw/cv cvtermsynonyms/], select => 'cvterm_id' }
+            { join => [ { 'type' => 'cv' } ] }
         );
+        my $evrs = $syn_rs->search( { 'synonym_' => $self->evidence_code } );
         if ( $evrs->count > 0 ) {
             return $evrs->first->cvterm_id;
         }
