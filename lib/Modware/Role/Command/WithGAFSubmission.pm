@@ -45,18 +45,34 @@ has 'gouser' => (
     documentation => 'username for go-svn repository'
 );
 
+has 'submission_name' => (
+    is => 'rw', 
+    isa => 'Str', 
+    default => 'gene_association.dictyBase.gz', 
+    lazy => 1
+
+);
+
 after 'execute' => sub {
 	my ($self) = @_;
 	my $logger = $self->logger;
-	$logger->debug("Starting checkout of go-svn");
+
+    $logger->debug("Saving compressed input to a temp file");
+    my $tmpfh = File::Temp->new;
+    my $filename = $tmpfh->filename;
+    $tmpfh->print($self->compressed_output);
+    $logger->debug("Saved compressed output to $filename");
+
+
+	$logger->info("Starting checkout of go-svn");
 
 	my $svn = SVN::Client->new;
 	$svn->checkout($self->submission_url, $self->checkout_folder,  'HEAD',  0);
-	copy $self->compressed_output, $self->checkout_folder;
-	$svn->add(catfile($self->checkout_folder, basename $self->compressed_output, 0);
+	copy $filename, catfile($self->checkout_folder, $self->submission_name);
+	$svn->add(catfile($self->checkout_folder, $self->submission_name, 0);
 	$svn->commit($self->checkout_folder, 0);
 
-	$logger->debug("commited ", $self->compressed_output,  " to go-svn");
+	$logger->info("commited ", $self->submission_name,  " to go-svn");
 
 };
 
