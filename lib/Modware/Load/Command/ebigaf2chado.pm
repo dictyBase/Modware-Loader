@@ -32,13 +32,6 @@ has 'print_gaf' => (
     documentation => 'Print GAF'
 );
 
-#has 'file' => (
-#    is            => 'rw',
-#    isa           => 'Str',
-#    documentation => 'Load GAF from this file',
-#    required      => 1
-#);
-
 sub execute {
     my ($self) = @_;
     my $logger = $self->logger;
@@ -79,9 +72,9 @@ sub execute {
         $io = IO::String->new;
         $io->open($response);
         $logger->info("No file provided. Querying EBI.");
-        my $t = localtime;
-        my $bak_file = IO::File->new( 'dicty_' . $t->datetime . '.gaf', 'w' );
-        $bak_file->write();
+        my $t        = localtime;
+        my $bak_file = IO::File->new( 'dicty_' . $t->datetime . '.gaf' );
+        $bak_file->write($response);
     }
     while ( my $gaf = $io->getline ) {
         my @annotations = $gaf_manager->parse($gaf);
@@ -166,17 +159,17 @@ sub execute {
 
 sub transform {
     my ( $self, $schema ) = @_;
-    my $source = $schema->source('Sequence::FeatureCvtermprop');
-    $source->remove_column('value');
-    $source->add_column(
+    my $fcvt_src = $schema->source('Sequence::FeatureCvtermprop');
+    $fcvt_src->remove_column('value');
+    $fcvt_src->add_column(
         'value' => {
             data_type   => 'clob',
             is_nullable => 1
         }
     );
-    my $source2 = $schema->source('Pub::Pub');
-    $source2->remove_column('uniquename');
-    $source2->add_column(
+    my $pub_src = $schema->source('Pub::Pub');
+    $pub_src->remove_column('uniquename');
+    $pub_src->add_column(
         'uniquename' => {
             data_type   => 'varchar2',
             is_nullable => 0
