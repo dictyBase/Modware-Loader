@@ -3,31 +3,26 @@ package Modware::Role::Command::CanCompress;
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
-use MooseX::Params::Validate;
 use IO::Compress::Gzip qw($GzipError gzip);
 
 # Module implementation
 #
 
-requires 'current_logger';
+requires 'output';
+has 'compressed_output' => ( is => 'rw',  isa => 'Str');
 
-sub compress {
+after 'execute' => sub  {
 	my $self = shift;
-	my ($input,  $output) = validated_list(
-		\@_, 	
-		input => { isa => 'Str'}, 
-		output => { isa => 'Str'}
-	);
-
-	my $logger = $self->current_logger;
-	if (gzip $input => $output) {
-		$logger->info("compressed $input to $output");
+	my $logger = $self->logger;
+	my $compressed;
+	if (gzip $self->output => \$compressed) {
+		$logger->info("compressed $input");
+		$self->compressed_output($compressed)
 	} 
 	else {
-		$logger->error($GzipError);
+		$logger->logdie($GzipError);
 	}
-}
+};
 
 
-1;    # Magic true value required at end of module
-
+1;
