@@ -9,15 +9,19 @@ use Bio::Chado::Schema;
 use IO::String;
 use Moose;
 use namespace::autoclean;
+use Time::Piece;
 
 extends qw/Modware::Load::Chado/;
+
+has '+input'         => ( documentation => 'Name of the GAF file' );
+has '+input_handler' => ( traits        => [qw/NoGetopt/] );
 
 has 'prune' => (
     is            => 'rw',
     isa           => 'Bool',
-    default       => 0,
+    default       => 1,
     lazy          => 1,
-    documentation => 'Delete all annotations before loading, default is OFF'
+    documentation => 'Delete all annotations before loading, default is ON'
 );
 
 has 'print_gaf' => (
@@ -26,12 +30,6 @@ has 'print_gaf' => (
     default       => 0,
     lazy          => 1,
     documentation => 'Print GAF'
-);
-
-has 'file' => (
-    is            => 'rw',
-    isa           => 'Str',
-    documentation => 'Load GAF from this file',
 );
 
 sub execute {
@@ -52,9 +50,6 @@ sub execute {
         my $prune_count
             = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
 
-        #$schema->txn_do(
-        #sub { $schema->resultset('Sequence::FeatureCvterm')->delete_all }
-        #);
         $schema->storage->dbh_do(
             sub {
                 my ( $storage, $dbh ) = @_;
@@ -67,9 +62,9 @@ sub execute {
     }
 
     my $io;
-    if ( $self->file ) {
-        $io = IO::File->new( $self->file, 'r' );
-        $logger->info( "Reading from " . $self->file );
+    if ( $self->input ) {
+        $io = IO::File->new( $self->input, 'r' );
+        $logger->info( "Reading from " . $self->input );
     }
     else {
         my $ebi_query = EBIQuery->new;
@@ -77,6 +72,9 @@ sub execute {
         $io = IO::String->new;
         $io->open($response);
         $logger->info("No file provided. Querying EBI.");
+        my $t        = localtime;
+        my $bak_file = IO::File->new( 'dicty_' . $t->datetime . '.gaf' );
+        $bak_file->write($response);
     }
     while ( my $gaf = $io->getline ) {
         my @annotations = $gaf_manager->parse($gaf);
@@ -161,18 +159,26 @@ sub execute {
 
 sub transform {
     my ( $self, $schema ) = @_;
-    my $source = $schema->source('Sequence::FeatureCvtermprop');
-    $source->remove_column('value');
-    $source->add_column(
+    my $fcvt_src = $schema->source('Sequence::FeatureCvtermprop');
+    $fcvt_src->remove_column('value');
+    $fcvt_src->add_column(
         'value' => {
             data_type   => 'clob',
             is_nullable => 1
         }
     );
-    my $source2 = $schema->source('Pub::Pub');
-    $source2->remove_column('uniquename');
-    $source2->add_column(
+    my $pub_src = $schema->source('Pub::Pub');
+    $pub_src->remove_column('uniquename');
+    $pub_src->add_column(
         'uniquename' => {
+            data_type   => 'varchar2',
+            is_nullable => 0
+        }
+    );
+    my $syn_src = $schema->source('Cv::Cvtermsynonym');
+    $syn_src->remove_column('synonym');
+    $syn_src->add_column(
+        'synonym_' => {
             data_type   => 'varchar2',
             is_nullable => 0
         }
@@ -422,12 +428,16 @@ has 'cvterm_for_evidence_code' => (
     isa     => 'Int',
     default => sub {
         my ($self) = @_;
-        my $evrs = $self->_schema->resultset('Cv::Cvterm')->search(
-            {   'cv.name' => { -like => 'evidence_code%' },
-                'cvtermsynonyms.synonym_' => $self->evidence_code
+        my $rs = $self->_schema->resultset('Cv::Cv')
+            ->search( { 'name' => { -like => 'evidence_code%' } } );
+        my $syn_rs = $rs->first->cvterms->search_related(
+            'cvtermsynonyms',
+            {   'type.name' => { -in => [qw/EXACT RELATED BROAD/] },
+                'cv.name'   => 'synonym_type'
             },
-            { join => [qw/cv cvtermsynonyms/], select => 'cvterm_id' }
+            { join => [ { 'type' => 'cv' } ] }
         );
+        my $evrs = $syn_rs->search( { 'synonym_' => $self->evidence_code } );
         if ( $evrs->count > 0 ) {
             return $evrs->first->cvterm_id;
         }
