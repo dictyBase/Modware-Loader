@@ -18,10 +18,17 @@ has 'prune' => (
     isa           => 'Bool',
     default       => 1,
     lazy          => 1,
-    documentation => ''
+    documentation => 'Prune all existing annotations, default is ON'
 );
 
-has 'print_gaf' => ( is => 'rw', isa => 'Bool', documentation => '' );
+has 'print_gaf' =>
+    ( is => 'rw', isa => 'Bool', documentation => 'Print GAF' );
+
+has 'limit' => (
+    is            => 'rw',
+    isa           => 'Int',
+    documentation => 'Limit for number of annotations to be loaded'
+);
 
 sub execute {
     my ($self) = @_;
@@ -39,6 +46,7 @@ sub execute {
     else {
         $loader->set_input( $manager->query_ebi() );
     }
+    $loader->set_limit( $self->limit );
 
     my $guard = $self->schema->storage->txn_scope_guard;
     if ( $self->prune ) {

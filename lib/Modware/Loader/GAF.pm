@@ -11,6 +11,8 @@ has 'gaf' => (
     isa => 'IO::File'
 );
 
+has 'limit' => ( is => 'rw', isa => 'Int', writer => 'set_limit' );
+
 has 'manager' => (
     is     => 'rw',
     isa    => 'Modware::Loader::GAF::Manager',
@@ -37,16 +39,15 @@ sub load_gaf {
                 next;
             }
             my $rank = $self->get_rank($annotation);
-            $self->manager->logger->debug( $annotation->gene_id . "\t"
-                    . $annotation->evidence_code . "\t"
-                    . $annotation->go_id . "\t"
-                    . $annotation->db_ref );
 
             $self->upsert( $annotation, $rank );
             $count = $count + 1;
-            if ( ( $count % 10000 ) == 0 ) {
+            if ( ( $count % 5000 ) == 0 ) {
                 $self->manager->logger->info(
-                    'Done loading ' . $count . ' annotations' );
+                    $count . ' annotations loaded so far' );
+            }
+            if ( $self->limit ) {
+                return if ( $self->limit == $count );
             }
         }
     }
