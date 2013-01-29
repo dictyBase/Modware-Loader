@@ -30,6 +30,7 @@ sub load_gaf {
         exit;
     }
     else {
+        my $count = 0;
         while ( my $row = $self->gaf->getline ) {
             my $annotation = $self->manager->parse($row);
             if ( !$annotation ) {
@@ -38,11 +39,21 @@ sub load_gaf {
             my $rank = $self->get_rank($annotation);
             $self->manager->logger->debug( $annotation->gene_id . "\t"
                     . $annotation->evidence_code . "\t"
-                    . $rank );
+                    . $annotation->go_id . "\t"
+                    . $annotation->db_ref );
 
             $self->upsert( $annotation, $rank );
+            $count = $count + 1;
+            if ( ( $count % 10000 ) == 0 ) {
+                $self->manager->logger->info(
+                    'Done loading ' . $count . ' annotations' );
+            }
         }
     }
+    $self->manager->logger->info( 'Finished loading '
+            . $self->manager->schema->resultset('Sequence::FeatureCvterm')
+            ->search( {}, {} )->count
+            . ' annotations' );
 }
 
 sub get_rank {

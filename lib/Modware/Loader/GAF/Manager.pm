@@ -190,7 +190,10 @@ sub get_cvterm_id_for_evidence_code {
 
 sub prune {
     my ($self) = @_;
-    $self->logger->warn('Pruning all annotations');
+    $self->logger->warn( 'Pruning '
+            . $self->schema->resultset('Sequence::FeatureCvterm')
+            ->search( {}, {} )->count
+            . ' annotations' );
     $self->schema->storage->dbh_do(
         sub {
             my ( $storage, $dbh ) = @_;
