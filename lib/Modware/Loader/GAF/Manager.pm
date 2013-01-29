@@ -23,9 +23,7 @@ has 'schema' => (
     writer  => 'set_schema',
     trigger => sub {
         my ( $self, $schema ) = @_;
-        return $self->transform_schema($schema);
-
-        #$self->_load_engine($schema);
+        $self->_load_engine($schema);
     },
 );
 
@@ -114,6 +112,32 @@ sub get_feature_id {
         ->first->feature_id;
 }
 
+has 'dbxref_rs' => (
+    is      => 'ro',
+    isa     => 'DBIx::Class::ResultSet',
+    default => sub {
+        my ($self) = @_;
+        return $self->schema->resultset('General::Dbxref')
+            ->search( {},
+            { cache => 1, select => [qw/dbxref_id accession/] } );
+    },
+    lazy => 1
+);
+
+sub get_dbxref_id {
+    my ( $self, $accession ) = @_;
+    $accession =~ s/^[A-Za-z]{1,10}://x;
+    my $dbxref_id;
+    my $rs = $self->dbxref_rs->search( { accession => $accession } );
+    if ( $rs->count > 0 ) {
+        $dbxref_id = $rs->first->dbxref_id;
+    }
+    else {
+        $self->logger->warn( 'dbxref_id NOT found for ' . $accession );
+    }
+    return $dbxref_id;
+}
+
 has 'cvterm_rs' => (
     is      => 'ro',
     isa     => 'DBIx::Class::ResultSet',
@@ -134,7 +158,7 @@ sub get_cvterm_id {
     my ( $self, $go_id ) = @_;
     $go_id =~ s/^GO://x;
     my $cvterm_id;
-    my $rs = $self->cvterm_rs->search( { 'dbxref.accession' => $go_id }, );
+    my $rs = $self->cvterm_rs->search( { 'dbxref.accession' => $go_id } );
     if ( $rs->count > 0 ) {
         $cvterm_id = $rs->first->cvterm_id;
     }
