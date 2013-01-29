@@ -5,9 +5,11 @@ package Modware::Loader::GAF::Manager;
 
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
-use MooseX::Attribute::Dependent;
 use namespace::autoclean;
 use Time::Piece;
+
+use Modware::Loader::GAF::Row;
+with 'Modware::Loader::Role::GAF::Chado::WithOracle';
 
 has 'logger' => (
     is     => 'rw',
@@ -21,19 +23,17 @@ has 'schema' => (
     writer  => 'set_schema',
     trigger => sub {
         my ( $self, $schema ) = @_;
-        $self->_load_engine($schema);
+        return $self->transform_schema($schema);
+
+        #$self->_load_engine($schema);
     },
 );
 
 sub _load_engine {
     my ( $self, $schema ) = @_;
     $self->meta->make_mutable;
-    $self->logger->debug('Setting up schema for Oracle');
     my $engine = 'Modware::Loader::Role::GAF::Chado::WithOracle';
 
-    #if ( !check_install( module => $engine ) ) {
-    #$engine = 'Modware::Loader::Role::Ontology::Chado::Generic';
-    #}
     ensure_all_roles( $self, $engine );
     $self->meta->make_immutable;
 }
@@ -43,22 +43,53 @@ has 'fcvtprop_rs' => (
     isa     => 'DBIx::Class::ResultSet',
     default => sub {
         my ($self) = @_;
-        my $rs
-            = $self->schema->resultset('Cv::Cvterm')
-            ->search( { 'cv.name' => 'gene_ontology_association' },
-            { join => 'cv', cache => 1, select => [qw/cvterm_id name/] } );
-        return $rs;
+        return $self->schema->resultset('Cv::Cv')->search(
+            { 'name' => 'gene_ontology_association' },
+            { cache  => 1, select => 'cv_id' }
+        );
     },
-	lazy => 1
+    lazy => 1
 );
 
 sub get_cvterm_for_feature_cvtermprop {
     my ( $self, $name ) = @_;
-    $self->fcvtprop_rs->search( { name => $name } )->first->cvterm_id;
+    return $self->fcvtprop_rs->first->cvterms->search( { 'name' => $name },
+        { select => 'cvterm_id' } )->first->cvterm_id;
 }
 
 sub parse {
+    my ( $self, $gaf_row ) = @_;
+    chomp($gaf_row);
+    return if $gaf_row =~ /^!/x;
 
+    my @row_vals = split( "\t", $gaf_row );
+    my $anno = Modware::Loader::GAF::Row->new;
+
+    $anno->db( $row_vals[0] );
+    $anno->gene_id( $row_vals[1] );
+    $anno->gene_symbol( $row_vals[2] );
+    $anno->qualifier( $row_vals[3] );
+    $anno->go_id( $row_vals[4] );
+    $anno->db_ref( $row_vals[5] );
+    $anno->evidence_code( $row_vals[6] );
+    $anno->with_from( $row_vals[7] );
+    $anno->aspect( $row_vals[8] );
+    $anno->taxon( $row_vals[12] );
+    $anno->date( $row_vals[13] );
+    $anno->assigned_by( $row_vals[14] );
+
+    $anno->feature_id( $self->get_feature_id( $anno->gene_id ) );
+    $anno->cvterm_id( $self->get_cvterm_id( $anno->go_id ) );
+    $anno->pub_id( $self->get_pub_id( $anno->db_ref ) );
+    $anno->cvterm_id_evidence_code(
+        $self->get_cvterm_id_for_evidence_code( $anno->evidence_code ) );
+
+    if ( $anno->is_valid() ) {
+        return $anno;
+    }
+    else {
+        return undef;
+    }
 }
 
 has 'feat_rs' => (
@@ -83,6 +114,31 @@ sub get_feature_id {
         ->first->feature_id;
 }
 
+has 'cvterm_rs' => (
+    is      => 'ro',
+    isa     => 'DBIx::Class::ResultSet',
+    default => sub {
+        my ($self) = @_;
+        return $self->schema->resultset('Cv::Cvterm')->search(
+            { 'db.name' => 'GO' },
+            {   join   => { dbxref => 'db' },
+                cache  => 1,
+                select => [qw/cvterm_id/]
+            }
+        );
+    },
+    lazy => 1
+);
+
+sub get_cvterm_id {
+    my ( $self, $go_id ) = @_;
+    $go_id =~ s/^GO://x;
+    my $rs = $self->cvterm_rs->search( { 'dbxref.accession' => $go_id }, );
+    if ($rs) {
+        return $rs->first->cvterm_id;
+    }
+}
+
 has 'pub_rs' => (
     is      => 'ro',
     isa     => 'DBIx::Class::ResultSet',
@@ -91,7 +147,7 @@ has 'pub_rs' => (
         return $self->schema->resultset('Pub::Pub')
             ->search( {}, { cache => 1, select => 'pub_id' } );
     },
-	lazy => 1
+    lazy => 1
 );
 
 sub get_pub_id {
@@ -99,7 +155,36 @@ sub get_pub_id {
     $dbref =~ s/^[A-Z_]{4,7}://x;
     my $rs = $self->pub_rs->search( { uniquename => $dbref } );
     if ($rs) {
-        return $rs->first_pub_id;
+        return $rs->first->pub_id;
+    }
+}
+
+has 'evidence_code_rs' => (
+    is      => 'ro',
+    isa     => 'DBIx::Class::ResultSet',
+    default => sub {
+        my ($self) = @_;
+        my $rs = $self->schema->resultset('Cv::Cv')
+            ->search( { 'name' => { -like => 'evidence_code%' } } );
+        return $rs->first->cvterms->search_related(
+            'cvtermsynonyms',
+            {   'type.name' => { -in => [qw/EXACT RELATED BROAD/] },
+                'cv.name'   => 'synonym_type'
+            },
+            {   join   => [ { 'type' => 'cv' } ],
+                cache  => 1,
+                select => [qw/cvterm_id synonym_/]
+            }
+        );
+    },
+    lazy => 1
+);
+
+sub get_cvterm_id_for_evidence_code {
+    my ( $self, $ev ) = @_;
+    my $rs = $self->evidence_code_rs->search( { 'synonym_' => $ev } );
+    if ($rs) {
+        return $rs->first->cvterm_id;
     }
 }
 
