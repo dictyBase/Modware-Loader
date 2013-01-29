@@ -25,6 +25,10 @@ sub set_input {
     $self->gaf($io);
 }
 
+=item load_gaf()
+	
+=cut
+
 sub load_gaf {
     my ($self) = @_;
     if ( !$self->gaf ) {
@@ -38,11 +42,15 @@ sub load_gaf {
             if ( !$annotation ) {
                 next;
             }
+
+            if ( $annotation->with_from =~ /\|/x ) {
+                $self->manager->logger->debug( $annotation->with_from );
+            }
             my $rank = $self->get_rank($annotation);
 
             $self->upsert( $annotation, $rank );
             $count = $count + 1;
-            if ( ( $count % 5000 ) == 0 ) {
+            if ( ( $count % 20 ) == 0 ) {
                 $self->manager->logger->info(
                     $count . ' annotations loaded so far' );
             }
@@ -56,6 +64,10 @@ sub load_gaf {
             ->search( {}, {} )->count
             . ' annotations' );
 }
+
+=item Get_rank()
+
+=cut
 
 sub get_rank {
     my ( $self, $annotation ) = @_;
@@ -119,6 +131,11 @@ sub upsert {
     }
 
     if ( $annotation->with_from ) {
+        my @dbxrefs;
+        if ( $annotation->with_from =~ /\|/x ) {
+            @dbxrefs = split( /\|/, $annotation->with_from );
+            $annotation->with_from( $dbxrefs[0] );
+        }
         $fcvt->create_related(
             'feature_cvtermprops',
             {   type_id =>
@@ -127,6 +144,17 @@ sub upsert {
                 rank  => $rank
             }
         );
+        if ( scalar(@dbxrefs) > 1 ) {
+            for my $i ( 1 .. scalar(@dbxrefs) - 1 ) {
+                #$self->manager->logger->debug( $i . "\t" . $dbxrefs[$i] );
+                $fcvt->create_related(
+                    'feature_cvterm_dbxrefs',
+                    {   dbxref_id =>
+                            $self->manager->get_dbxref_id( $dbxrefs[$i] )
+                    }
+                );
+            }
+        }
     }
 
     if ( $annotation->assigned_by ) {
