@@ -35,4 +35,25 @@ has [qw/go_id aspect db_ref evidence_code/] => (
     isa => 'Str'
 );
 
+has [qw/feature_id cvterm_id pub_id cvterm_id_evidence_code/] => (
+    is      => 'rw',
+    isa     => 'Int | Undef',
+    default => undef,
+    lazy    => 1
+);
+
+sub is_valid {
+    my ($self) = @_;
+
+    if (   $self->cvterm_id
+        && $self->cvterm_id_evidence_code
+        && $self->pub_id )
+    {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
 1;
