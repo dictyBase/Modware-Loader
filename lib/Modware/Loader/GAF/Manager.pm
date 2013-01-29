@@ -23,7 +23,9 @@ has 'schema' => (
     writer  => 'set_schema',
     trigger => sub {
         my ( $self, $schema ) = @_;
-        $self->_load_engine($schema);
+        return $self->transform_schema($schema);
+
+        #$self->_load_engine($schema);
     },
 );
 
@@ -118,7 +120,7 @@ has 'cvterm_rs' => (
     default => sub {
         my ($self) = @_;
         return $self->schema->resultset('Cv::Cvterm')->search(
-            { 'db.name' => 'GO' },
+            { 'db.name' => 'GO', },
             {   join   => { dbxref => 'db' },
                 cache  => 1,
                 select => [qw/cvterm_id/]
@@ -131,10 +133,16 @@ has 'cvterm_rs' => (
 sub get_cvterm_id {
     my ( $self, $go_id ) = @_;
     $go_id =~ s/^GO://x;
+    my $cvterm_id;
     my $rs = $self->cvterm_rs->search( { 'dbxref.accession' => $go_id }, );
-    if ($rs) {
-        return $rs->first->cvterm_id;
+    if ( $rs->count > 0 ) {
+        $cvterm_id = $rs->first->cvterm_id;
     }
+    else {
+        $self->logger->warn(
+            'Column 5 ID - GO:' . $go_id . ' DOES NOT exist' );
+    }
+    return $cvterm_id;
 }
 
 has 'pub_rs' => (
@@ -174,7 +182,7 @@ has 'evidence_code_rs' => (
             {   'type.name' => { -in => [qw/EXACT RELATED BROAD/] },
                 'cv.name'   => 'synonym_type'
             },
-            {   join   => [ { 'type' => 'cv' } ],
+            {   join   => { 'type' => 'cv' },
                 cache  => 1,
                 select => [qw/cvterm_id synonym_/]
             }
@@ -185,10 +193,14 @@ has 'evidence_code_rs' => (
 
 sub get_cvterm_id_for_evidence_code {
     my ( $self, $ev ) = @_;
+    my $evterm_id;
     my $rs = $self->evidence_code_rs->search( { 'synonym_' => $ev } );
     if ($rs) {
-        return $rs->first->cvterm_id;
+
+     #$self->logger->debug( $rs->first->get_column('synonym_') . "\t" . $ev );
+        $evterm_id = $rs->first->cvterm_id;
     }
+    return $evterm_id;
 }
 
 sub prune {
