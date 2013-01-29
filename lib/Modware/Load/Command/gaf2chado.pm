@@ -30,10 +30,6 @@ sub execute {
     $manager->set_logger( $self->logger );
     $manager->set_schema( $self->schema );
 
-    if ( $self->prune ) {
-        $manager->prune();
-    }
-
     my $loader = Modware::Loader::GAF->new;
     $loader->set_manager($manager);
 
@@ -45,8 +41,15 @@ sub execute {
     }
 
     my $guard = $self->schema->storage->txn_scope_guard;
+
+    if ( $self->prune ) {
+        $manager->prune();
+    }
+
     $loader->load_gaf();
+
     $guard->commit;
+    $manager->logger->info( 'Finished loading GAF from ' );
 
 }
 
