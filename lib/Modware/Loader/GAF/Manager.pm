@@ -23,9 +23,7 @@ has 'schema' => (
     writer  => 'set_schema',
     trigger => sub {
         my ( $self, $schema ) = @_;
-        return $self->transform_schema($schema);
-
-        #$self->_load_engine($schema);
+        $self->_load_engine($schema);
     },
 );
 
@@ -33,9 +31,9 @@ sub _load_engine {
     my ( $self, $schema ) = @_;
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::GAF::Chado::WithOracle';
-
     ensure_all_roles( $self, $engine );
     $self->meta->make_immutable;
+    $self->transform_schema($schema);
 }
 
 has 'fcvtprop_rs' => (
@@ -153,10 +151,15 @@ has 'pub_rs' => (
 sub get_pub_id {
     my ( $self, $dbref ) = @_;
     $dbref =~ s/^[A-Z_]{4,7}://x;
+    my $pub_id;
     my $rs = $self->pub_rs->search( { uniquename => $dbref } );
-    if ($rs) {
-        return $rs->first->pub_id;
+    if ( $rs->count > 0 ) {
+        $pub_id = $rs->first->pub_id;
     }
+    else {
+        $self->logger->warn( 'Column 6 ID - ' . $dbref . ' DOES NOT exist' );
+    }
+    return $pub_id;
 }
 
 has 'evidence_code_rs' => (
@@ -224,7 +227,7 @@ sub query_ebi {
     my $response = $self->_ua->get( $self->_ebi_goa_url );
     $response->is_success || die "NO GAF retrieved from EBI";
     my $t        = localtime;
-    my $filename = 'dicty_' . $t->datetime . '.gaf';
+    my $filename = 'dicty_' . $t->mdy("") . '.gaf';
     my $gaf_file = IO::File->new( $filename, 'w' );
     $gaf_file->write( $response->decoded_content );
     return $filename;
