@@ -71,6 +71,10 @@ sub parse {
     $anno->db_ref( $row_vals[5] );
     $anno->evidence_code( $row_vals[6] );
     $anno->with_from( $row_vals[7] );
+
+    if ( $anno->with_from =~ /\|/x ) {
+        $anno = $self->handle_dbxrefs($anno);
+    }
     $anno->aspect( $row_vals[8] );
     $anno->taxon( $row_vals[12] );
     $anno->date( $row_vals[13] );
@@ -220,11 +224,24 @@ sub get_cvterm_id_for_evidence_code {
     my $evterm_id;
     my $rs = $self->evidence_code_rs->search( { 'synonym_' => $ev } );
     if ($rs) {
-
-     #$self->logger->debug( $rs->first->get_column('synonym_') . "\t" . $ev );
         $evterm_id = $rs->first->cvterm_id;
     }
     return $evterm_id;
+}
+
+sub handle_dbxrefs {
+    my ( $self, $annotation ) = @_;
+    my @dbxrefs = split( /\|/, $annotation->with_from );
+    $annotation->with_from( $dbxrefs[0] );
+    for my $i ( 1 .. scalar(@dbxrefs) - 1 ) {
+        my $dbxref_id = $self->get_dbxref_id( $dbxrefs[$i] );
+        $self->logger->debug( $dbxrefs[$i] . "\t" . $dbxref_id );
+        next if !$dbxref_id;
+        $annotation->set_additional_dbxref($dbxref_id);
+
+    }
+    return $annotation;
+
 }
 
 sub prune {

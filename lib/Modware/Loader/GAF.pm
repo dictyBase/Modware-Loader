@@ -11,7 +11,7 @@ has 'gaf' => (
     isa => 'IO::File'
 );
 
-has 'limit' => ( is => 'rw', isa => 'Int', writer => 'set_limit' );
+has 'limit' => ( is => 'rw', isa => 'Int|Undef', writer => 'set_limit' );
 
 has 'manager' => (
     is     => 'rw',
@@ -43,9 +43,6 @@ sub load_gaf {
                 next;
             }
 
-            if ( $annotation->with_from =~ /\|/x ) {
-                $self->manager->logger->debug( $annotation->with_from );
-            }
             my $rank = $self->get_rank($annotation);
 
             $self->upsert( $annotation, $rank );
@@ -65,7 +62,7 @@ sub load_gaf {
             . ' annotations' );
 }
 
-=item Get_rank()
+=item get_rank()
 
 =cut
 
@@ -86,6 +83,10 @@ sub get_rank {
     }
     return $rank;
 }
+
+=item upsert()
+
+=cut
 
 sub upsert {
     my ( $self, $annotation, $rank ) = @_;
@@ -131,11 +132,6 @@ sub upsert {
     }
 
     if ( $annotation->with_from ) {
-        my @dbxrefs;
-        if ( $annotation->with_from =~ /\|/x ) {
-            @dbxrefs = split( /\|/, $annotation->with_from );
-            $annotation->with_from( $dbxrefs[0] );
-        }
         $fcvt->create_related(
             'feature_cvtermprops',
             {   type_id =>
@@ -144,15 +140,11 @@ sub upsert {
                 rank  => $rank
             }
         );
-        if ( scalar(@dbxrefs) > 1 ) {
-            for my $i ( 1 .. scalar(@dbxrefs) - 1 ) {
-                #$self->manager->logger->debug( $i . "\t" . $dbxrefs[$i] );
-                $fcvt->create_related(
-                    'feature_cvterm_dbxrefs',
-                    {   dbxref_id =>
-                            $self->manager->get_dbxref_id( $dbxrefs[$i] )
-                    }
-                );
+        if ( $annotation->has_dbxrefs ) {
+            $self->manager->logger->debug( $annotation->has_dbxrefs );
+            for my $i ( 0 .. $annotation->has_dbxrefs-1 ) {
+                $fcvt->create_related( 'feature_cvterm_dbxrefs',
+                    { dbxref_id => $annotation->get_dbxref($i) } );
             }
         }
     }
@@ -170,3 +162,15 @@ sub upsert {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+=head1 VERSION
+
+=head1 DESCRIPTION
+
+=head1 SYNOPSIS
+
+

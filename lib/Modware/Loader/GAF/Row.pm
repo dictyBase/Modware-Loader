@@ -42,6 +42,19 @@ has [qw/feature_id cvterm_id pub_id cvterm_id_evidence_code/] => (
     lazy    => 1
 );
 
+has 'dbxrefs' => (
+    traits  => ['Array'],
+    is      => 'rw',
+    isa     => 'ArrayRef[Int]',
+    default => sub { [] },
+    handles => {
+        set_additional_dbxref => 'push',
+        get_dbxref            => 'get',
+        has_no_dbxrefs        => 'is_empty',
+        has_dbxrefs           => 'count'
+    }
+);
+
 sub is_valid {
     my ($self) = @_;
 
