@@ -42,7 +42,9 @@ sub load_gaf {
             if ( !$annotation ) {
                 next;
             }
-
+            if ( $row =~ /SGD:S/x ) {
+                $self->manager->logger->debug($row);
+            }
             my $rank = $self->get_rank($annotation);
 
             $self->upsert( $annotation, $rank );
@@ -102,7 +104,6 @@ sub upsert {
         );
 
     if ( $annotation->has_pubs ) {
-        $self->manager->logger->debug( $annotation->has_pubs );
         for my $i ( 0 .. $annotation->has_pubs - 1 ) {
             $fcvt->create_related( 'feature_cvterm_pubs',
                 { pub_id => $annotation->get_pub($i) } );
