@@ -69,6 +69,9 @@ sub parse {
     $anno->qualifier( $row_vals[3] );
     $anno->go_id( $row_vals[4] );
     $anno->db_ref( $row_vals[5] );
+    if ( $anno->db_ref =~ /\|/x ) {
+        $anno = $self->handle_pubs($anno);
+    }
     $anno->evidence_code( $row_vals[6] );
     $anno->with_from( $row_vals[7] );
 
@@ -235,13 +238,23 @@ sub handle_dbxrefs {
     $annotation->with_from( $dbxrefs[0] );
     for my $i ( 1 .. scalar(@dbxrefs) - 1 ) {
         my $dbxref_id = $self->get_dbxref_id( $dbxrefs[$i] );
-        $self->logger->debug( $dbxrefs[$i] . "\t" . $dbxref_id );
         next if !$dbxref_id;
         $annotation->set_additional_dbxref($dbxref_id);
 
     }
     return $annotation;
+}
 
+sub handle_pubs {
+    my ( $self, $annotation ) = @_;
+    my @pubs = split( /\|/, $annotation->db_ref );
+    $annotation->db_ref( $pubs[0] );
+    for my $i ( 1 .. scalar(@pubs) - 1 ) {
+        my $pub_id = $self->get_pub_id( $pubs[$i] );
+        next if !$pub_id;
+        $annotation->set_additional_pub($pub_id);
+    }
+    return $annotation;
 }
 
 sub prune {

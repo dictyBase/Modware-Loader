@@ -55,6 +55,19 @@ has 'dbxrefs' => (
     }
 );
 
+has 'pubs' => (
+    traits  => ['Array'],
+    is      => 'rw',
+    isa     => 'ArrayRef[Int]',
+    default => sub { [] },
+    handles => {
+        set_additional_pub => 'push',
+        get_pub            => 'get',
+        has_pubs           => 'count',
+        has_no_pubs        => 'is_empty'
+    }
+);
+
 sub is_valid {
     my ($self) = @_;
 

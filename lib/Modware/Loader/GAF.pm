@@ -101,6 +101,14 @@ sub upsert {
         }
         );
 
+    if ( $annotation->has_pubs ) {
+        $self->manager->logger->debug( $annotation->has_pubs );
+        for my $i ( 0 .. $annotation->has_pubs - 1 ) {
+            $fcvt->create_related( 'feature_cvterm_pubs',
+                { pub_id => $annotation->get_pub($i) } );
+        }
+    }
+
     $fcvt->create_related(
         'feature_cvtermprops',
         {   type_id => $annotation->cvterm_id_evidence_code,
@@ -141,8 +149,7 @@ sub upsert {
             }
         );
         if ( $annotation->has_dbxrefs ) {
-            $self->manager->logger->debug( $annotation->has_dbxrefs );
-            for my $i ( 0 .. $annotation->has_dbxrefs-1 ) {
+            for my $i ( 0 .. $annotation->has_dbxrefs - 1 ) {
                 $fcvt->create_related( 'feature_cvterm_dbxrefs',
                     { dbxref_id => $annotation->get_dbxref($i) } );
             }
