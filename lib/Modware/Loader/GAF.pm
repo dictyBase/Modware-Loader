@@ -42,14 +42,11 @@ sub load_gaf {
             if ( !$annotation ) {
                 next;
             }
-            if ( $row =~ /SGD:S/x ) {
-                $self->manager->logger->debug($row);
-            }
             my $rank = $self->get_rank($annotation);
 
             $self->upsert( $annotation, $rank );
             $count = $count + 1;
-            if ( ( $count % 20 ) == 0 ) {
+            if ( ( $count % 5000 ) == 0 ) {
                 $self->manager->logger->info(
                     $count . ' annotations loaded so far' );
             }

@@ -120,49 +120,49 @@ sub get_feature_id {
         ->first->feature_id;
 }
 
-has 'dbxref_rs' => (
-    is      => 'ro',
-    isa     => 'DBIx::Class::ResultSet',
-    default => sub {
-        my ($self) = @_;
-        return $self->schema->resultset('General::Dbxref')->search(
-            {},
-            {   join  => 'db',
-                cache => 1,
+#has 'dbxref_rs' => (
+#    is      => 'ro',
+#    isa     => 'DBIx::Class::ResultSet',
+#    default => sub {
+#        my ($self) = @_;
+#        return $self->schema->resultset('General::Dbxref')->search(
+#            {},
+#            {   join  => 'db',
+#                cache => 1,
+#
+#                #        select =>
+#                #    [qw/dbxref.dbxref_id dbxref.accession db.name db.db_id/],
+#            }
+#        );
+#    },
+#    lazy => 1
+#);
 
-                #        select =>
-                #    [qw/dbxref.dbxref_id dbxref.accession db.name db.db_id/],
-            }
-        );
-    },
-    lazy => 1
-);
-
-sub get_dbxref_id {
-    my ( $self, $accession ) = @_;
-
-    #$accession =~ s/^[A-Za-z]{1,10}://x;
-    my @db_vals = split( /:/, $accession );
-
-    #my $dbxref_id;
-    if ( $db_vals[0] eq 'InterPro' ) {
-        $db_vals[0] = 'interpro';
-    }
-    $self->logger->debug(
-        $accession . "\t" . $db_vals[0] . "\t" . $db_vals[1] );
-    my $rs
-        = $self->schema->resultset('General::Dbxref')
-        ->find_or_create(
-        { 'dbxref.accession' => $db_vals[1], 'db.name' => $db_vals[0] } );
-    if ( $rs->count > 0 ) {
-        return $rs->first->dbxref_id;
-    }
-
-    #else {
-    #$self->logger->warn( 'dbxref_id NOT found for ' . $accession );
-    #}
-    #return $dbxref_id;
-}
+#sub get_dbxref_id {
+#    my ( $self, $accession ) = @_;
+#
+#    #$accession =~ s/^[A-Za-z]{1,10}://x;
+#    my @db_vals = split( /:/, $accession );
+#
+#    #my $dbxref_id;
+#    if ( $db_vals[0] eq 'InterPro' ) {
+#        $db_vals[0] = 'interpro';
+#    }
+#    $self->logger->debug(
+#        $accession . "\t" . $db_vals[0] . "\t" . $db_vals[1] );
+#    my $rs
+#        = $self->schema->resultset('General::Dbxref')
+#        ->find_or_create(
+#        { 'dbxref.accession' => $db_vals[1], 'db.name' => $db_vals[0] } );
+#    if ( $rs->count > 0 ) {
+#        return $rs->first->dbxref_id;
+#    }
+#
+#    #else {
+#    #$self->logger->warn( 'dbxref_id NOT found for ' . $accession );
+#    #}
+#    #return $dbxref_id;
+#}
 
 has 'cvterm_rs' => (
     is      => 'ro',
@@ -255,14 +255,10 @@ sub handle_dbxrefs {
     my ( $self, $annotation ) = @_;
     my @dbxrefs = split( /\|/, $annotation->with_from );
     $annotation->with_from( $dbxrefs[0] );
+    $self->find_or_create_dbxref_id( $dbxrefs[0] );
     for my $i ( 1 .. scalar(@dbxrefs) - 1 ) {
-
-        #my $dbxref_id = $self->get_dbxref_id( $dbxrefs[$i] );
         my $dbxref_id = $self->find_or_create_dbxref_id( $dbxrefs[$i] );
-        $self->logger->debug( "*** " . $dbxref_id );
-        next if !$dbxref_id;
         $annotation->set_additional_dbxref($dbxref_id);
-
     }
     return $annotation;
 }
