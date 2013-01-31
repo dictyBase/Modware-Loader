@@ -86,8 +86,8 @@ sub parse {
     $anno->date( $row_vals[13] );
     $anno->assigned_by( $row_vals[14] );
 
-    $anno->feature_id( $self->find_feature_id( $anno->gene_id ) );
-    $anno->cvterm_id( $self->find_cvterm_id( $anno->go_id ) );
+    $anno->feature_id( $self->get_feature_id( $anno->gene_id ) );
+    $anno->cvterm_id( $self->get_cvterm_id( $anno->go_id ) );
     $anno->pub_id( $self->find_pub_id( $anno->db_ref ) );
     $anno->cvterm_id_evidence_code(
         $self->find_cvterm_id_for_evidence_code( $anno->evidence_code ) );
@@ -99,90 +99,6 @@ sub parse {
         return undef;
     }
 }
-
-#has 'features' => (
-#    is      => 'rw',
-#    isa     => 'HashRef',
-#    traits  => [qw/Hash/],
-#    handles => {
-#        set_feature_id => 'set',
-#        get_feature_id => 'get',
-#        has_feature    => 'defined'
-#    },
-#    builder => '_populate_features',
-#    lazy    => 1
-#);
-#
-#sub _populate_features {
-#    my ($self) = @_;
-#    my $rs = $self->schema->resultset('Sequence::Feature')->search(
-#        { 'type.name' => 'gene' },
-#        {   join   => [qw/dbxref type/],
-#            select => [qw/dbxref.accession feature_id/]
-#        }
-#    );
-#    $rs->result_class('DBIx::Class::ResultClass::HashRefInflator');
-#    while ( my $ref = $rs->next ) {
-#        $self->set_feature_id(
-#            $ref->{dbxref}->{accession} => $ref->{feature_id} );
-#    }
-#}
-
-#has 'pub_rs' => (
-#    is      => 'ro',
-#    isa     => 'DBIx::Class::ResultSet',
-#    default => sub {
-#        my ($self) = @_;
-#        return $self->schema->resultset('Pub::Pub')
-#            ->search( {}, { cache => 1, select => 'pub_id' } );
-#    },
-#    lazy => 1
-#);
-#
-#sub get_pub_id {
-#    my ( $self, $dbref ) = @_;
-#    $dbref =~ s/^[A-Z_]{4,7}://x;
-#    my $pub_id;
-#    my $rs = $self->pub_rs->search( { uniquename => $dbref } );
-#    if ( $rs->count > 0 ) {
-#        $pub_id = $rs->first->pub_id;
-#    }
-#    else {
-#        $self->logger->warn( 'Column 6 ID - ' . $dbref . ' DOES NOT exist' );
-#    }
-#    return $pub_id;
-#}
-
-#has 'evidence_code_rs' => (
-#    is      => 'ro',
-#    isa     => 'DBIx::Class::ResultSet',
-#    default => sub {
-#        my ($self) = @_;
-#        my $rs = $self->schema->resultset('Cv::Cv')
-#            ->search( { 'name' => { -like => 'evidence_code%' } } );
-#        return $rs->first->cvterms->search_related(
-#            'cvtermsynonyms',
-#            {   'type.name' => { -in => [qw/EXACT RELATED BROAD/] },
-#                'cv.name'   => 'synonym_type'
-#            },
-#            {   join   => { 'type' => 'cv' },
-#                cache  => 1,
-#                select => [qw/cvterm_id synonym_/]
-#            }
-#        );
-#    },
-#    lazy => 1
-#);
-#
-#sub get_cvterm_id_for_evidence_code {
-#    my ( $self, $ev ) = @_;
-#    my $evterm_id;
-#    my $rs = $self->evidence_code_rs->search( { 'synonym_' => $ev } );
-#    if ($rs) {
-#        $evterm_id = $rs->first->cvterm_id;
-#    }
-#    return $evterm_id;
-#}
 
 sub handle_dbxrefs {
     my ( $self, $annotation ) = @_;

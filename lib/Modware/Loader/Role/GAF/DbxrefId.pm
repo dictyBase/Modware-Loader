@@ -5,22 +5,7 @@ package Modware::Loader::Role::GAF::DbxrefId;
 
 use Moose::Role;
 
-has 'dbxref_rs' => (
-    is      => 'ro',
-    isa     => 'DBIx::Class::ResultSet',
-    default => sub {
-        my ($self) = @_;
-        return $self->schema->resultset('General::Dbxref')->search(
-            {},
-            {   cache  => 1,
-                select => [qw/dbxref_id accession/],
-            }
-        );
-    },
-    lazy => 1
-);
-
-has 'dbrow' => (
+has '_dbrow' => (
     is      => 'rw',
     isa     => 'HashRef',
     traits  => [qw/Hash/],
@@ -33,7 +18,7 @@ has 'dbrow' => (
     }
 );
 
-has 'dbxref_row' => (
+has '_dbxref_row' => (
     is      => 'rw',
     isa     => 'HashRef',
     traits  => [qw/Hash/],
@@ -65,8 +50,10 @@ sub find_or_create_dbxref_id {
     if ( $self->has_dbxref_row( $db_vals[1] ) ) {
         return $self->get_dbxref_row( $db_vals[1] )->dbxref_id;
     }
-    my $schema = $self->schema;
-    my $row = $self->dbxref_rs->search( { accession => $db_vals[1] } );
+    my $row = $self->schema->resultset('General::Dbxref')->search(
+        { accession => $db_vals[1] },
+        { select [qw/dbxref_id accession/] }
+    );
     if ( $row->count > 0 ) {
         $self->set_dbxref_row( $db_vals[1], $row->first );
         return $self->get_dbxref_row( $db_vals[1] )->dbxref_id;
@@ -82,59 +69,63 @@ sub find_or_create_dbxref_id {
     }
 }
 
-has 'features' => (
+has '_features' => (
     is      => 'rw',
     isa     => 'HashRef',
     traits  => [qw/Hash/],
-    default => sub { {} },
     handles => {
         set_feature_id => 'set',
         get_feature_id => 'get',
         has_feature    => 'defined'
-    }
+    },
+    builder => '_populate_features',
+    lazy    => 1
 );
 
-sub find_feature_id {
-    my ( $self, $accession ) = @_;
-    if ( $self->has_feature($accession) ) {
-        return $self->get_feature_id($accession);
-    }
-    my $row = $self->schema->resultset('Sequence::Feature')->find(
-        { 'dbxref.accession' => $accession, 'type.name' => 'gene' },
+sub _populate_features {
+    my ($self) = @_;
+    my $stack;
+    my $rs = $self->schema->resultset('Sequence::Feature')->search(
+        { 'type.name' => 'gene' },
         {   join   => [qw/dbxref type/],
-            select => [qw/dbxref.accession me.feature_id/]
+            select => [qw/dbxref.accession feature_id/]
         }
     );
-    $self->set_feature_id( $accession, $row->feature_id );
-    $row->feature_id;
+    $rs->result_class('DBIx::Class::ResultClass::HashRefInflator');
+    while ( my $ref = $rs->next ) {
+        $stack->{ $ref->{dbxref}->{accession} } = $ref->{feature_id};
+    }
+    return $stack;
 }
 
-has 'cvterms' => (
+has '_cvterms' => (
     is      => 'rw',
     isa     => 'HashRef',
     traits  => [qw/Hash/],
-    default => sub { {} },
     handles => {
         set_cvterm_id => 'set',
         get_cvterm_id => 'get',
-        has_cvterm    => 'defined',
-    }
+        has_cvterm    => 'defined'
+    },
+    builder => '_populate_cvterms',
+    lazy    => 1
 );
 
-sub find_cvterm_id {
-    my ( $self, $go_id ) = @_;
-    $go_id =~ s/^GO://x;
-    if ( $self->has_cvterm($go_id) ) {
-        return $self->get_cvterm_id($go_id);
-    }
-    my $row = $self->schema->resultset('Cv::Cvterm')->search(
-        { 'db.name' => 'GO', 'dbxref.accession' => $go_id },
-        { join => { dbxref => 'db' }, cache => 1, select => [qw/cvterm_id/] }
+sub _populate_cvterms {
+    my ($self) = @_;
+    my $stack;
+    my $rs = $self->schema->resultset('Cv::Cvterm')->search(
+        { 'db.name' => 'GO' },
+        {   join   => { dbxref => 'db' },
+            select => [qw/db.name dbxref.accession cvterm_id/]
+        }
     );
-    if ( $row->count > 0 ) {
-        $self->set_cvterm_id( $go_id, $row->first->cvterm_id );
-        return $row->first->cvterm_id;
+    $rs->result_class('DBIx::Class::ResultClass::HashRefInflator');
+    while ( my $ref = $rs->next ) {
+        $stack->{ $ref->{db}->{name} . ":" . $ref->{dbxref}->{accession} }
+            = $ref->{cvterm_id};
     }
+    return $stack;
 }
 
 has 'ev_codes' => (
