@@ -82,4 +82,60 @@ sub find_or_create_dbxref_id {
     }
 }
 
+has 'features' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_feature_id => 'set',
+        get_feature_id => 'get',
+        has_feature    => 'defined'
+    }
+);
+
+sub find_feature_id {
+    my ( $self, $accession ) = @_;
+    if ( $self->has_feature($accession) ) {
+        return $self->get_feature_id($accession);
+    }
+    my $row = $self->schema->resultset('Sequence::Feature')->find(
+        { 'dbxref.accession' => $accession, 'type.name' => 'gene' },
+        {   join   => [qw/dbxref type/],
+            select => [qw/dbxref.accession me.feature_id/]
+        }
+    );
+    $self->set_feature_id( $accession, $row->feature_id );
+    $row->feature_id;
+}
+
+has 'cvterms' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_cvterm_id => 'set',
+        get_cvterm_id => 'get',
+        has_cvterm    => 'defined',
+    }
+);
+
+sub find_cvterm_id {
+    my ( $self, $go_id ) = @_;
+    $go_id =~ s/^GO://x;
+    if ( $self->has_cvterm($go_id) ) {
+        return $self->get_cvterm_id($go_id);
+    }
+    my $row = $self->schema->resultset('Cv::Cvterm')->search(
+        { 'db.name' => 'GO', 'dbxref.accession' => $go_id },
+        { join => { dbxref => 'db' }, cache => 1, select => [qw/cvterm_id/] }
+    );
+    if ( $row->count > 0 ) {
+        $self->set_cvterm_id( $go_id, $row->first->cvterm_id );
+        return $row->first->cvterm_id;
+    }
+}
+
 1;
+

@@ -3,6 +3,8 @@ use strict;
 
 package Modware::Loader::GAF::Manager;
 
+use Data::Dumper;
+use DBIx::Class::ResultClass::HashRefInflator;
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
 use namespace::autoclean;
@@ -84,8 +86,8 @@ sub parse {
     $anno->date( $row_vals[13] );
     $anno->assigned_by( $row_vals[14] );
 
-    $anno->feature_id( $self->get_feature_id( $anno->gene_id ) );
-    $anno->cvterm_id( $self->get_cvterm_id( $anno->go_id ) );
+    $anno->feature_id( $self->find_feature_id( $anno->gene_id ) );
+    $anno->cvterm_id( $self->find_cvterm_id( $anno->go_id ) );
     $anno->pub_id( $self->get_pub_id( $anno->db_ref ) );
     $anno->cvterm_id_evidence_code(
         $self->get_cvterm_id_for_evidence_code( $anno->evidence_code ) );
@@ -96,103 +98,6 @@ sub parse {
     else {
         return undef;
     }
-}
-
-has 'feat_rs' => (
-    is      => 'ro',
-    isa     => 'DBIx::Class::ResultSet',
-    default => sub {
-        my ($self) = @_;
-        return $self->schema->resultset('Sequence::Feature')->search(
-            { 'type.name' => 'gene' },
-            {   join   => [qw/dbxref type/],
-                cache  => 1,
-                select => [qw/dbxref.accession feature_id/]
-            }
-        );
-    },
-    lazy => 1
-);
-
-sub get_feature_id {
-    my ( $self, $gene_id ) = @_;
-    return $self->feat_rs->search( { 'dbxref.accession' => $gene_id } )
-        ->first->feature_id;
-}
-
-#has 'dbxref_rs' => (
-#    is      => 'ro',
-#    isa     => 'DBIx::Class::ResultSet',
-#    default => sub {
-#        my ($self) = @_;
-#        return $self->schema->resultset('General::Dbxref')->search(
-#            {},
-#            {   join  => 'db',
-#                cache => 1,
-#
-#                #        select =>
-#                #    [qw/dbxref.dbxref_id dbxref.accession db.name db.db_id/],
-#            }
-#        );
-#    },
-#    lazy => 1
-#);
-
-#sub get_dbxref_id {
-#    my ( $self, $accession ) = @_;
-#
-#    #$accession =~ s/^[A-Za-z]{1,10}://x;
-#    my @db_vals = split( /:/, $accession );
-#
-#    #my $dbxref_id;
-#    if ( $db_vals[0] eq 'InterPro' ) {
-#        $db_vals[0] = 'interpro';
-#    }
-#    $self->logger->debug(
-#        $accession . "\t" . $db_vals[0] . "\t" . $db_vals[1] );
-#    my $rs
-#        = $self->schema->resultset('General::Dbxref')
-#        ->find_or_create(
-#        { 'dbxref.accession' => $db_vals[1], 'db.name' => $db_vals[0] } );
-#    if ( $rs->count > 0 ) {
-#        return $rs->first->dbxref_id;
-#    }
-#
-#    #else {
-#    #$self->logger->warn( 'dbxref_id NOT found for ' . $accession );
-#    #}
-#    #return $dbxref_id;
-#}
-
-has 'cvterm_rs' => (
-    is      => 'ro',
-    isa     => 'DBIx::Class::ResultSet',
-    default => sub {
-        my ($self) = @_;
-        return $self->schema->resultset('Cv::Cvterm')->search(
-            { 'db.name' => 'GO', },
-            {   join   => { dbxref => 'db' },
-                cache  => 1,
-                select => [qw/cvterm_id/]
-            }
-        );
-    },
-    lazy => 1
-);
-
-sub get_cvterm_id {
-    my ( $self, $go_id ) = @_;
-    $go_id =~ s/^GO://x;
-    my $cvterm_id;
-    my $rs = $self->cvterm_rs->search( { 'dbxref.accession' => $go_id } );
-    if ( $rs->count > 0 ) {
-        $cvterm_id = $rs->first->cvterm_id;
-    }
-    else {
-        $self->logger->warn(
-            'Column 5 ID - GO:' . $go_id . ' DOES NOT exist' );
-    }
-    return $cvterm_id;
 }
 
 has 'pub_rs' => (
