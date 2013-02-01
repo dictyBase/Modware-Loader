@@ -50,20 +50,21 @@ sub find_or_create_dbxref_id {
     if ( $self->has_dbxref_row( $db_vals[1] ) ) {
         return $self->get_dbxref_row( $db_vals[1] )->dbxref_id;
     }
-    my $row = $self->schema->resultset('General::Dbxref')->search(
-        { accession => $db_vals[1] },
-        { select [qw/dbxref_id accession/] }
-    );
+    my $row
+        = $self->schema->resultset('General::Dbxref')
+        ->search( { accession => $db_vals[1] },
+        { select => [qw/dbxref_id accession/] } );
     if ( $row->count > 0 ) {
         $self->set_dbxref_row( $db_vals[1], $row->first );
         return $self->get_dbxref_row( $db_vals[1] )->dbxref_id;
     }
     else {
-        my $new_dbxref_row = $schema->resultset('General::Dbxref')->create(
+        my $new_dbxref_row
+            = $self->schema->resultset('General::Dbxref')->create(
             {   accession => $db_vals[1],
                 db_id     => $self->find_or_create_db_id( $db_vals[0] )
             }
-        );
+            );
         $self->set_dbxref_row( $db_vals[1], $new_dbxref_row );
         return $self->get_dbxref_row( $db_vals[1] )->dbxref_id;
     }
