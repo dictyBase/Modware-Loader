@@ -47,8 +47,8 @@ sub execute {
 
     if ( $self->prune ) {
         $logger->warn('Pruning all annotations.');
-        my $prune_count
-            = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
+
+#my $prune_count = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
 
         $schema->storage->dbh_do(
             sub {
@@ -57,8 +57,8 @@ sub execute {
                 $sth->execute;
             }
         );
-        $logger->info(
-            "Done! with pruning. " . $prune_count . " records deleted." );
+        $logger->info("Done! with pruning. ")
+            ;    # . $prune_count . " records deleted." );
     }
 
     my $io;
@@ -72,9 +72,10 @@ sub execute {
         $io = IO::String->new;
         $io->open($response);
         $logger->info("No file provided. Querying EBI.");
-        my $t        = localtime;
-        my $bak_file = IO::File->new( 'dicty_' . $t->datetime . '.gaf' );
+        my $t = localtime;
+        my $bak_file = IO::File->new( 'dicty_' . $t->datetime . '.gaf', 'w' );
         $bak_file->write($response);
+        $bak_file->close;
     }
     while ( my $gaf = $io->getline ) {
         my @annotations = $gaf_manager->parse($gaf);
@@ -151,6 +152,7 @@ sub execute {
         }
     }
     $guard->commit;
+    $io->close;
 
     my $update_count
         = $schema->resultset('Sequence::FeatureCvterm')->search()->count;
@@ -404,7 +406,10 @@ has 'cvterm_for_go' => (
         $id =~ s/^GO://x;
         my $gors = $self->_schema->resultset('Cv::Cvterm')->search(
             { 'dbxref.accession' => $id, 'db.name' => 'GO' },
-            { join => { dbxref => 'db' }, select => [qw/cvterm_id/] }
+            {   join   => { dbxref => 'db' },
+                cache  => 1,
+                select => [qw/cvterm_id/]
+            }
         );
         if ( $gors->count > 0 ) {
             return $gors->first->cvterm_id;
@@ -425,7 +430,7 @@ has 'cvterm_for_go' => (
 
 has 'cvterm_for_evidence_code' => (
     is      => 'ro',
-    isa     => 'Int',
+    isa     => 'Int | Undef',
     default => sub {
         my ($self) = @_;
         my $rs = $self->_schema->resultset('Cv::Cv')
@@ -435,7 +440,7 @@ has 'cvterm_for_evidence_code' => (
             {   'type.name' => { -in => [qw/EXACT RELATED BROAD/] },
                 'cv.name'   => 'synonym_type'
             },
-            { join => [ { 'type' => 'cv' } ] }
+            { join => [ { 'type' => 'cv' } ], cache => 1 }
         );
         my $evrs = $syn_rs->search( { 'synonym_' => $self->evidence_code } );
         if ( $evrs->count > 0 ) {

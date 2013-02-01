@@ -11,3 +11,4 @@ log/
 sqlnet.log
 tmp/
 perltidy.LOG
+*.gaf
