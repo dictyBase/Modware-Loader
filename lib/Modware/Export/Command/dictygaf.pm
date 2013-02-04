@@ -17,7 +17,6 @@ has '+input'          => ( traits => [qw/NoGetopt/] );
 has '+data_dir'       => ( traits => [qw/NoGetopt/] );
 has '+output_handler' => ( traits => [qw/NoGetopt/] );
 
-
 has '+source_url' => (
     default => 'www.dictybase.org',
     documentation =>
@@ -128,15 +127,26 @@ sub get_description {
         { prefetch   => 'locus_gene_product' }
     );
 
-    my @desc;
+    my $desc;
+    my $date_created;
     while ( my $row = $rs->next ) {
-        push @desc, $row->locus_gene_product->gene_product;
-    }
+        if ($date_created) {
+            my $t
+                = Time::Piece->strptime(
+                $row->locus_gene_product->date_created, "%d-%b-%y" );
+            if ( $date_created < $t ) {
+                $desc         = $row->locus_gene_product->gene_product;
+                $date_created = $t;
+            }
+        }
+        else {
+            $desc         = $row->locus_gene_product->gene_product;
+            $date_created = Time::Piece->strptime(
+                $row->locus_gene_product->date_created, "%d-%b-%y" );
+        }
 
-    if (@desc) {
-        return $desc[0] if @desc == 1;
-        return join( ",", @desc );
     }
+    return $desc;
 }
 
 sub get_provenance {
