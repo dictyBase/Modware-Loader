@@ -3,11 +3,10 @@ package Modware::Role::Command::GOA::Dicty::AppendDuplicate;
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
-use File::AtomicWrite;
 use YAML qw/Load/;
-use feature qw/say/;
 use autodie qw/open close/;
 use IO::File;
+use File::ShareDir qw/module_file/;
 
 requires 'input';
 
@@ -20,16 +19,28 @@ before 'execute' => sub {
     my $input  = $self->input;
     $logger->logdie("no input found") if !$input;
 
+    # Load the actin duplicates
     my $data = Load(
         do { local ($/); <DATA> }
     );
     my $sections = [ map {$_} keys %$data ];
 
-    my $reader = IO::File->new($input,  'r');
+    #Load the chr2 duplicates
+    my $dup_file
+        = IO::File->new( module_file( 'Modware::Loader', 'chr2dups.txt' ),
+        'r' );
+    my $dups;
+    while ( my $line = $dup_file->getline ) {
+        chomp $line;
+        my @values = split /\t/, $line;
+        $dups->{ $values[0] } = $values[1];
+    }
+    $dup_file->close;
+
+    my $reader = IO::File->new( $input, 'r' );
     my $copy_annotations;
 GAF:
     while ( my $line = $reader->getline ) {
-        last GAF if keys %$data == 0;
         next if $line =~ /^\!/;
 
         chomp $line;
@@ -37,9 +48,9 @@ GAF:
         my $mod_id = $gaf_line[1];
 
         for my $name (@$sections) {
-            if ( exists $data->{$name}->{$mod_id} ) {
-                delete $data->{$name}->{$mod_id};
-                for my $id ( keys %{ $data->{$name} } ) {
+            if ( exists $data->{$name}->{$mod_id} ) {    #deal with actins
+                for my $id ( grep { $_ ne $mod_id } keys %{ $data->{$name} } )
+                {
                     my @anno_line = @gaf_line;
                     $anno_line[1] = $id;
                     push @$copy_annotations, join( "\t", @anno_line );
@@ -47,11 +58,16 @@ GAF:
                 delete $data->{$name};
             }
         }
+        if ( exists $dups->{$mod_id} ) {    #deal with chr2 duplicate
+            my @anno_line = @gaf_line;
+            $anno_line[1] = $dups->{$mod_id};
+            push @$copy_annotations, join( "\t", @anno_line );
+        }
     }
     $reader->close;
 
-    my $writer = IO::File->new( $input ,  'a');
-    $writer->print( join( "\n", @$copy_annotations ),  "\n" );
+    my $writer = IO::File->new( $input, 'a' );
+    $writer->print( join( "\n", @$copy_annotations ), "\n" );
     $writer->close;
 };
 
