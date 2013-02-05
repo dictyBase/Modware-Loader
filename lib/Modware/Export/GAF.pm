@@ -14,7 +14,7 @@ use Moose::Util qw/ensure_all_roles/;
 
 extends qw/Modware::Export::Command/;
 
-with 'Modware::Exporter::Role::GAF::WithDataStash';
+#with 'Modware::Exporter::Role::GAF::WithDataStash';
 
 has '+input'          => ( traits => [qw/NoGetopt/] );
 has '+data_dir'       => ( traits => [qw/NoGetopt/] );
@@ -202,7 +202,7 @@ sub execute {
     );
 
     if ( $self->sample_run ) {
-        $assoc_rs = $assoc_rs->search( {}, { rows => 2000 } );
+        $assoc_rs = $assoc_rs->search( {}, { rows => 5000 } );
     }
 
     $log->info( 'Processing ', $assoc_rs->count, ' entries' );
@@ -276,7 +276,7 @@ sub execute {
             }
 
             #if ( $self->has_xrefs( $assoc->feature_cvterm_id ) ) {
-            my $xrefs = $self->get_xrefs( $assoc->feature_cvterm_id );
+            my $xrefs = $self->get_xrefs($assoc);
             if ($xrefs) {
                 $gaf_row = $gaf_row . "|" . $xrefs;
                 print $xrefs. "\t";
@@ -342,22 +342,25 @@ sub get_provenance {
     $self->pub->pubplace . ':' . $row->pub->uniquename;
 }
 
-#sub get_xrefs {
-#    my ( $self, $row ) = @_;
-#    my $dbxref_rs
-#        = $row->feature_cvterm_dbxrefs->search_related( 'dbxref', {},
-#        { join => 'db', select => [qw/accession db.name/] } );
-#    my @xrefs;
-#    while ( my $xref = $dbxref_rs->next ) {
-#
-#        #return [ map { $_->db->name => $_->accession } $dbxref_rs->all ];
-#        push @xrefs, $xref->db->name . ":" . $xref->accession;
-#    }
-#    if (@xrefs) {
-#        return $xrefs[0] if @xrefs == 1;
-#        return join( "|", @xrefs );
-#    }
-#}
+sub get_xrefs {
+    my ( $self, $row ) = @_;
+    my $dbxref_rs
+        = $row->feature_cvterm_dbxrefs->search_related( 'dbxref', {},
+        { join => 'db', select => [qw/accession db.name/] } );
+    my @xrefs;
+    if ( $dbxref_rs->count > 0 ) {
+        while ( my $xref = $dbxref_rs->next ) {
+
+            #return [ map { $_->db->name => $_->accession } $dbxref_rs->all ];
+            push @xrefs, $xref->db->name . ":" . $xref->accession;
+        }
+        if (@xrefs) {
+            return $xrefs[0] if @xrefs == 1;
+            return join( "|", @xrefs );
+        }
+    }
+    return;
+}
 
 sub get_qualifiers {
     my ( $self, $rs ) = @_;
