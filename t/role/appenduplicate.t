@@ -14,7 +14,7 @@ has 'test_input' => (
     trigger => sub {
         my ( $self, $file ) = @_;
         my $handler = IO::File->new( $file, 'r' );
-        my $fh = File::Temp->new(unlink => 0);
+        my $fh = File::Temp->new( unlink => 0 );
         while ( my $line = $handler->getline ) {
             $fh->print($line);
         }
@@ -24,7 +24,7 @@ has 'test_input' => (
 );
 
 sub execute {
-    my ($self, $output) = @_;
+    my ( $self, $output ) = @_;
     my $handler = IO::File->new( $self->input, 'r' );
     while ( my $line = $handler->getline ) {
         $output->print($line);
@@ -44,20 +44,24 @@ use FindBin qw/$Bin/;
 use Test::Exception;
 use Test::File;
 use IO::File;
+use Module::Build;
+use File::Spec::Functions;
 
 my $test = new_ok('TestDuplicate');
-$test->test_input("$Bin/../data/testdicty.gaf");
+$test->test_input(
+    catfile( Module::Build->current->base_dir, 't', 'datafile', 'testdicty.gaf' )
+);
 
-file_exists_ok($test->input);
-file_line_count_is($test->input,  12);
+file_exists_ok( $test->input );
+file_line_count_is( $test->input, 16 );
 
 my $output;
-my $handler = IO::File->new(\$output, 'w');
-lives_ok {$test->execute($handler) }  'it runs the execute method';
+my $handler = IO::File->new( \$output, 'w' );
+lives_ok { $test->execute($handler) } 'it runs the execute method';
 $handler->close;
 
-my $reader = IO::File->new(\$output,  'r');
+my $reader = IO::File->new( \$output, 'r' );
 my $count = 0;
-while(<$reader>) { $count++ }
+while (<$reader>) { $count++ }
 $reader->close;
-is($count,  28,  'it should have 28 lines in the output');
+is( $count, 52, 'it should have 28 lines in the output' );
