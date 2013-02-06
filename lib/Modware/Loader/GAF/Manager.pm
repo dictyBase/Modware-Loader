@@ -4,7 +4,6 @@ use strict;
 package Modware::Loader::GAF::Manager;
 
 use Data::Dumper;
-use DBIx::Class::ResultClass::HashRefInflator;
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
 use namespace::autoclean;
@@ -12,7 +11,7 @@ use Time::Piece;
 
 use Modware::Loader::GAF::Row;
 with 'Modware::Loader::Role::GAF::Chado::WithOracle';
-with 'Modware::Loader::Role::GAF::DbxrefId';
+with 'Modware::Loader::Role::GAF::IdStash';
 
 has 'logger' => (
     is     => 'rw',
