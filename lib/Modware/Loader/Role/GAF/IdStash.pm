@@ -1,7 +1,7 @@
 
 use strict;
 
-package Modware::Loader::Role::GAF::DbxrefId;
+package Modware::Loader::Role::GAF::IdStash;
 
 use Moose::Role;
 
