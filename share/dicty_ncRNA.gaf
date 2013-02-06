@@ -1,0 +1,203 @@
+dictyBase	DDB_G0295487	r28		GO:0008150	dictyBase_REF:2	ND		P	class I RNA	DdR-28	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295493	srpB		GO:0008150	dictyBase_REF:2	ND		P	SRP RNA,signal recognition particle RNA	DdR20B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295495	r35		GO:0008150	dictyBase_REF:2	ND		P	class II RNA,scRNA	DdR-35	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295499	sno3		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR3|r3	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295503	r30		GO:0008150	dictyBase_REF:2	ND		P	class I RNA	DdR-30	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295507	r42		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295509	r43		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295511	sno10		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR10|r10	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295513	r41		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295515	r44		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295517	sno17		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR17|r17	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295525	sno11b		GO:0008150	dictyBase_REF:2	ND		P	putative C/D box snoRNA,putative C/D-box small nucleolar RNA	DdR11|r11	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295527	sno11a		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR11|r11	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295531	sno6		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR6|r6	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295533	r45		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295535	r29		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-29	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295537	r46		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295539	r25		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-25	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295541	r47		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295543	sno18		GO:0008150	dictyBase_REF:2	ND		P	H/ACA box snoRNA,H/ACA-box small nucleolar RNA	DdR18|r18	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295545	sno4		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR4|r4	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295547	r36		GO:0008150	dictyBase_REF:2	ND		P	class II RNA,scRNA	DdR-36	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295551	sno14		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR14|r14	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295553	r33		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-33	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295555	sno9		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR9|r9	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295561	sno15		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR15|r15	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295563	r48		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295565	r49		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295567	r50		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295569	r51		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295571	r22		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-22	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295573	r52		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295575	r23C		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-23C	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295577	r24A		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-24A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295579	r23B		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-23B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295581	r53		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295583	r26		GO:0008150	dictyBase_REF:2	ND		P	class I RNA	DdR-26	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295585	r23A		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-23A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294413	srpA		GO:0008150	dictyBase_REF:2	ND		P	SRP RNA,signal recognition particle RNA	DdR20A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294415	r21		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-21	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295587	r24B		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-24B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295589	r54		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295591	r55		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295595	r56		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295597	r57		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295599	r32		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-32	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295601	r34		GO:0008150	dictyBase_REF:2	ND		P	class I RNA,scRNA	DdR-34	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295603	sno8		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR8|r8	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295605	sno12		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR12|r12	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295607	r31		GO:0008150	dictyBase_REF:2	ND		P	class I RNA	DdR-31	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295609	r58		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295615	sno7		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR7|r7	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295617	sno5		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR5|r5	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295619	sno2		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR2|r2	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295621	sno13		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR13|r13	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295631	sno16		GO:0008150	dictyBase_REF:2	ND		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR16|r16	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295633	r59		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295635	r60		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295637	r61		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295639	r62		GO:0008150	dictyBase_REF:2	ND		P	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294409	sno1		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR1|r1	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294413	srpA		GO:0005575	dictyBase_REF:2	ND		C	SRP RNA,signal recognition particle RNA	DdR20A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295493	srpB		GO:0005575	dictyBase_REF:2	ND		C	SRP RNA,signal recognition particle RNA	DdR20B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295499	sno3		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR3|r3	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295507	r42		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295509	r43		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295511	sno10		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR10|r10	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295513	r41		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295515	r44		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295517	sno17		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR17|r17	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295525	sno11b		GO:0005575	dictyBase_REF:2	ND		C	putative C/D box snoRNA,putative C/D-box small nucleolar RNA	DdR11|r11	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295527	sno11a		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR11|r11	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295531	sno6		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR6|r6	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295533	r45		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295537	r46		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295541	r47		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295543	sno18		GO:0005575	dictyBase_REF:2	ND		C	H/ACA box snoRNA,H/ACA-box small nucleolar RNA	DdR18|r18	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295545	sno4		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR4|r4	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295551	sno14		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR14|r14	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295555	sno9		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR9|r9	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295561	sno15		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR15|r15	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295563	r48		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295565	r49		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295567	r50		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295569	r51		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295573	r52		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295581	r53		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295589	r54		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295591	r55		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295595	r56		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295597	r57		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295603	sno8		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR8|r8	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295605	sno12		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR12|r12	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295609	r58		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295615	sno7		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR7|r7	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295617	sno5		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR5|r5	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295619	sno2		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR2|r2	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295621	sno13		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR13|r13	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295631	sno16		GO:0005575	dictyBase_REF:2	ND		C	C/D-box small nucleolar RNA,C/D box snoRNA	DdR16|r16	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295633	r59		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295635	r60		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295637	r61		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295639	r62		GO:0005575	dictyBase_REF:2	ND		C	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294413	srpA		GO:0003674	dictyBase_REF:2	ND		F	SRP RNA,signal recognition particle RNA	DdR20A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294415	r21		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-21	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294515	dutA		GO:0003674	dictyBase_REF:2	ND		F	structural RNA		gene	taxon:44689	20070625	dictyBase		
+dictyBase	DDB_G0295487	r28		GO:0003674	dictyBase_REF:2	ND		F	class I RNA	DdR-28	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295493	srpB		GO:0003674	dictyBase_REF:2	ND		F	SRP RNA,signal recognition particle RNA	DdR20B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295495	r35		GO:0003674	dictyBase_REF:2	ND		F	class II RNA,scRNA	DdR-35	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295499	sno3		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR3|r3	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295503	r30		GO:0003674	dictyBase_REF:2	ND		F	class I RNA	DdR-30	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295507	r42		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295509	r43		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295511	sno10		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR10|r10	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295513	r41		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295515	r44		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295517	sno17		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR17|r17	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295525	sno11b		GO:0003674	dictyBase_REF:2	ND		F	putative C/D box snoRNA,putative C/D-box small nucleolar RNA	DdR11|r11	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295527	sno11a		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR11|r11	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295531	sno6		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR6|r6	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295533	r45		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295535	r29		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-29	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295537	r46		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295539	r25		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-25	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295541	r47		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295543	sno18		GO:0003674	dictyBase_REF:2	ND		F	H/ACA box snoRNA,H/ACA-box small nucleolar RNA	DdR18|r18	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295545	sno4		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR4|r4	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295547	r36		GO:0003674	dictyBase_REF:2	ND		F	class II RNA,scRNA	DdR-36	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295551	sno14		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR14|r14	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295553	r33		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-33	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295555	sno9		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR9|r9	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295561	sno15		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR15|r15	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295563	r48		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295565	r49		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295567	r50		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295569	r51		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295571	r22		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-22	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295573	r52		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295575	r23C		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-23C	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295577	r24A		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-24A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295579	r23B		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-23B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295581	r53		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295583	r26		GO:0003674	dictyBase_REF:2	ND		F	class I RNA	DdR-26	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295585	r23A		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-23A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295587	r24B		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-24B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295589	r54		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295591	r55		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295595	r56		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295597	r57		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295599	r32		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-32	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295601	r34		GO:0003674	dictyBase_REF:2	ND		F	class I RNA,scRNA	DdR-34	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295603	sno8		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR8|r8	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295605	sno12		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR12|r12	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295607	r31		GO:0003674	dictyBase_REF:2	ND		F	class I RNA	DdR-31	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295609	r58		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295615	sno7		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR7|r7	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295617	sno5		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR5|r5	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295619	sno2		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR2|r2	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295621	sno13		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR13|r13	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295631	sno16		GO:0003674	dictyBase_REF:2	ND		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR16|r16	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295633	r59		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295635	r60		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295637	r61		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295639	r62		GO:0003674	dictyBase_REF:2	ND		F	putative class I RNA,putative scRNA		gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295593	pRNA		GO:0005655	PMID:17207566	IPI	dictyBase:DDB0232069	C	ribonuclease P RNA	RNase P RNA	gene	taxon:44689	20080126	dictyBase		
+dictyBase	DDB_G0294515	dutA		GO:0031154	PMID:17435008	IGI	dictyBase:DDB0215388	P	structural RNA		gene	taxon:44689	20070626	dictyBase		
+dictyBase	DDB_G0294515	dutA		GO:0042509	PMID:17435008	IMP		P	structural RNA		gene	taxon:44689	20100930	dictyBase		
+dictyBase	DDB_G0294411	rnu1a		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U1A|DdR37A	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295489	rnu2c		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U2C|DdR19C	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295491	rnu2a		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U2A|DdR19A	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295497	rnu2b		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U2B|DdR19B	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295501	rnu2g		GO:0005737	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U2G|DdR19G	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295521	rnu2e		GO:0005737	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U2E|DdR19E	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295523	rnu2f		GO:0005737	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U2F|DdR19F	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295529	rnu4c		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U4C|DdR38C	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295549	rnu1b		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U1B|DdR37B	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295557	rnu4b		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U4B|DdR38B	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295559	rnu4a		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U4A|DdR38A	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295625	rnu5a		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	U5A|DdR39A	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0295627	rnu5b		GO:0005634	PMID:16757740	IDA		C	snRNA,small nuclear RNA	DdR39A|U5B	gene	taxon:44689	20070312	dictyBase		
+dictyBase	DDB_G0294409	sno1		GO:0030561	PMID:15333696	IDA		F	C/D-box small nucleolar RNA,C/D box snoRNA	DdR1|r1	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294409	sno1		GO:0031167	PMID:15333696	IDA		P	C/D-box small nucleolar RNA,C/D box snoRNA	DdR1|r1	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0294415	r21		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-21	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295487	r28		GO:0005737	PMID:15333696	IDA		C	class I RNA	DdR-28	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295495	r35		GO:0005737	PMID:15333696	IDA		C	class II RNA,scRNA	DdR-35	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295503	r30		GO:0005737	PMID:15333696	IDA		C	class I RNA	DdR-30	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295535	r29		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-29	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295539	r25		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-25	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295547	r36		GO:0005737	PMID:15333696	IDA		C	class II RNA,scRNA	DdR-36	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295553	r33		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-33	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295571	r22		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-22	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295575	r23C		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-23C	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295577	r24A		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-24A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295579	r23B		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-23B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295583	r26		GO:0005737	PMID:15333696	IDA		C	class I RNA	DdR-26	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295585	r23A		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-23A	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295587	r24B		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-24B	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295599	r32		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-32	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295601	r34		GO:0005737	PMID:15333696	IDA		C	class I RNA,scRNA	DdR-34	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295607	r31		GO:0005737	PMID:15333696	IDA		C	class I RNA	DdR-31	gene	taxon:44689	20070126	dictyBase		
+dictyBase	DDB_G0295593	pRNA		GO:0004526	PMID:7737203	IDA		F	ribonuclease P RNA	RNase P RNA	gene	taxon:44689	20100601	dictyBase		
+dictyBase	DDB_G0295593	pRNA		GO:0008033	PMID:7737203	IDA		P	ribonuclease P RNA	RNase P RNA	gene	taxon:44689	20100601	dictyBase		
+dictyBase	DDB_G0294515	dutA		GO:0005625	PMID:8127653	IDA		C	structural RNA		gene	taxon:44689	20070625	dictyBase		
