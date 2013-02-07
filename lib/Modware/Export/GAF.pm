@@ -14,8 +14,6 @@ use Moose::Util qw/ensure_all_roles/;
 
 extends qw/Modware::Export::Command/;
 
-#with 'Modware::Exporter::Role::GAF::WithDataStash';
-
 has '+input'          => ( traits => [qw/NoGetopt/] );
 has '+data_dir'       => ( traits => [qw/NoGetopt/] );
 has '+output_handler' => ( traits => [qw/NoGetopt/] );
@@ -200,7 +198,7 @@ sub execute {
     );
 
     if ( $self->sample_run ) {
-        $assoc_rs = $assoc_rs->search( {}, { rows => 5000 } );
+        $assoc_rs = $assoc_rs->search( {}, { rows => 3000 } );
     }
 
     $log->info( 'Processing ', $assoc_rs->count, ' entries' );
@@ -208,6 +206,7 @@ sub execute {
     my $io = IO::File->new( $self->output, 'w' );
     $io->write( $self->header );
 
+    my $count = 0;
     while ( my $assoc = $assoc_rs->next ) {
 
         my $feat = $assoc->feature;
@@ -286,6 +285,11 @@ sub execute {
 
         my $gaf = $self->stringify($gaf_row);
         $io->write( $gaf . "\n" );
+
+        $count = $count + 1;
+        if ( ( $count % 5000 ) == 0 ) {
+            $log->info( $count . ' annotations processed so far' );
+        }
 
     }
     $io->close;
