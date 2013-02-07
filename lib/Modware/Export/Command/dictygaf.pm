@@ -151,11 +151,14 @@ sub get_description {
 
 sub get_provenance {
     my ( $self, $row ) = @_;
-    my $pub = $row->pub->uniquename;
-    if ( $pub =~ /^PUB/ ) {
-        return 'dictyBase_REF:' . $row->pub_id;
+    my $pub = $row->pub;
+    if ( $pub->uniquename =~ /^PUB/ && $row->pub_id == 2 ) {
+        return 'GO_REF:0000015';
     }
-    return $self->pubmed_namespace . ':' . $pub;
+    elsif ( $pub->pubplace =~ /^PUBMED/ ) {
+        return $self->pubmed_namespace . ':' . $pub->uniquename;
+    }
+    return $pub->pubplace . ':' . $pub->uniquename;
 }
 
 1;    # Magic true value required at end of module
@@ -164,5 +167,10 @@ __END__
 
 =head1 NAME
 
-Dump GAF2.0 file from chado database
+dictygaf - Dump GAF2.0 file for dictyBase from Chado database
 
+=head1 SYNOPSIS
+
+modware-export dictygaf -c <config.yaml>
+
+=cut
