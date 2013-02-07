@@ -172,8 +172,6 @@ sub execute {
     my $schema = $self->chado;
     my $log    = $self->dual_logger;
 
-    print $self->header;
-
     my $base_query = {
         'cvterm.is_obsolete ' => 0,
         'cv.name'             => {
@@ -210,7 +208,6 @@ sub execute {
     my $io = IO::File->new( $self->output, 'w' );
     $io->write( $self->header );
 
-    my $increment = 1;
     while ( my $assoc = $assoc_rs->next ) {
 
         my $feat = $assoc->feature;
@@ -219,13 +216,11 @@ sub execute {
             next if $self->has_skip_id( $feat->dbxref->accession );
         }
 
-        my $cvterm = $assoc->cvterm;
-
+        my $cvterm     = $assoc->cvterm;
         my $fcvprop_rs = $assoc->feature_cvtermprops->search(
             { 'cv.name' => $self->gafcv },
             { join      => [ { 'type' => 'cv' } ] }
         );
-
         my $evidence_rs = $assoc->feature_cvtermprops->search_related(
             'type',
             { 'cv.name' => { -like => 'evidence_code%' } },
@@ -237,82 +232,63 @@ sub execute {
             },
             { join => { 'type' => 'cv' } }
             );
-
         my $qualifier_value = $self->get_qualifiers($fcvprop_rs);
         my $with_value      = $self->get_with_column($fcvprop_rs);
 
-        my $gaf_row = "dictyBase" . "\t";
-
-        print $feat->dbxref->accession . "\t";
-        $gaf_row = $gaf_row . $feat->dbxref->accession . "\t";
-        $gaf_row = $gaf_row . $feat->uniquename . "\t";
+        my $gaf_row;
+        $gaf_row->{1} = 'dictyBase';
+        $gaf_row->{2} = $feat->dbxref->accession;
+        $gaf_row->{3} = $feat->uniquename;
 
         if ( $qualifier_value->count > 0 ) {
-            $gaf_row = $gaf_row . $qualifier_value->single->value . "\t";
+            $gaf_row->{4} = $qualifier_value->single->value;
         }
         else {
-            $gaf_row = $gaf_row . "\t";
+            $gaf_row->{4} = '';
         }
-        $gaf_row
-            = $gaf_row
-            . $self->go_namespace . ":"
-            . $cvterm->dbxref->accession . "\t";
-        $gaf_row = $gaf_row . $self->get_provenance($assoc) . "\t";
 
-        my $evidence_code;
+        $gaf_row->{5}
+            = $self->go_namespace . ':' . $cvterm->dbxref->accession;
+        $gaf_row->{6} = $self->get_provenance($assoc);
+
         if ( $evidence_rs->count > 1 ) {
             while ( my $ev = $evidence_rs->next ) {
                 next if length( $ev->get_column('synonym_') ) > 3;
-                $evidence_code = $ev->get_column('synonym_');
+                $gaf_row->{7} = $ev->get_column('synonym_');
             }
         }
         else {
-            $evidence_code = $evidence_rs->get_column('synonym_')->first;
+            $gaf_row->{7} = $evidence_rs->get_column('synonym_')->first;
         }
-        $gaf_row = $gaf_row . $evidence_code . "\t";
         if ( $with_value->count > 0 ) {
             if ( $with_value->single->value ne 'With:Not_supplied' ) {
-                $gaf_row = $gaf_row . $with_value->single->value;
+                $gaf_row->{8} = $with_value->single->value;
             }
-
-            #if ( $self->has_xrefs( $assoc->feature_cvterm_id ) ) {
             my $xrefs = $self->get_xrefs($assoc);
             if ($xrefs) {
-                $gaf_row = $gaf_row . "|" . $xrefs;
-                print $xrefs. "\t";
+                $gaf_row->{8} = $gaf_row->{8} . "|" . $xrefs;
             }
         }
-        $gaf_row = $gaf_row . "\t";
-
-        $gaf_row
-            = $gaf_row . $self->get_aspect_abbr( $cvterm->cv->name ) . "\t";
+        $gaf_row->{9} = $self->get_aspect_abbr( $cvterm->cv->name );
 
         my $desc = $self->get_description($feat);
         if ($desc) {
-            $gaf_row = $gaf_row . $desc;
+            $gaf_row->{10} = $desc;
         }
-        $gaf_row = $gaf_row . "\t";
         my $syn = $self->get_synonyms($feat);
         if ($syn) {
-            $gaf_row = $gaf_row . $syn;
+            $gaf_row->{11} = $syn;
         }
-        $gaf_row = $gaf_row . "\t";
-        $gaf_row = $gaf_row . $feat->type->name . "\t";
+        $gaf_row->{12} = $feat->type->name;
+        $gaf_row->{13} = $self->taxon_namespace . ':' . $self->taxon_id;
+        $gaf_row->{14} = $self->get_date_column($fcvprop_rs);
+        $gaf_row->{15} = $self->get_source_column($fcvprop_rs);
 
-        $gaf_row
-            = $gaf_row
-            . $self->taxon_namespace . ":"
-            . $self->taxon_id . "\t";
-        $gaf_row = $gaf_row . $self->get_date_column($fcvprop_rs) . "\t";
-        $gaf_row = $gaf_row . $self->get_source_column($fcvprop_rs) . "\t";
-
-        print "\n";
-
-        #print $gaf_row. "\n";
-        $io->write( $gaf_row . "\n" );
+        my $gaf = $self->stringify($gaf_row);
+        $io->write( $gaf . "\n" );
 
     }
-    $self->inc_process;
+    $io->close;
 }
 
 sub feat2gene {
@@ -321,6 +297,11 @@ sub feat2gene {
 
 sub get_description {
     return;
+}
+
+sub stringify {
+    my ( $self, $row ) = @_;
+    return join "\t" => map $row->{$_} => sort { $a <=> $b } keys %$row;
 }
 
 sub get_synonyms {
@@ -338,8 +319,7 @@ sub get_synonyms {
 }
 
 sub get_provenance {
-    my ( $self, $row ) = @_;
-    $self->pub->pubplace . ':' . $row->pub->uniquename;
+    return;
 }
 
 sub get_xrefs {
@@ -350,8 +330,6 @@ sub get_xrefs {
     my @xrefs;
     if ( $dbxref_rs->count > 0 ) {
         while ( my $xref = $dbxref_rs->next ) {
-
-            #return [ map { $_->db->name => $_->accession } $dbxref_rs->all ];
             push @xrefs, $xref->db->name . ":" . $xref->accession;
         }
         if (@xrefs) {
@@ -390,5 +368,7 @@ __END__
 
 =head1 NAME
 
-Dump GAF2.0 file from chado database
+GAF - Dump GAF2.0 file from Chado database
+
+=cut
 
