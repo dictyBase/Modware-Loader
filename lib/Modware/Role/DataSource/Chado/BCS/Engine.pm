@@ -1,166 +1,18 @@
-package Modware::Export::Command;
-
-use strict;
+package Modware::Role::DataSource::Chado::BCS::Engine;
 
 # Other modules:
-use Moose;
 use namespace::autoclean;
-use Moose::Util::TypeConstraints;
-use Cwd;
-use File::Spec::Functions qw/catfile catdir rel2abs/;
-use File::Basename;
-use Time::Piece;
-use YAML qw/LoadFile/;
-use Path::Class::File;
-use Modware::Factory::Chado::BCS;
-extends qw/MooseX::App::Cmd::Command/;
-with 'MooseX::ConfigFromFile';
+use Modware::Types qw/Schema/;
+use Moose::Role;
 
 # Module implementation
 #
-subtype 'DataDir'  => as 'Str' => where { -d $_ };
-subtype 'DataFile' => as 'Str' => where { -f $_ };
-subtype 'Dsn'      => as 'Str' => where {/^dbi:(\w+).+$/};
 
-has '+configfile' => (
-    cmd_aliases   => 'c',
-    documentation => 'yaml config file to specify all command line options',
-    traits        => [qw/Getopt/]
+requires 'transform';
+has 'schema' => (
+	is => 'rw', 
+	isa => Schema
 );
-
-has 'data_dir' => (
-    is          => 'rw',
-    isa         => 'DataDir',
-    traits      => [qw/Getopt/],
-    cmd_flag    => 'dir',
-    cmd_aliases => 'd',
-    documentation =>
-        'Folder under which input and output files can be configured to be written',
-    builder => '_build_data_dir',
-    lazy    => 1
-);
-
-has 'input' => (
-    is            => 'rw',
-    isa           => 'DataFile',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'i',
-    documentation => 'Name of the input file'
-);
-
-has 'output' => (
-    is            => 'rw',
-    isa           => 'Str',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'o',
-    required      => 1,
-    documentation => 'Name of the output file'
-);
-
-has 'output_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    default => sub {
-        my $self = shift;
-        Path::Class::File->new( $self->output )->openw;
-    },
-    lazy => 1
-);
-
-has 'dsn' => (
-    is            => 'rw',
-    isa           => 'Dsn',
-    documentation => 'database DSN',
-    required      => 1
-);
-
-has 'user' => (
-    is            => 'rw',
-    isa           => 'Str',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'u',
-    documentation => 'database user'
-);
-
-has 'password' => (
-    is            => 'rw',
-    isa           => 'Str',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => [qw/p pass/],
-    documentation => 'database password'
-);
-
-has 'attribute' => (
-    is            => 'rw',
-    isa           => 'HashRef',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'attr',
-    documentation => 'Additional database attribute',
-    default       => sub {
-        { 'LongReadLen' => 2**25, AutoCommit => 1 };
-    }
-);
-
-has 'total_count' => (
-    is      => 'rw',
-    isa     => 'Num',
-    default => 0,
-    traits  => [qw/Counter NoGetopt/],
-    handles => {
-        set_total_count => 'set',
-        inc_total       => 'inc'
-    }
-);
-
-has 'process_count' => (
-    is      => 'rw',
-    isa     => 'Num',
-    default => 0,
-    traits  => [qw/Counter NoGetopt/],
-    handles => {
-        set_process_count => 'set',
-        inc_process       => 'inc'
-    }
-);
-
-has 'error_count' => (
-    is      => 'rw',
-    isa     => 'Num',
-    default => 0,
-    traits  => [qw/Counter NoGetopt/],
-    handles => {
-        set_error_count => 'set',
-        inc_error       => 'inc'
-    }
-);
-
-has 'chado' => (
-    is      => 'rw',
-    isa     => 'Bio::Chado::Schema',
-    lazy    => 1,
-    traits  => [qw/NoGetopt/],
-    builder => '_build_chado',
-);
-
-sub _build_chado {
-    my ($self) = @_;
-    my $schema = Bio::Chado::Schema->connect( $self->dsn, $self->user,
-        $self->password, $self->attribute );
-    my $engine = Modware::Factory::Chado::BCS->new(
-        engine => $schema->storage->sqlt_type );
-    $engine->transform($schema);
-    return $schema;
-}
-
-sub _build_data_dir {
-    return rel2abs(cwd);
-}
-
-sub get_config_from_file {
-    my ( $self, $file ) = @_;
-    return LoadFile($file);
-}
 
 1;    # Magic true value required at end of module
 
@@ -168,7 +20,7 @@ __END__
 
 =head1 NAME
 
-<Modware::Export::Command> - [Base class for writing export command module]
+<MODULE NAME> - [One line description of module's purpose here]
 
 
 =head1 VERSION

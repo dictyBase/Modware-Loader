@@ -17,7 +17,6 @@ has '+input'          => ( traits => [qw/NoGetopt/] );
 has '+data_dir'       => ( traits => [qw/NoGetopt/] );
 has '+output_handler' => ( traits => [qw/NoGetopt/] );
 
-
 has '+source_url' => (
     default => 'www.dictybase.org',
     documentation =>
@@ -128,24 +127,38 @@ sub get_description {
         { prefetch   => 'locus_gene_product' }
     );
 
-    my @desc;
+    my $desc;
+    my $date_created;
     while ( my $row = $rs->next ) {
-        push @desc, $row->locus_gene_product->gene_product;
-    }
+        if ($date_created) {
+            my $t
+                = Time::Piece->strptime(
+                $row->locus_gene_product->date_created, "%d-%b-%y" );
+            if ( $date_created < $t ) {
+                $desc         = $row->locus_gene_product->gene_product;
+                $date_created = $t;
+            }
+        }
+        else {
+            $desc         = $row->locus_gene_product->gene_product;
+            $date_created = Time::Piece->strptime(
+                $row->locus_gene_product->date_created, "%d-%b-%y" );
+        }
 
-    if (@desc) {
-        return $desc[0] if @desc == 1;
-        return join( ",", @desc );
     }
+    return $desc;
 }
 
 sub get_provenance {
     my ( $self, $row ) = @_;
-    my $pub = $row->pub->uniquename;
-    if ( $pub =~ /^PUB/ ) {
-        return 'dictyBase_REF:' . $row->pub_id;
+    my $pub = $row->pub;
+    if ( $pub->uniquename =~ /^PUB/ && $row->pub_id == 2 ) {
+        return 'GO_REF:0000015';
     }
-    return $self->pubmed_namespace . ':' . $pub;
+    elsif ( $pub->pubplace =~ /^PUBMED/ ) {
+        return $self->pubmed_namespace . ':' . $pub->uniquename;
+    }
+    return $pub->pubplace . ':' . $pub->uniquename;
 }
 
 1;    # Magic true value required at end of module
@@ -154,5 +167,10 @@ __END__
 
 =head1 NAME
 
-Dump GAF2.0 file from chado database
+dictygaf - Dump GAF2.0 file for dictyBase from Chado database
 
+=head1 SYNOPSIS
+
+modware-export dictygaf -c <config.yaml>
+
+=cut

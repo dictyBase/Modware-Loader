@@ -1,166 +1,72 @@
-package Modware::Export::Command;
-
-use strict;
+package  Modware::Types;
 
 # Other modules:
-use Moose;
+use MooseX::Types -declare => [
+    qw/CleanStr UnCleanStr ColumnMap Toggler URI UpdateStash PubYear PubDate PubDateStr
+        PubDateHalfStr PubDateHalfInt Schema Row/
+];
+use MooseX::Types::Moose qw/Int Str Any Object Bool HashRef ArrayRef Maybe/;
+use Regexp::Common qw/URI/;
+use DateTime::Format::Strptime;
 use namespace::autoclean;
-use Moose::Util::TypeConstraints;
-use Cwd;
-use File::Spec::Functions qw/catfile catdir rel2abs/;
-use File::Basename;
-use Time::Piece;
-use YAML qw/LoadFile/;
-use Path::Class::File;
-use Modware::Factory::Chado::BCS;
-extends qw/MooseX::App::Cmd::Command/;
-with 'MooseX::ConfigFromFile';
 
 # Module implementation
 #
-subtype 'DataDir'  => as 'Str' => where { -d $_ };
-subtype 'DataFile' => as 'Str' => where { -f $_ };
-subtype 'Dsn'      => as 'Str' => where {/^dbi:(\w+).+$/};
 
-has '+configfile' => (
-    cmd_aliases   => 'c',
-    documentation => 'yaml config file to specify all command line options',
-    traits        => [qw/Getopt/]
-);
+subtype CleanStr,   as Str, where { $_ !~ /^\s+|\s+$/ };
+subtype UnCleanStr, as Str, where {/\s+/};
 
-has 'data_dir' => (
-    is          => 'rw',
-    isa         => 'DataDir',
-    traits      => [qw/Getopt/],
-    cmd_flag    => 'dir',
-    cmd_aliases => 'd',
-    documentation =>
-        'Folder under which input and output files can be configured to be written',
-    builder => '_build_data_dir',
-    lazy    => 1
-);
+coerce CleanStr, from UnCleanStr, via { $_ =~ s/^\s+//; $_ =~ s/\s+$//; $_ };
 
-has 'input' => (
-    is            => 'rw',
-    isa           => 'DataFile',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'i',
-    documentation => 'Name of the input file'
-);
+subtype ColumnMap, as HashRef;
+coerce ColumnMap, from ArrayRef, via {
+    my %hash = map { $_ => 1 } @$_;
+    return \%hash;
+};
 
-has 'output' => (
-    is            => 'rw',
-    isa           => 'Str',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'o',
-    required      => 1,
-    documentation => 'Name of the output file'
-);
+subtype UpdateStash, as HashRef [ArrayRef], where {
+    defined $_->{has_many} or defined $_->{many_to_many};
+}, message {
+    'either of **has_many_stash** or **many_to_many_stash** has to be given as
+key';
+};
 
-has 'output_handler' => (
-    is      => 'ro',
-    isa     => 'IO::Handle',
-    traits  => [qw/NoGetopt/],
-    default => sub {
-        my $self = shift;
-        Path::Class::File->new( $self->output )->openw;
-    },
-    lazy => 1
-);
+subtype Toggler, as Bool;
+coerce Toggler, from Str, via {
+    $_ eq 'false' ? 0 : 1;
+};
 
-has 'dsn' => (
-    is            => 'rw',
-    isa           => 'Dsn',
-    documentation => 'database DSN',
-    required      => 1
-);
+subtype URI, as Str, where {
+    $RE{URI}{HTTP}{ -scheme => 'https?' }->matches($_);
+}, message {
+    "$_ is not a HTTP URL";
+};
 
-has 'user' => (
-    is            => 'rw',
-    isa           => 'Str',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'u',
-    documentation => 'database user'
-);
+subtype PubYear,        as Str, where {/^\d+$/};
+subtype PubDate,        as Str, where {/^\d{2,4}\-\d{1,2}\-\d{1,2}$/};
+subtype PubDateStr,     as Str, where {/^\d{2,4}\-\w{3,6}\-\d{1,2}$/};
+subtype PubDateHalfStr, as Str, where {/^\d{2,4}\-\w{3,6}$/};
+subtype PubDateHalfInt, as Str, where {/^\d{2,4}\-\d{1,2}$/};
 
-has 'password' => (
-    is            => 'rw',
-    isa           => 'Str',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => [qw/p pass/],
-    documentation => 'database password'
-);
+coerce PubYear, from PubDate, via {
+    DateTime::Format::Strptime->new( pattern => '%Y-%m-%d' )
+        ->parse_datetime($_)->year;
+};
+coerce PubYear, from PubDateStr, via {
+    DateTime::Format::Strptime->new( pattern => '%Y-%b-%d' )
+        ->parse_datetime($_)->year;
+};
+coerce PubYear, from PubDateHalfStr, via {
+    DateTime::Format::Strptime->new( pattern => '%Y-%b' )->parse_datetime($_)
+        ->year;
+};
+coerce PubYear, from PubDateHalfInt, via {
+    DateTime::Format::Strptime->new( pattern => '%Y-%m' )->parse_datetime($_)
+        ->year;
+};
 
-has 'attribute' => (
-    is            => 'rw',
-    isa           => 'HashRef',
-    traits        => [qw/Getopt/],
-    cmd_aliases   => 'attr',
-    documentation => 'Additional database attribute',
-    default       => sub {
-        { 'LongReadLen' => 2**25, AutoCommit => 1 };
-    }
-);
-
-has 'total_count' => (
-    is      => 'rw',
-    isa     => 'Num',
-    default => 0,
-    traits  => [qw/Counter NoGetopt/],
-    handles => {
-        set_total_count => 'set',
-        inc_total       => 'inc'
-    }
-);
-
-has 'process_count' => (
-    is      => 'rw',
-    isa     => 'Num',
-    default => 0,
-    traits  => [qw/Counter NoGetopt/],
-    handles => {
-        set_process_count => 'set',
-        inc_process       => 'inc'
-    }
-);
-
-has 'error_count' => (
-    is      => 'rw',
-    isa     => 'Num',
-    default => 0,
-    traits  => [qw/Counter NoGetopt/],
-    handles => {
-        set_error_count => 'set',
-        inc_error       => 'inc'
-    }
-);
-
-has 'chado' => (
-    is      => 'rw',
-    isa     => 'Bio::Chado::Schema',
-    lazy    => 1,
-    traits  => [qw/NoGetopt/],
-    builder => '_build_chado',
-);
-
-sub _build_chado {
-    my ($self) = @_;
-    my $schema = Bio::Chado::Schema->connect( $self->dsn, $self->user,
-        $self->password, $self->attribute );
-    my $engine = Modware::Factory::Chado::BCS->new(
-        engine => $schema->storage->sqlt_type );
-    $engine->transform($schema);
-    return $schema;
-}
-
-sub _build_data_dir {
-    return rel2abs(cwd);
-}
-
-sub get_config_from_file {
-    my ( $self, $file ) = @_;
-    return LoadFile($file);
-}
+class_type Schema, { class => 'Bio::Chado::Schema' };
+class_type Row, { class => 'DBIx::Class::Row' };
 
 1;    # Magic true value required at end of module
 
@@ -168,7 +74,7 @@ __END__
 
 =head1 NAME
 
-<Modware::Export::Command> - [Base class for writing export command module]
+<MODULE NAME> - [One line description of module's purpose here]
 
 
 =head1 VERSION
@@ -181,7 +87,8 @@ This document describes <MODULE NAME> version 0.0.1
 use <MODULE NAME>;
 
 =for author to fill in:
-Brief code example(s) here showing commonest usage(s).
+Brief code example (
+        s) here showing commonest usage(s).
 This section will be as far as many users bother reading
 so make it as educational and exeplary as possible.
 
@@ -190,8 +97,7 @@ so make it as educational and exeplary as possible.
 
 =for author to fill in:
 Write a full description of the module and its features here.
-Use subsections (=head2, =head3) as appropriate.
-
+Use subsections (=head2, =head3) as appropriate .
 
 =head1 INTERFACE 
 
