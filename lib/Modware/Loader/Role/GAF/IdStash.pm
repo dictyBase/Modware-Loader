@@ -166,6 +166,19 @@ sub find_cvterm_id_for_evidence_code {
     }
 }
 
+has '_ref_mapping' => (
+    is      => 'ro',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub {
+        {   'dictyBase_REF:2' => 'GO_REF:0000015',
+            'dictyBase_REF:9' => 'GO_REF:0000024'
+        };
+    },
+    handles => { get_GO_REF => 'get' },
+    lazy    => 1
+);
+
 has 'publications' => (
     is      => 'rw',
     isa     => 'HashRef',
@@ -180,6 +193,9 @@ has 'publications' => (
 
 sub find_pub_id {
     my ( $self, $dbref ) = @_;
+    if ( $dbref =~ /^dictyBase_REF/ ) {
+        $dbref = $self->get_GO_REF($dbref);
+    }
     $dbref =~ s/^[A-Z_]{4,9}://x;
     if ( $self->has_pub($dbref) ) {
         $self->get_pub_id($dbref);
