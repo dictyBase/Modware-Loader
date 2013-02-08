@@ -24,9 +24,9 @@ before 'execute' => sub {
 
     my $writer = IO::File->new( $input, 'a' );
     while ( my $line = $ncRNA_gaf_file->getline ) {
-        chomp($line);
-        $writer->print( $line, "\n" );
+        $writer->print($line);
     }
+    $ncRNA_gaf_file->close;
     $writer->close;
 };
 
