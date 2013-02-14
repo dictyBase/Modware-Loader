@@ -1,7 +1,7 @@
 
 use strict;
 
-package Modware::Load::Command::gaf2chado;
+package Modware::Load::Command::dictygaf2chado;
 
 use Moose;
 use namespace::autoclean;
@@ -53,6 +53,5 @@ sub execute {
     $guard->commit;
 }
 
-with 'Modware::Role::Command::GOA::Dicty::AppendDuplicate';
-with 'Modware::Role::Command::GOA::Dicty::AppendncRNA';
+#with 'Modware::Role::Command::GOA::Dicty::AppendDuplicate';
 1;
