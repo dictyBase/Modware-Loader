@@ -55,10 +55,6 @@ sub load_gaf {
             }
         }
     }
-    $self->manager->logger->info( 'Finished loading '
-            . $self->manager->schema->resultset('Sequence::FeatureCvterm')
-            ->search( {}, {} )->count
-            . ' annotations' );
 }
 
 =item get_rank()

@@ -4,6 +4,7 @@ use strict;
 package Modware::Load::Command::dictygaf2chado;
 
 use Moose;
+use Moose::Util qw/ensure_all_roles/;
 use namespace::autoclean;
 
 use Modware::Loader::GAF;
@@ -30,6 +31,38 @@ has 'limit' => (
     documentation => 'Limit for number of annotations to be loaded'
 );
 
+has 'ncrna' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    trigger => sub {
+        my ($self) = @_;
+        $self->logger->info('Appending ncRNA annotations');
+        $self->meta->make_mutable;
+        ensure_all_roles( $self,
+            'Modware::Role::Command::GOA::Dicty::AppendncRNA' );
+        $self->meta->make_immutable;
+    },
+    documentation => 'Load ncRNA annotations, default is OFF'
+);
+
+has 'dupes' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    trigger => sub {
+        my ($self) = @_;
+        $self->logger->info('Appending annotations for duplicate genes');
+        $self->meta->make_mutable;
+        ensure_all_roles( $self,
+            'Modware::Role::Command::GOA::Dicty::AppendDuplicate' );
+        $self->meta->make_immutable;
+    },
+    documentation => 'Load duplicate gene annotations, default is OFF'
+);
+
 sub execute {
     my ($self) = @_;
 
@@ -51,7 +84,10 @@ sub execute {
     }
     $loader->load_gaf();
     $guard->commit;
+    $self->logger->info( 'Finished loading '
+            . $self->schema->resultset('Sequence::FeatureCvterm')
+            ->search( {}, {} )->count
+            . ' annotations' );
 }
 
-#with 'Modware::Role::Command::GOA::Dicty::AppendDuplicate';
 1;
