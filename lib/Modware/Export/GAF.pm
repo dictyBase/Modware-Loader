@@ -26,6 +26,20 @@ has 'sample_run' => (
         'Used for dumping only first 2500 records, use for debugging purpose'
 );
 
+has 'compress' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    trigger => sub {
+        my ($self) = @_;
+        $self->meta->make_mutable;
+        ensure_all_roles( $self, 'Modware::Role::Command::CanCompress' );
+        $self->meta->make_immutable;
+    },
+    lazy          => 1,
+    documentation => 'Compress output to *.tar.gz, default is OFF'
+);
+
 has 'include_obsolete' => (
     is            => 'rw',
     isa           => 'Bool',
@@ -198,7 +212,7 @@ sub execute {
     );
 
     if ( $self->sample_run ) {
-        $assoc_rs = $assoc_rs->search( {}, { rows => 3000 } );
+        $assoc_rs = $assoc_rs->search( {}, { rows => 150 } );
     }
 
     $log->info( 'Processing ', $assoc_rs->count, ' entries' );
@@ -215,21 +229,21 @@ sub execute {
             next if $self->has_skip_id( $feat->dbxref->accession );
         }
 
-        my $cvterm     = $assoc->cvterm;
-        my $fcvprop_rs = $assoc->feature_cvtermprops->search(
+        my $cvterm = $assoc->cvterm;
+        my $fcvprop_rs
+            = $assoc->feature_cvtermprops->search(
             { 'cv.name' => $self->gafcv },
-            { join      => [ { 'type' => 'cv' } ] }
-        );
+            { join      => [ { 'type' => 'cv' } ], cache => 1 } );
         my $evidence_rs = $assoc->feature_cvtermprops->search_related(
             'type',
             { 'cv.name' => { -like => 'evidence_code%' } },
-            { join      => 'cv' }
+            { join => 'cv', cache => 1 }
             )->search_related(
             'cvtermsynonyms',
             {   'type_2.name' => { -in => [qw/EXACT RELATED BROAD/] },
                 'cv_2.name'   => 'synonym_type'
             },
-            { join => { 'type' => 'cv' } }
+            { join => { 'type' => 'cv' }, cache => 1 }
             );
         my $qualifier_value = $self->get_qualifiers($fcvprop_rs);
         my $with_value      = $self->get_with_column($fcvprop_rs);
@@ -297,11 +311,12 @@ sub execute {
 
         $count = $count + 1;
         if ( ( $count % 5000 ) == 0 ) {
-            $log->info( $count . ' annotations processed so far' );
+            $log->debug( $count . ' annotations processed so far' );
         }
 
     }
     $io->close;
+    $log->info( 'Finished dumping GAF to ' . $self->output );
 }
 
 sub feat2gene {
