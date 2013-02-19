@@ -40,7 +40,7 @@ use Test::More qw/no_plan/;
 use Test::Moose::More;
 
 my $test = new_ok('TestCompress');
-my $file = catfile( $Bin, '../data', 'test_dicty_ncrna.gaf' );
+my $file = catfile( $Bin, '../test_data', 'test_dicty_ncrna.gaf2' );
 $test->output($file);
 
 does_not_ok(
