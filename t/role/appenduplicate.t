@@ -49,11 +49,11 @@ use File::Spec::Functions;
 
 my $test = new_ok('TestDuplicate');
 $test->test_input(
-    catfile( Module::Build->current->base_dir, 't', 'datafile', 'testdicty.gaf' )
+    catfile( Module::Build->current->base_dir, 't', 'test_data', 'testdicty.gaf2' )
 );
 
 file_exists_ok( $test->input );
-file_line_count_is( $test->input, 16 );
+file_line_count_is( $test->input, 14 );
 
 my $output;
 my $handler = IO::File->new( \$output, 'w' );
@@ -64,4 +64,4 @@ my $reader = IO::File->new( \$output, 'r' );
 my $count = 0;
 while (<$reader>) { $count++ }
 $reader->close;
-is( $count, 52, 'it should have 28 lines in the output' );
+is( $count, 49, 'it should have 29 lines in the output' );
