@@ -70,7 +70,7 @@ use Test::More qw/no_plan/;
 use Test::Moose::More;
 
 my $test = new_ok('TestncRNA');
-my $file = catfile( $Bin, '../data', 'test_dicty.gaf' );
+my $file = catfile( $Bin, '../data', 'test_dicty_ncrna.gaf' );
 $test->test_input($file);
 
 does_not_ok(

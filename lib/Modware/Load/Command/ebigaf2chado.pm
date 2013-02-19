@@ -498,7 +498,7 @@ __END__
 
 =head1 NAME
 
-C<Modware::Load::Command::ebigaf2chado> - Update dicty Chado with GAF from EBI
+Modware::Load::Command::ebigaf2chado -  Load GO annotations by querying EBI GOA (DEPRECATED)
 
 =head1 VERSION
 

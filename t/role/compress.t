@@ -32,7 +32,6 @@ __PACKAGE__->meta->make_immutable;
 
 package main;
 
-use File::Remove 'remove';
 use File::Spec::Functions;
 use FindBin qw/$Bin/;
 use Test::Exception;
@@ -41,7 +40,7 @@ use Test::More qw/no_plan/;
 use Test::Moose::More;
 
 my $test = new_ok('TestCompress');
-my $file = catfile( $Bin, '../data', 'test_dicty.gaf' );
+my $file = catfile( $Bin, '../data', 'test_dicty_ncrna.gaf' );
 $test->output($file);
 
 does_not_ok(
@@ -60,4 +59,5 @@ does_ok(
 file_exists_ok( $test->output );
 lives_ok { $test->execute() } 'runs execute method';
 file_exists_ok( $test->output . ".gz" );
-remove( $test->output . ".gz" );
+unlink( $test->output . ".gz" );
+file_not_exists_ok( $test->output . ".gz" );

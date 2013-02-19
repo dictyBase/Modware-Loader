@@ -91,3 +91,28 @@ sub execute {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Modware::Load::Command::dictygaf2chado -  Load GO annotations from GAF file to chado database
+
+=head1 VERSION
+
+version 0.0.3
+
+=head1 SYNOPSIS
+
+perl modware-load dictygaf2chado -c config.yaml -i <go_annotations.gaf> --ncrna --dupes
+
+=head1 REQUIRED ARGUMENTS
+
+-c, --configfile Config file with required arguments
+-i, --input File with GO annotations in GAF format
+
+=head1 DESCRIPTION
+
+Prune all the existing annotations from dicty Chado. Load clean new set of annotations from the input GAF file
+
+=cut

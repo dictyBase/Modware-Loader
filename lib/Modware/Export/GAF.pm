@@ -212,7 +212,7 @@ sub execute {
     );
 
     if ( $self->sample_run ) {
-        $assoc_rs = $assoc_rs->search( {}, { rows => 150 } );
+        $assoc_rs = $assoc_rs->search( {}, { rows => 2000 } );
     }
 
     $log->info( 'Processing ', $assoc_rs->count, ' entries' );
@@ -277,6 +277,9 @@ sub execute {
             if ( $with_value->first->value ne 'With:Not_supplied' ) {
                 $gaf_row->{8} = $with_value->first->value;
             }
+            else {
+                $gaf_row->{8} = '';
+            }
             my $xrefs = $self->get_xrefs($assoc);
             if ($xrefs) {
                 $gaf_row->{8} = $gaf_row->{8} . "|" . $xrefs;
@@ -288,6 +291,7 @@ sub execute {
         $gaf_row->{9} = $self->get_aspect_abbr( $cvterm->cv->name );
 
         my $desc = $self->get_description($feat);
+
         if ($desc) {
             $gaf_row->{10} = $desc;
         }
@@ -311,7 +315,7 @@ sub execute {
 
         $count = $count + 1;
         if ( ( $count % 5000 ) == 0 ) {
-            $log->debug( $count . ' annotations processed so far' );
+            $self->logger->debug( $count . ' annotations processed so far' );
         }
 
     }
