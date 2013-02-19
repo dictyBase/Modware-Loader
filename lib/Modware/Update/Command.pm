@@ -25,6 +25,7 @@ subtype 'Dsn'      => as 'Str' => where {/^dbi:(\w+).+$/};
 has '+configfile' => (
     cmd_aliases   => 'c',
     documentation => 'yaml config file to specify all command line options',
+    default       => sub { return undef }, 
     traits        => [qw/Getopt/]
 );
 

@@ -17,6 +17,7 @@ with 'Modware::Role::Command::WithLogger';
 has '+configfile' => (
     cmd_aliases   => 'c',
     traits        => [qw/Getopt/], 
+    default       => sub { return undef }, 
     documentation => 'yaml config file to specify all command line options'
 );
 
