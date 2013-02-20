@@ -44,13 +44,10 @@ use FindBin qw/$Bin/;
 use Test::Exception;
 use Test::File;
 use IO::File;
-use Module::Build;
 use File::Spec::Functions;
 
 my $test = new_ok('TestDuplicate');
-$test->test_input(
-    catfile( Module::Build->current->base_dir, 't', 'test_data', 'testdicty.gaf2' )
-);
+$test->test_input( catfile( $Bin, '../test_data', 'testdicty.gaf2' ) );
 
 file_exists_ok( $test->input );
 file_line_count_is( $test->input, 14 );
