@@ -6,25 +6,18 @@ package Modware::DataSource::Chado::BCS::Engine::Oracle;
 #
 use namespace::autoclean;
 use Moose;
-use MooseX::Params::Validate;
 use Carp;
 with 'Modware::Role::DataSource::Chado::BCS::Engine';
 
 sub transform {
-    my $self = shift;
-    my ($schema) = pos_validated_list(
-        \@_,
-        {   isa      => 'Bio::Chado::Schema',
-            optional => 1
-        }
-    );
-
+    my ($self, $schema) = @_;
     $schema ||= $self->schema;
     croak "need a schema for transformation\n" if !$schema;
 
     $schema->source('Organism::Organism')->remove_column('comment');
 
     $schema->source('Sequence::Synonym')->name('synonym_');
+
     $schema->source('Sequence::FeatureSynonym')->add_relationship(
         'alternate_names',
         'Bio::Chado::Schema::Result::Sequence::Synonym',
@@ -50,8 +43,37 @@ sub transform {
             default_value => 'false'
         }
     );
+    $feat_src->remove_column('uniquename');
+    $feat_src->add_column(
+        'uniquename' => {
+            data_type   => 'varchar2',
+            is_nullable => 0
+        }
+    );
+    $feat_src->remove_column('is_obsolete');
+
+    my $fcvt_src = $schema->source('Sequence::FeatureCvtermprop');
+    $fcvt_src->remove_column('value');
+    $fcvt_src->add_column(
+        'value' => {
+            data_type   => 'clob',
+            is_nullable => 1
+        }
+    );
+
+    my $pub_src = $schema->source('Pub::Pub');
+    $pub_src->remove_column('uniquename');
+    $pub_src->add_column(
+        'uniquename' => {
+            data_type   => 'varchar2',
+            is_nullable => 0
+        }
+    );
+
     return 1;
 }
+
+__PACKAGE__->meta->make_immutable;
 
 1;    # Magic true value required at end of module
 
