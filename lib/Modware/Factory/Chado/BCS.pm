@@ -1,30 +1,23 @@
 package Modware::Factory::Chado::BCS;
 
-use warnings;
-use strict;
-
 # Other modules:
-use Module::Find;
-use Carp;
-use Class::MOP;
-use Try::Tiny;
-use List::MoreUtils qw/firstval/;
+use Class::Load qw/load_class/;
+use namespace::autoclean;
+use Moose;
 
 # Module implementation
 #
-sub new {
-    my ( $class, %arg ) = @_;
-    my $engine = $arg{engine} ? ucfirst lc( $arg{engine} ) : 'Generic';
-    my $package = firstval {/$engine$/}
-        findsubmod('Modware::DataSource::Chado::BCS::Engine');
-    croak "cannot find plugins for engine: $engine\n" if !$package;
-    try {
-        Class::MOP::load_class($package);
-    }
-    catch {
-        croak "Issue in loading $package $_\n";
-    };
-    return $package->new(%arg);
+
+has 'engine' => ( isa => 'Str',  is => 'rw');
+
+sub get_engine {
+    my ( $self, $engine ) = @_;
+    my $engine = $engine || $self->engine;
+	die "need a engine name\n" if !$engine;
+
+	my $class_name = 'Modware::DataSource::Chado::BCS::Engine::'.ucfirst(lc $engine);
+	load_class($class);
+    return $class->new();
 }
 
 1;    # Magic true value required at end of module
