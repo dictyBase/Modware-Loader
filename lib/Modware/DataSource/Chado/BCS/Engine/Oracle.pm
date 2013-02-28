@@ -43,14 +43,14 @@ sub transform {
             default_value => 'false'
         }
     );
-    $feat_src->remove_column('uniquename');
-    $feat_src->add_column(
+    $feat_source->remove_column('uniquename');
+    $feat_source->add_column(
         'uniquename' => {
             data_type   => 'varchar2',
             is_nullable => 0
         }
     );
-    $feat_src->remove_column('is_obsolete');
+    $feat_source->remove_column('is_obsolete');
 
     my $fcvt_src = $schema->source('Sequence::FeatureCvtermprop');
     $fcvt_src->remove_column('value');

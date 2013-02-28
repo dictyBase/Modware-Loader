@@ -3,6 +3,7 @@ package Modware::Export::Command::chado2dictycanonicalgff3;
 use strict;
 use namespace::autoclean;
 use Moose;
+use Modware::Factory::Chado::BCS;
 use Modware::EventEmitter::Feature::Chado::Canonical;
 use Modware::EventHandler::FeatureReader::Chado::Canonical::Dicty;
 use Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
@@ -60,6 +61,10 @@ sub execute {
             default_value => 'false'
         }
     );
+
+	my $fac = Modware::Factory::Chado::BCS->new;
+	$fac->get_engine('Oracle')->transform($self->schema);
+
     my $event = Modware::EventEmitter::Feature::Chado::Canonical->new(
         resource => $self->schema );
 

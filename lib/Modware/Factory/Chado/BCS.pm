@@ -12,13 +12,15 @@ has 'engine' => ( isa => 'Str',  is => 'rw');
 
 sub get_engine {
     my ( $self, $engine ) = @_;
-    my $engine = $engine || $self->engine;
+    $engine  = $self->engine if !$engine;
 	die "need a engine name\n" if !$engine;
 
 	my $class_name = 'Modware::DataSource::Chado::BCS::Engine::'.ucfirst(lc $engine);
-	load_class($class);
-    return $class->new();
+	load_class($class_name);
+    return $class_name->new();
 }
+
+__PACKAGE__->meta->make_immutable;
 
 1;    # Magic true value required at end of module
 
