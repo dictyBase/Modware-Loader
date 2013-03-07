@@ -36,53 +36,33 @@ sub read_transcript {
         { join        => 'type' }
         )->search_related(
         'subject',
-        {   'type_2.name' => { -in => [ 'mRNA', 'pseudogene' ] },
-            is_deleted    => 0
+        {   'type_2.name'      => { -in => [ 'mRNA', 'pseudogene' ] },
+            'dbxref.accession' => 'dictyBase Curator',
+            'is_deleted'       => 0,
+            'db.name'          => 'GFF_source'
         },
-        { join => 'type' }
+        { join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ],  cache => 1 }
         );
 
-    my $trans_rs2 = $gene_dbrow->search_related(
+    if ($trans_rs->count()) {
+        $event->response($trans_rs);
+    }
+    else {
+       $trans_rs = $gene_dbrow->search_related(
         'feature_relationship_objects',
         { 'type.name' => 'part_of' },
         { join        => 'type' }
         )->search_related(
         'subject',
         {   'type_2.name'      => { -in => [ 'mRNA', 'pseudogene' ] },
-            'dbxref.accession' => { -in => $self->source },
+            'dbxref.accession' => 'Sequencing Center',
             'is_deleted'       => 0,
             'db.name'          => 'GFF_source'
         },
         { join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
         );
-
-    my $num_transcript = $trans_rs2->count;
-    if ( $num_transcript == 1 ) {
-        $event->response($trans_rs2);
+        $event->response($trans_rs);
     }
-    else {
-        my $new_rs;
-        if ( any { $_->secondary_dbxrefs->first->accession eq 'dictyBase Curator' }
-            $trans_rs2->all )
-        {
-            $new_rs = $trans_rs->search(
-                {   'db.name'          => 'GFF_source',
-                    'dbxref.accession' => 'dictyBase Curator'
-                },
-                { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
-            );
-        }
-        else {
-            $new_rs = $trans_rs->search(
-                {   'db.name'          => 'GFF_source',
-                    'dbxref.accession' => 'Sequencing Center'
-                },
-                { join => [ { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
-            );
-        }
-        $event->response($new_rs);
-    }
-
 }
 
 sub read_exon {
