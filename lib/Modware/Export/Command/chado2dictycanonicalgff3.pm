@@ -68,12 +68,14 @@ sub execute {
     my $event = Modware::EventEmitter::Feature::Chado::Canonical->new(
         resource => $self->schema );
 
-    for my $name (qw/reference seq_id contig gene transcript exon/) {
+    for my $name (qw/reference seq_id contig gene exon/) {
         my $read_api  = 'read_' . $name;
         my $write_api = 'write_' . $name;
         $event->on( $read_api  => sub { $read_handler->$read_api(@_) } );
         $event->on( $write_api => sub { $write_handler->$write_api(@_) } );
     }
+    $event->on('read_transcript' => sub {$read_handler->read_canonical_transcript(@_)});
+    $event->on('write_transcript' => sub {$write_handler->write_transcript(@_)});
 
     if ( $self->reference_id ) {
         $read_handler->reference_id( $self->reference_id );

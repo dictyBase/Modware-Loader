@@ -10,10 +10,8 @@ extends 'Modware::EventHandler::FeatureReader::Chado::Canonical';
 #
 
 has 'source' => (
-    is      => 'rw',
-    isa     => 'ArrayRef',
-    lazy    => 1,
-    default => sub { return [ 'dictyBase Curator', 'Sequencing Center' ] }
+    is  => 'rw',
+    isa => 'Str',
 );
 
 sub read_gene {
@@ -28,7 +26,7 @@ sub read_gene {
     $event->response($rs);
 }
 
-sub read_transcript {
+sub read_transcript_by_source {
     my ( $self, $event, $gene_dbrow ) = @_;
     my $trans_rs = $gene_dbrow->search_related(
         'feature_relationship_objects',
@@ -36,31 +34,56 @@ sub read_transcript {
         { join        => 'type' }
         )->search_related(
         'subject',
-        {   'type_2.name'      => { -in => [ 'mRNA', 'pseudogene' ] },
+        {   'type_2.name' => { -in => [ 'mRNA', 'pseudogene' ] },
             'dbxref.accession' => 'dictyBase Curator',
             'is_deleted'       => 0,
-            'db.name'          => 'GFF_source'
+            'db.name'          => $self->source
         },
-        { join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ],  cache => 1 }
+        {   join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ],
+            cache => 1
+        }
         );
 
-    if ($trans_rs->count()) {
-        $event->response($trans_rs);
-    }
-    else {
-       $trans_rs = $gene_dbrow->search_related(
+    $event->response($trans_rs);
+}
+
+sub read_canonical_transcript {
+    my ( $self, $event, $gene_dbrow ) = @_;
+    my $trans_rs = $gene_dbrow->search_related(
         'feature_relationship_objects',
         { 'type.name' => 'part_of' },
         { join        => 'type' }
         )->search_related(
         'subject',
-        {   'type_2.name'      => { -in => [ 'mRNA', 'pseudogene' ] },
-            'dbxref.accession' => 'Sequencing Center',
+        {   'type_2.name' => { -in => [ 'mRNA', 'pseudogene' ] },
+            'dbxref.accession' => 'dictyBase Curator',
             'is_deleted'       => 0,
             'db.name'          => 'GFF_source'
         },
-        { join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ] }
+        {   join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ],
+            cache => 1
+        }
         );
+
+    if ( $trans_rs->count() ) {
+        $event->response($trans_rs);
+    }
+    else {
+        $trans_rs = $gene_dbrow->search_related(
+            'feature_relationship_objects',
+            { 'type.name' => 'part_of' },
+            { join        => 'type' }
+            )->search_related(
+            'subject',
+            {   'type_2.name' => { -in => [ 'mRNA', 'pseudogene' ] },
+                'dbxref.accession' => 'Sequencing Center',
+                'is_deleted'       => 0,
+                'db.name'          => 'GFF_source'
+            },
+            {   join =>
+                    [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ]
+            }
+            );
         $event->response($trans_rs);
     }
 }
