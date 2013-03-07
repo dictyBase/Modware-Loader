@@ -83,7 +83,8 @@ has 'property' => (
     default => sub { [] },
     lazy    => 1,
     traits  => [qw/Array/],
-    handles => { num_of_properties => 'count', all_properties => 'elements' }
+    handles => { num_of_properties => 'count', all_properties => 'elements' }, 
+    documentation => 'List of additional cvterms which will be used to extract additional feature properties'
 );
 
 sub execute {

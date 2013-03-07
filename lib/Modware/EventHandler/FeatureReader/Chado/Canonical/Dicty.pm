@@ -35,9 +35,9 @@ sub read_transcript_by_source {
         )->search_related(
         'subject',
         {   'type_2.name' => { -in => [ 'mRNA', 'pseudogene' ] },
-            'dbxref.accession' => 'dictyBase Curator',
+            'dbxref.accession' => $self->source, 
             'is_deleted'       => 0,
-            'db.name'          => $self->source
+            'db.name'          => 'GFF_source'
         },
         {   join => [ 'type', { 'feature_dbxrefs' => { 'dbxref' => 'db' } } ],
             cache => 1
