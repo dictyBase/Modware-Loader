@@ -130,6 +130,7 @@ sub read_mito_reference {
 sub read_seq_id {
     my ( $self, $event, $dbrow ) = @_;
     my $seq_id = $self->_chado_feature_id($dbrow);
+    $event->logger->info("read seq id $seq_id");
     $event->response_id($seq_id);
 }
 

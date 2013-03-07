@@ -23,7 +23,7 @@ sub write_transcript {
     }
     else {
         #transcript
-        my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
+        my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $event,  $seq_id, $gene_id );
         delete $trans_hash->{attributes}->{Parent};
         $output->print( gff3_format_feature($trans_hash) );
     }

@@ -28,7 +28,7 @@ sub write_reference {
         return;
     }
 
-    $hashref->{type}   = $dbrow->type->name;
+    $hashref->{type}   = $event->get_cvrow_by_id($dbrow->type_id)->name;
     $hashref->{score}  = undef;
     $hashref->{seq_id} = $seq_id;
     $hashref->{start}  = 1;
@@ -68,20 +68,20 @@ sub write_reference {
 
 sub write_contig {
     my ( $self, $event, $seq_id, $dbrow ) = @_;
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $event,  $seq_id );
     $self->output->print( gff3_format_feature($hash) );
 }
 
 sub write_gene {
     my ( $self, $event, $seq_id, $dbrow ) = @_;
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $event,  $seq_id );
     $self->output->print( gff3_format_feature($hash) );
 }
 
 sub write_transcript {
     my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
     my $gene_id = $self->_chado_feature_id($parent_dbrow);
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $gene_id );
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $event,  $seq_id, $gene_id );
     $self->output->print( gff3_format_feature($hash) );
 }
 
@@ -100,7 +100,8 @@ sub write_reference_sequence {
 sub write_exon {
     my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
     my $trans_id = $self->_chado_feature_id($parent_dbrow);
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $seq_id, $trans_id );
+
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $event,  $seq_id, $trans_id );
     $self->output->print( gff3_format_feature($hash) );
 }
 

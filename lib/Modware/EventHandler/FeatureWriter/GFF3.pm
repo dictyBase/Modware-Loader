@@ -39,9 +39,9 @@ sub write_sequence_region {
 }
 
 sub _dbrow2gff3hash {
-    my ( $self, $dbrow, $seq_id, $parent_id, $parent ) = @_;
+    my ( $self, $dbrow, $event, $seq_id, $parent_id, $parent ) = @_;
     my $hashref;
-    $hashref->{type}   = $dbrow->type->name;
+    $hashref->{type}   = $event->get_cvrow_by_id($dbrow->type_id)->name;
     $hashref->{score}  = undef;
     $hashref->{seq_id} = $seq_id;
 
@@ -83,10 +83,10 @@ sub _dbrow2gff3hash {
     }
     $hashref->{attributes}->{Parent} = [$parent_id] if $parent_id;
     my $dbxrefs;
-    for my $xref_row ( grep { $_->db->name ne 'GFF_source' }
+    for my $xref_row ( grep { $event->get_dbrow_by_id($_->db_id)->name ne 'GFF_source' }
         $dbrow->secondary_dbxrefs )
     {
-        my $dbname = $xref_row->db->name;
+        my $dbname = $event->get_dbrow_by_id($xref_row->db_id)->name;
         $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
         push @$dbxrefs, $dbname . ':' . $xref_row->accession;
     }
