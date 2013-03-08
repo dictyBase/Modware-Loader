@@ -11,7 +11,7 @@ extends 'Modware::EventHandler::FeatureWriter::GFF3';
 
 sub write_feature {
     my ( $self, $event, $seq_id, $dbrow ) = @_;
-    my $hashref = $self->_dbrow2gff3hash( $dbrow, $seq_id );
+    my $hashref = $self->_dbrow2gff3hash( $dbrow, $event,  $seq_id );
     $self->output->print( gff3_format_feature($hashref) );
 }
 

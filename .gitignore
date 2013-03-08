@@ -12,3 +12,4 @@ sqlnet.log
 tmp/
 perltidy.LOG
 *.gaf
+nytprof*

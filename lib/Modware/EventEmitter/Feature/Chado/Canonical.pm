@@ -9,6 +9,7 @@ use MooseX::Event '-alias' => {
     remove_listener => 'unsubscribe'
 };
 with 'Modware::Role::Loggable';
+with 'Modware::Role::Chado::Cache';
 
 # Module implementation
 #
@@ -22,7 +23,16 @@ has_events
     qw/read_gene write_gene read_transcript write_transcript read_exon write_exon/;
 has_events qw/read_cds write_cds read_polypeptide write_polypeptide/;
 
-has 'resource' => ( is => 'rw', isa => 'Bio::Chado::Schema', required => 1 );
+has 'resource' => (
+    is       => 'rw',
+    isa      => 'Bio::Chado::Schema',
+    required => 1,
+    trigger  => sub {
+        my ( $self, $schema ) = @_;
+        $self->_cache_common_lookups($schema);
+    }
+);
+
 has 'response' => (
     is        => 'rw',
     isa       => 'Object',
@@ -36,6 +46,28 @@ has 'response_id' => (
     isa    => 'Str',
     traits => [qw/ClearAfterAccess/]
 );
+
+sub _cache_common_lookups {
+    my ( $self, $schema ) = @_;
+    my $rs = $schema->resultset('Cv::Cvterm')->search(
+        {   'cv.name' => 'sequence',
+            'me.name' => {
+                -in => [
+                    qw/gene exon mRNA pseudogene contig chromosome pseudogenic_exon
+                        pseudogenic_transcript/
+                ]
+            }
+        },
+        { join => 'cv' }
+    );
+    my $cache = { map { $_->cvterm_id => $_ } $rs->all };
+    $self->_cvterm_id_stack($cache);
+
+    my $rs2 = $schema->resultset('General::Db')->search( {} );
+    my $cache2 = { map { $_->db_id => $_ } $rs2->all };
+    $self->_db_id_stack($cache2);
+
+}
 
 sub process {
     my ( $self, $log_level ) = @_;
@@ -53,12 +85,9 @@ sub process {
     $self->emit( 'read_reference' => $self->response );
     my $response = $self->response;
 
-    $logger->debug('going to loop through each reference');
 SEQUENCE_REGION:
     while ( my $row = $response->next ) {
-        $logger->debug('read_seq_id event');
         $self->emit( 'read_seq_id' => $row );
-        $logger->debug('write_sequence_region event');
         $self->emit(
             'write_sequence_region' => ( $self->response_id, $row ) );
     }
@@ -66,14 +95,11 @@ SEQUENCE_REGION:
     $response->reset;
 REFERENCE:
     while ( my $row = $response->next ) {
-        $logger->debug('read_seq_id event');
         $self->emit( 'read_seq_id' => $row );
 
         my $ref_id = $self->response_id;
-        $logger->debug('write_reference event');
         $self->emit( 'write_reference' => ( $ref_id, $row ) );
 
-        $logger->debug('read_contig event');
         $self->emit( 'read_contig' => $row );
         if ( $self->has_response ) {
             my $rs = $self->response;
@@ -84,41 +110,30 @@ REFERENCE:
             }
         }
 
-        $logger->debug('read_gene event');
         $self->emit( 'read_gene' => $row );
         if ( $self->has_response ) {
             my $rs = $self->response;
         GENE:
             while ( my $grow = $rs->next ) {
-                $logger->debug('write_gene event');
                 $self->emit( 'write_gene' => ( $ref_id, $grow ) );
-
-                $logger->debug('before read_transcript event');
                 $self->emit( 'read_transcript' => $grow );
-                $logger->debug('after read_transcript event');
                 if ( $self->has_response ) {
                     my $rs2 = $self->response;
                 TRANSCRIPT:
-                    $logger->debug('before loop write_transcript event');
                     while ( my $trow = $rs2->next ) {
-                        $logger->debug('before write_transcript event');
                         $self->emit(
                             'write_transcript' => ( $ref_id, $grow, $trow ) );
-                        $logger->debug('after write_transcript event');
 
                         $self->emit( 'read_exon' => $trow );
-                        $logger->debug('read_exon event');
                         if ( $self->has_response ) {
                             my $rs3 = $self->response;
                         EXON:
                             while ( my $erow = $rs3->next ) {
-                                $logger->debug('write_exon event');
                                 $self->emit(
                                     write_exon => ( $ref_id, $trow, $erow ) );
                             }
                         }
 
-                        $logger->debug('read_cds event');
                         $self->emit( 'read_cds' => $trow );
                         if ( $self->has_response ) {
                             my $rs4 = $self->response;
@@ -130,7 +145,6 @@ REFERENCE:
                             }
                         }
 
-                        $logger->debug('read_polypeptide event');
                         $self->emit( 'read_polypeptide' => $trow );
                         if ( $self->has_response ) {
                             my $rs5 = $self->response;
@@ -150,7 +164,6 @@ REFERENCE:
     while ( my $row = $response->next ) {
         $self->emit( 'read_seq_id' => $row );
         my $ref_id = $self->response_id;
-        $logger->debug('write_sequence event');
         $self->emit( 'write_reference_sequence' => ( $ref_id, $row ) );
     }
     $logger->debug('done firing events');
