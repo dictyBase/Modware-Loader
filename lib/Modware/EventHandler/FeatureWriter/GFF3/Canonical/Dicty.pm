@@ -36,7 +36,7 @@ sub write_transcript {
     }
     else { #if not fills it up
     	$term = $dbrow->type->name;
-    	$event->set_cvrow_by_id($dbrow->type_id, $term);
+    	$event->set_cvrow_by_id($dbrow->type_id, $dbrow->type);
     }
 
     if ( $term eq 'pseudogene' ) {
