@@ -28,7 +28,18 @@ sub write_transcript {
     my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
     my $output  = $self->output;
     my $gene_id = $self->_chado_feature_id($parent_dbrow);
-    if ( $event->get_cvrow_by_id($dbrow->type_id)->name eq 'pseudogene' ) {
+    my $term;
+
+    #check cache
+    if ($event->has_cvrow_id($dbrow->type_id)) {
+    	$term = $event->get_cvrow_by_id($dbrow->type_id)->name;
+    }
+    else { #if not fills it up
+    	$term = $dbrow->type->name;
+    	$event->set_cvrow_by_id($dbrow->type_id, $term);
+    }
+
+    if ( $term eq 'pseudogene' ) {
 
         # dicty pseudogene gene model have to be SO complaint
         # it writes gene and transcript feature
