@@ -12,7 +12,6 @@ has 'output' => (
     isa => 'IO::Handle'
 );
 
-
 sub write_header {
     my ( $self, $event ) = @_;
     $self->output->print("##gff-version\t3\n");
@@ -41,7 +40,7 @@ sub write_sequence_region {
 sub _dbrow2gff3hash {
     my ( $self, $dbrow, $event, $seq_id, $parent_id, $parent ) = @_;
     my $hashref;
-    $hashref->{type}   = $event->get_cvrow_by_id($dbrow->type_id)->name;
+    $hashref->{type}   = $event->get_cvrow_by_id( $dbrow->type_id )->name;
     $hashref->{score}  = undef;
     $hashref->{seq_id} = $seq_id;
 
@@ -83,10 +82,11 @@ sub _dbrow2gff3hash {
     }
     $hashref->{attributes}->{Parent} = [$parent_id] if $parent_id;
     my $dbxrefs;
-    for my $xref_row ( grep { $event->get_dbrow_by_id($_->db_id)->name ne 'GFF_source' }
+    for my $xref_row (
+        grep { $event->get_dbrow_by_id( $_->db_id )->name ne 'GFF_source' }
         $dbrow->secondary_dbxrefs )
     {
-        my $dbname = $event->get_dbrow_by_id($xref_row->db_id)->name;
+        my $dbname = $event->get_dbrow_by_id( $xref_row->db_id )->name;
         $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
         push @$dbxrefs, $dbname . ':' . $xref_row->accession;
     }
@@ -117,6 +117,13 @@ sub gff_source {
     if ( my $row = $dbxref_rs->first ) {
         return $row->accession;
     }
+}
+
+sub setup_feature_location {
+    my ( $self, $event, $dbrow, $hashref ) = @_;
+    $hashref->{start}  = $dbrow->fmin + 1;
+    $hashref->{end}    = $dbrow->fmax;
+    $hashref->{strand} = $dbrow->strand == -1 ? '-' : '+';
 }
 
 1;    # Magic true value required at end of module
