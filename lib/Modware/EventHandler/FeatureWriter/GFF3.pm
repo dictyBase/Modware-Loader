@@ -126,6 +126,13 @@ sub setup_feature_location {
     $hashref->{strand} = $dbrow->strand == -1 ? '-' : '+';
 }
 
+sub setup_subfeature_location {
+    my ( $self, $event, $dbrow, $hashref ) = @_;
+    $hashref->{start}  = $dbrow->fmin + 1;
+    $hashref->{end}    = $dbrow->fmax;
+    $hashref->{strand} = $dbrow->strand == -1 ? '-' : '+';
+}
+
 1;    # Magic true value required at end of module
 
 __END__
