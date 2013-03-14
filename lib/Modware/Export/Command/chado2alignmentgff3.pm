@@ -6,7 +6,7 @@ use namespace::autoclean;
 use Moose;
 use Modware::EventEmitter::Feature::Chado;
 use Modware::EventHandler::FeatureReader::Chado::Overlapping;
-use Modware::EventHandler::FeatureWriter::GFF3::Alignment;
+use Class::Load qw/load_class/;
 extends qw/Modware::Export::Chado/;
 
 # Module implementation
@@ -83,8 +83,18 @@ has 'property' => (
     default => sub { [] },
     lazy    => 1,
     traits  => [qw/Array/],
-    handles => { num_of_properties => 'count', all_properties => 'elements' }, 
-    documentation => 'List of additional cvterms which will be used to extract additional feature properties'
+    handles => { num_of_properties => 'count', all_properties => 'elements' },
+    documentation =>
+        'List of additional cvterms which will be used to extract additional feature properties'
+);
+
+has 'fix_dicty_coordinates' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'Correct the EST match coordinate specifically for dictyBase alignment'
 );
 
 sub execute {
@@ -99,11 +109,25 @@ sub execute {
     $read_handler->genus( $self->genus )          if $self->genus;
     $read_handler->common_name( $self->organism ) if $self->organism;
 
-    my $write_handler
-        = Modware::EventHandler::FeatureWriter::GFF3::Alignment->new(
-        output     => $self->output_handler,
-        match_type => $self->match_type
-        );
+    my $write_handler;
+    if ( $self->feature_type eq 'EST' and $self->fix_dicty_coordinates ) {
+        load_class(
+            'Modware::EventHandler::FeatureWriter::GFF3::Alignment::Dicty');
+        $write_handler
+            = Modware::EventHandler::FeatureWriter::GFF3::Alignment::Dicty
+            ->new(
+            output     => $self->output_handler,
+            match_type => $self->match_type
+            );
+    }
+    else {
+        load_class('Modware::EventHandler::FeatureWriter::GFF3::Alignment');
+        $write_handler
+            = Modware::EventHandler::FeatureWriter::GFF3::Alignment->new(
+            output     => $self->output_handler,
+            match_type => $self->match_type
+            );
+    }
     $write_handler->force_name( $self->force_name );
     $write_handler->force_description( $self->add_description );
     if ( $self->num_of_properties ) {
