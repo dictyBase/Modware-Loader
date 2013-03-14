@@ -149,7 +149,7 @@ sub write_subfeature {
         { order_by => { -asc => 'fmin' } } );
     my $floc_row;
     if ( $floc_row = $floc_rs->first ) {
-    	$self->setup_feature_location($event, $floc_row, $hashref);
+    	$self->setup_subfeature_location($event, $floc_row, $hashref);
     }
     else {
         $event->output_logger->warn(
