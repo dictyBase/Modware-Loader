@@ -52,9 +52,7 @@ sub write_feature {
     my $floc_rs = $dbrow->featureloc_features( { rank => 0 } );
     my $floc_row;
     if ( $floc_row = $floc_rs->first ) {
-        $hashref->{start}  = $floc_row->fmin + 1;
-        $hashref->{end}    = $floc_row->fmax;
-        $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
+    	$self->setup_feature_location($event, $floc_row, $hashref);
     }
     else {
         $event->output_logger->log(
@@ -151,9 +149,7 @@ sub write_subfeature {
         { order_by => { -asc => 'fmin' } } );
     my $floc_row;
     if ( $floc_row = $floc_rs->first ) {
-        $hashref->{start}  = $floc_row->fmin + 1;
-        $hashref->{end}    = $floc_row->fmax;
-        $hashref->{strand} = $floc_row->strand == -1 ? '-' : '+';
+    	$self->setup_feature_location($event, $floc_row, $hashref);
     }
     else {
         $event->output_logger->warn(
