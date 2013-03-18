@@ -16,7 +16,7 @@ has '_cvterm_id_stack' => (
 		'get_cvrow_by_id' => 'get', 
 		'set_cvrow_by_id' => 'set', 
 		'clean_cvrow_stack' => 'clear', 
-		'has_cvterm_id' => 'defined'
+		'has_cvrow_id' => 'defined'
 	}
 );
 

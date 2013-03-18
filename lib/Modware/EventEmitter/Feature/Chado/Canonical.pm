@@ -54,7 +54,9 @@ sub _cache_common_lookups {
             'me.name' => {
                 -in => [
                     qw/gene exon mRNA pseudogene contig chromosome pseudogenic_exon
-                        pseudogenic_transcript/
+                        pseudogenic_transcript snRNA class_I_RNA class_II_RNA
+                        C_D_box_snoRNA H_ACA_box_snoRNA SRP_RNA RNAase_P_RNA
+                        RNAase_MRP_RNA snoRNA rRNA ncRNA tRNA/
                 ]
             }
         },

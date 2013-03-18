@@ -1,132 +1,18 @@
-package Modware::EventEmitter::Feature::Chado;
+package Modware::EventHandler::FeatureWriter::GFF3::Alignment::Dicty;
 
 # Other modules:
 use namespace::autoclean;
 use Moose;
-use Modware::MooseX::ClearAfterAccess;
-use MooseX::Event '-alias' => {
-    on              => 'subscribe',
-    remove_listener => 'unsubscribe'
-};
-use Modware::Load::Types qw/DbObject/;
-with 'Modware::Role::Loggable';
-with 'Modware::Role::Chado::Cache';
+extends 'Modware::EventHandler::FeatureWriter::GFF3::Alignment';
 
 # Module implementation
 #
 
-has_events
-    qw/write_meta_header write_header read_organism write_sequence_region/;
-has_events qw/read_reference read_seq_id write_reference/;
-has_events qw/read_feature read_subfeature write_feature write_subfeature/;
-
-has 'resource' => (
-    is       => 'rw',
-    isa      => 'Bio::Chado::Schema',
-    required => 1,
-    trigger  => sub {
-        my ( $self, $schema ) = @_;
-        $self->_cache_common_lookups($schema);
-    }
-);
-
-has 'response' => (
-    is        => 'rw',
-    isa       => DbObject,
-    predicate => 'has_response',
-    traits    => [qw/ClearAfterAccess/]
-);
-
-has 'response_id' => (
-    is     => 'rw',
-    isa    => 'Str',
-    traits => [qw/ClearAfterAccess/]
-);
-
-has 'msg' => ( is => 'rw', isa => 'Str' );
-
-
-sub _cache_common_lookups {
-    my ( $self, $schema ) = @_;
-    my $rs = $schema->resultset('Cv::Cvterm')->search(
-        {   'cv.name' => 'sequence',
-            'me.name' => {
-                -in => [
-                    qw/gene exon mRNA pseudogene contig chromosome pseudogenic_exon
-                        pseudogenic_transcript/
-                ]
-            }
-        },
-        { join => 'cv' }
-    );
-    my $cache = { map { $_->cvterm_id => $_ } $rs->all };
-    $self->_cvterm_id_stack($cache);
-
-    my $rs2 = $schema->resultset('General::Db')->search( {} );
-    my $cache2 = { map { $_->db_id => $_ } $rs2->all };
-    $self->_db_id_stack($cache2);
-
-}
-
-sub process {
-    my ( $self, $log_level ) = @_;
-
-    $self->log_level($log_level) if $log_level;
-    $self->use_extended_layout(1);
-    my $logger = $self->output_logger;
-
-    $self->emit('write_header');
-    $self->emit('write_meta_header');
-
-    $logger->debug('read_organism event');
-    $self->emit( 'read_organism' => $self->resource );
-
-    $logger->debug('read_reference event');
-    $self->emit( 'read_reference' => $self->response );
-    my $response = $self->response;
-    $logger->debug('finished read_reference event');
-
-SEQUENCE_REGION:
-    while ( my $row = $response->next ) {
-        $logger->debug('read_seq_id event');
-        $self->emit( 'read_seq_id' => $row );
-        $logger->debug('write_sequence_region event');
-        $self->emit(
-            'write_sequence_region' => ( $self->response_id, $row ) );
-    }
-
-    $response->reset;
-REFERENCE:
-    while ( my $row = $response->next ) {
-        $logger->debug('read_seq_id event');
-        $self->emit( 'read_seq_id' => $row );
-        my $seq_id = $self->response_id;
-        $logger->debug('write_reference event');
-        $self->emit( 'write_reference' => ( $seq_id, $row ) );
-        $logger->debug('read_feature event');
-        $self->emit( 'read_feature' => $row );
-        next REFERENCE if !$self->has_response;
-        my $rs = $self->response;
-        $logger->debug('finished read_feature event');
-
-    FEATURE:
-        while ( my $frow = $rs->next ) {
-            $logger->debug('write_feature event');
-            $self->emit( 'write_feature' => ( $seq_id, $frow ) );
-            $logger->debug('read_subfeature event');
-            $self->emit( 'read_subfeature' => $frow );
-            next FEATURE if !$self->has_response;
-
-            my $rs2 = $self->response;
-            $logger->debug('finished read_subfeature event');
-
-            while ( my $sfrow = $rs2->next ) {
-                $logger->debug('write_subfeature event');
-                $self->emit(
-                    'write_subfeature' => ( $seq_id, $frow, $sfrow ) );
-            }
-        }
-    }
+sub setup_feature_location {
+    my ( $self, $event, $dbrow, $hashref ) = @_;
+    $hashref->{start}  = $hashref->{source} eq 'Hideko' ? $dbrow->fmin : $dbrow->fmin + 1;
+    $hashref->{end}    = $dbrow->fmax;
+    $hashref->{strand} = $dbrow->strand == -1 ? '-' : '+';
 }
 
 1;    # Magic true value required at end of module
