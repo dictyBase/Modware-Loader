@@ -18,7 +18,7 @@ sub write_feature {
 sub write_subfeature {
     my ( $self, $event, $seq_id, $parent, $dbrow ) = @_;
     my $parent_id = $self->_chado_feature_id($parent);
-    my $hashref = $self->_dbrow2gff3hash( $dbrow, $seq_id, $parent_id );
+    my $hashref = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id, $parent_id );
     $self->output->print( gff3_format_feature($hashref) );
 }
 
