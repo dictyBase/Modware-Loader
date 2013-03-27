@@ -1,0 +1,23 @@
+!gaf-version: 2.0
+!02/07/2013
+!dictyBase(www.dictybase.org)
+dictyBase	DDB_G0285323	atg9	colocalizes_with	GO:0005794	PMID:20070309	IDA		C	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9	colocalizes_with	GO:0005815	PMID:20070309	IDA		C	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9	colocalizes_with	GO:0005874	PMID:20070309	IDA		C	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9		GO:0006909	PMID:20070309	IMP		P	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9		GO:0008283	PMID:20070309	IMP		P	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9		GO:0009617	PMID:20070309	IMP		P	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9		GO:0016021	PMID:20070309	ISS	CBS:TMHMM	C	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9		GO:0031152	PMID:20070309	IMP		P	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9		GO:0031153	PMID:20070309	IMP		P	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9		GO:0031288	PMID:20070309	IMP		P	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0285323	atg9		GO:0040011	PMID:20070309	IMP		P	autophagy protein 9	APG9	gene	taxon:44689	20100217	dictyBase	
+dictyBase	DDB_G0279649	acapA		GO:0005096	PMID:20062541	IDA		F	Arf GTPase activating protein A	arfGAP|ACAP-A	gene	taxon:44689	20100305	dictyBase	
+dictyBase	DDB_G0279649	acapA		GO:0032850	PMID:20062541	IDA		P	Arf GTPase activating protein A	arfGAP|ACAP-A	gene	taxon:44689	20100305	dictyBase	
+dictyBase	DDB_G0279649	acapA		GO:0043937	PMID:20062541	IGI	dictyBase:DDB0233653	P	Arf GTPase activating protein A	arfGAP|ACAP-A	gene	taxon:44689	20100305	dictyBase	
+dictyBase	DDB_G0276395	acapB		GO:0005096	PMID:20062541	IDA		F	Arf GTPase activating protein B	ACAP-B|arfGAP	gene	taxon:44689	20100305	dictyBase	
+dictyBase	DDB_G0276395	acapB		GO:0032850	PMID:20062541	IDA		P	Arf GTPase activating protein B	ACAP-B|arfGAP	gene	taxon:44689	20100305	dictyBase	
+dictyBase	DDB_G0276395	acapB		GO:0043937	PMID:20062541	IGI	dictyBase:DDB0233652	P	Arf GTPase activating protein B	ACAP-B|arfGAP	gene	taxon:44689	20100305	dictyBase	
+dictyBase	DDB_G0282377	dhkM		GO:0048102	PMID:20375146	IMP		P	histidine kinase M		gene	taxon:44689	20110104	dictyBase	
+dictyBase	DDB_G0274809	mppA1		GO:0004175	PMID:20019080	IDA		F	mitochondrial processing peptidase alpha subunit	&alpha;-MPP|alpha-MPP|mppA	gene	taxon:44689	20100818	dictyBase	
+dictyBase	DDB_G0274809	mppA1		GO:0005739	PMID:20019080	IDA		C	mitochondrial processing peptidase alpha subunit	&alpha;-MPP|alpha-MPP|mppA	gene	taxon:44689	20100818	dictyBase	

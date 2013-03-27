@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+
+package export;
+use Modware::Export;
+
+Modware::Export->run;
+
+
+=head1 NAME
+
+B<export> - [Runnable for export modules]

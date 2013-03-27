@@ -1,0 +1,14 @@
+!gaf-version: 2.0
+!URL: http://www.ebi.ac.uk/GOA/index.html
+dictyBase	DDB_G0274035	stip-1		GO:0003676	GO_REF:0000002	IEA	InterPro:IPR000467	F	Septin and tuftelin-interacting protein 1 homolog	TFP11_DICDI|stip-1|DDB_G0272608|stip|stip-2|DDB_G0274035|stip	protein	taxon:44689	20130202	InterPro		
+dictyBase	DDB_G0277399	piaA		GO:0005515	PMID:16079174	IPI	UniProtKB:P54632	F	Protein pianissimo A	PIAA_DICDI|piaA|DDB_G0277399|amiA|DG1117|pia	protein	taxon:44689	20120615	dictyBase		
+dictyBase	DDB_G0277399	piaA		GO:0005515	PMID:16079174	IPI	UniProtKB:P54651	F	Protein pianissimo A	PIAA_DICDI|piaA|DDB_G0277399|amiA|DG1117|pia	protein	taxon:44689	20120708	dictyBase		
+dictyBase	DDB_G0291710	roco10		GO:0005096	GO_REF:0000037	IEA	UniProtKB-KW:KW-0343	F	Probable inactive serine/threonine-protein kinase roco10	ROC10_DICDI|DDB_G0291710|roco10	protein	taxon:44689	20130202	UniProtKB		
+dictyBase	DDB_G0286355	mhcA		GO:0000910	PMID:2721503	IMP		P	Myosin-2 heavy chain	MYS2_DICDI|DDB_G0286355|mhcA	protein	taxon:44689	20060426	dictyBase		
+dictyBase	DDB_G0289663	act5		GO:0001891	PMID:21190565	IDA		C	Major actin	ACT1_DICDI|act12|DDB_G0274129|act14|DDB_G0274137|actB1|act15|DDB_G0289663|act20|act5|DDB_G0272520|actA1|DDB_G0274285|act21|DDB_G0274561|act6|DDB_G0274135|act4|DDB_G0289005|DDB_G0272248	protein	taxon:44689	20110923	dictyBase		
+dictyBase	DDB_G0289663	act5		GO:0000166	GO_REF:0000037	IEA	UniProtKB-KW:KW-0547	F	Major actin	ACT1_DICDI|act12|DDB_G0274129|act14|DDB_G0274137|actB1|act15|DDB_G0289663|act20|act5|DDB_G0272520|actA1|DDB_G0274285|act21|DDB_G0274561|act6|DDB_G0274135|act4|DDB_G0289005|DDB_G0272248	protein	taxon:44689	20130202	UniProtKB		
+dictyBase	DDB_G0286355	mhcA		GO:0000146	PMID:19955408	IDA		F	Myosin-2 heavy chain	MYS2_DICDI|DDB_G0286355|mhcA	protein	taxon:44689	20100309	dictyBase		
+dictyBase	DDB_G0293438	abcB2		GO:0005215	PMID:12456012	ISS	With:Not_supplied	F	ABC transporter B family member 2	ABCB2_DICDI|abcB2|DDB_G0293438	protein	taxon:44689	20040917	dictyBase		
+dictyBase	DDB_G0275689	abcG2		GO:0042626	PMID:12456012	ISS	With:Not_supplied	F	ABC transporter G family member 2	ABCG2_DICDI|mdra1|abcG2|DDB_G0275689	protein	taxon:44689	20040802	dictyBase		
+dictyBase	DDB_G0274077	DrnA		GO:0003723	GO_REF:0000002	IEA	InterPro:IPR000999|InterPro:IPR014720	F	Putative uncharacterized protein drnA-2	Q95ZG5_DICDI|DrnA|DDB_G0273051|DDB_G0274077|drnA-1|drnA-2	protein	taxon:44689	20130202	InterPro		
+dictyBase	DDB_G0274077	DrnA		GO:0003725	GO_REF:0000002	IEA	InterPro:IPR001159	F	Putative uncharacterized protein drnA-2	Q95ZG5_DICDI|DrnA|DDB_G0273051|DDB_G0274077|drnA-1|drnA-2	protein	taxon:44689	20130202	InterPro		

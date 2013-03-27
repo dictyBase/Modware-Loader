@@ -1,3 +1,15 @@
 Modware-*
 .build/
 !modware-update
+!modware-export
+!modware-transform
+!modware-load
+locallib/
+data/
+config/
+log/
+sqlnet.log
+tmp/
+perltidy.LOG
+*.gaf
+nytprof*
