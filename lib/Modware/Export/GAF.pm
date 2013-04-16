@@ -309,6 +309,8 @@ sub execute {
         $gaf_row->{13} = $self->taxon_namespace . ':' . $self->taxon_id;
         $gaf_row->{14} = $self->get_date_column($fcvprop_rs);
         $gaf_row->{15} = $self->get_source_column($fcvprop_rs);
+		$gaf_row->{16} = '';
+		$gaf_row->{17} = '';
 
         my $gaf = $self->stringify($gaf_row);
         $io->write( $gaf . "\n" );
