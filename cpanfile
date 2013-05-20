@@ -14,6 +14,7 @@ requires "MooseX::ConfigFromFile" => "0.10";
 requires "MooseX::Event" => "v0.2.0";
 requires "MooseX::Getopt" => "0.56";
 requires "MooseX::Types::Path::Class" => "0.06";
+requires "Regexp::Common" => "2013030901";
 requires "Spreadsheet::WriteExcel" => "2.37";
 requires "Tie::Cache" => "0.17";
 requires "perl" => "5.010";

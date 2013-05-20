@@ -44,6 +44,7 @@ my %module_build_args = (
     "MooseX::Event" => "v0.2.0",
     "MooseX::Getopt" => "0.56",
     "MooseX::Types::Path::Class" => "0.06",
+    "Regexp::Common" => "2013030901",
     "Spreadsheet::WriteExcel" => "2.37",
     "Tie::Cache" => "0.17",
     "perl" => "5.010"
