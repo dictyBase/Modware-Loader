@@ -6,10 +6,14 @@ package Modware::Load::Command::dictygaf2chado;
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
 use namespace::autoclean;
+use Time::Piece;
 
 use Modware::Loader::GAF;
 use Modware::Loader::GAF::Manager;
 extends qw/Modware::Load::Chado/;
+
+with 'Modware::Role::Command::WithLogger';
+with 'Modware::Role::Command::WithEmail';
 
 has '+input'         => ( documentation => 'GAF file' );
 has '+input_handler' => ( traits        => [qw/NoGetopt/] );
@@ -66,8 +70,12 @@ has 'dupes' => (
 sub execute {
     my ($self) = @_;
 
+    $self->host('lulu.it.northwestern.edu');
+    $self->from('dicty-gaf-update-bot@dictybase.org');
+    $self->subject('dictyBase GAF Update');
+
     my $manager = Modware::Loader::GAF::Manager->new;
-    $manager->set_logger( $self->logger );
+    $manager->set_logger( $self->dual_logger );
     $manager->set_schema( $self->schema );
 
     my $loader = Modware::Loader::GAF->new;
@@ -79,15 +87,27 @@ sub execute {
     $loader->set_limit( $self->limit );
 
     my $guard = $self->schema->storage->txn_scope_guard;
+
+    my $t_start = localtime;
+    $manager->logger->info( "Beginning GAF update process at "
+            . $t_start->hour . ":"
+            . $t_start->min . ":"
+            . $t_start->sec );
+
     if ( $self->prune ) {
         $manager->prune();
     }
     $loader->load_gaf();
     $guard->commit;
-    $self->logger->info( 'Finished loading '
+
+    my $t_end = localtime;
+    $self->logger->info( "Finished loading "
             . $self->schema->resultset('Sequence::FeatureCvterm')
             ->search( {}, {} )->count
-            . ' annotations' );
+            . " annotations at "
+            . $t_end->hour . ":"
+            . $t_end->min . ":"
+            . $t_end->sec );
 }
 
 1;

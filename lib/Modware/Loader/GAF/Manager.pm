@@ -136,7 +136,6 @@ sub prune {
             $sth->execute;
         }
     );
-    $self->logger->info('Done pruning');
 }
 
 has '_ebi_goa_url' => (
