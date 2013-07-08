@@ -190,10 +190,6 @@ sub execute {
             . $t_start->min . ":"
             . $t_start->sec );
 
-    $self->host('lulu.it.northwestern.edu');
-    $self->from('dicty-gaf-export-bot@dictybase.org');
-    $self->subject('dictyBase GAF export');
-
     my $base_query = {
         'cvterm.is_obsolete ' => 0,
         'cv.name'             => {

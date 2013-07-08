@@ -70,10 +70,6 @@ has 'dupes' => (
 sub execute {
     my ($self) = @_;
 
-    $self->host('lulu.it.northwestern.edu');
-    $self->from('dicty-gaf-update-bot@dictybase.org');
-    $self->subject('dictyBase GAF Update');
-
     my $manager = Modware::Loader::GAF::Manager->new;
     $manager->set_logger( $self->dual_logger );
     $manager->set_schema( $self->schema );
