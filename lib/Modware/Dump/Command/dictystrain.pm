@@ -28,7 +28,7 @@ sub execute {
     else {
         @data = (
             "strain",       "inventory", "genotype", "phenotype",
-            "publications", "genes"
+            "publications", "genes",     "characteristics"
         );
     }
 
@@ -44,8 +44,9 @@ sub execute {
 
     my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
         {},
-        {   select =>
-                [qw/id strain_name species dbxref_id pubmedid genotype/],
+        {   select => [
+                qw/id strain_name strain_description species dbxref_id pubmedid genotype/
+            ],
             cache => 1
         }
     );
@@ -57,7 +58,8 @@ sub execute {
         if ( exists $io->{strain} ) {
             $io->{strain}->write( $dbs_id . "\t"
                     . $strain->strain_name . "\t"
-                    . $strain->species
+                    . $strain->species . "\t"
+                    . $strain->strain_description
                     . "\n" );
         }
 
@@ -83,7 +85,13 @@ sub execute {
         if ( $io->{publications} ) {
             my $pmid = $strain->pubmedid;
             if ($pmid) {
-                my @pmids = split( /,/, $pmid ) if $pmid =~ /,/;
+                my @pmids;
+                if ( $pmid =~ /,/ ) {
+                    @pmids = split( /,/, $pmid );
+                }
+                else {
+                    $pmids[0] = $pmid;
+                }
                 foreach my $pmid_ (@pmids) {
                     $io->{publications}
                         ->write( $dbs_id . "\t" . $self->trim($pmid_) . "\n" )
@@ -113,6 +121,18 @@ sub execute {
             while ( my $strain_gene = $strain_gene_rs->next ) {
                 my $gene_id = $self->find_gene_id( $strain_gene->feature_id );
                 $io->{genes}->write( $dbs_id . "\t" . $gene_id . "\n" );
+            }
+        }
+
+        if ( exists $io->{characteristics} ) {
+            my $strain_char_rs
+                = $self->legacy_schema->resultset('StrainCharCvterm')
+                ->search( { strain_id => $strain->id }, { cache => 1 } );
+            while ( my $strain_char = $strain_char_rs->next ) {
+                my $cvterm_name
+                    = $self->find_cvterm_name( $strain_char->cvterm_id );
+                $io->{characteristics}
+                    ->write( $dbs_id . "\t" . $cvterm_name . "\n" );
             }
         }
     }
