@@ -26,20 +26,20 @@
 
 <xsl:template match="PubmedArticle">
 <!-- assuming that there are only journal references -->
-<xsl:if test="string-length(MedlineCitation/Article/Journal/JournalIssue/PubDate/Year) > 0">
-    <xsl:text>@article{</xsl:text>
-    <xsl:value-of select="MedlineCitation/Article/Journal/JournalIssue/PubDate/Year" />
-</xsl:if>
 <xsl:if test="string-length(MedlineCitation/Article/AuthorList) > 0">
+    <xsl:text>@article{</xsl:text>
     <xsl:value-of select="MedlineCitation/Article/AuthorList/Author/LastName" />
+</xsl:if>
+<xsl:if test="string-length(MedlineCitation/Article/Journal/JournalIssue/PubDate/Year) > 0">
+    <xsl:value-of select="MedlineCitation/Article/Journal/JournalIssue/PubDate/Year" />
 </xsl:if>
 <xsl:apply-templates select="MedlineCitation/Article" />
 <xsl:apply-templates select="PubmedData/ArticleIdList/ArticleId" />
 <xsl:if test="string-length(MedlineCitation/MedlineJournalInfo/NlmUniqueID) > 0"><xsl:text>,
     nlmuniqueid = "</xsl:text><xsl:value-of select="MedlineCitation/MedlineJournalInfo/NlmUniqueID" /><xsl:text>",</xsl:text></xsl:if>
 <xsl:text>
-    pmid = "</xsl:text>
-<xsl:value-of select="MedlineCitation/PMID" /> <xsl:text>",</xsl:text>
+    pmid = {</xsl:text>
+<xsl:value-of select="MedlineCitation/PMID" /> <xsl:text>},</xsl:text>
 <xsl:text>
     status = "</xsl:text>
 <xsl:value-of select="PubmedData/PublicationStatus" /><xsl:text>"</xsl:text>
@@ -62,7 +62,7 @@
 
 <xsl:template match="Article">
 <xsl:text>,
-    title = "{</xsl:text><xsl:value-of select="ArticleTitle" /><xsl:text>}"</xsl:text>
+    title = {{</xsl:text><xsl:value-of select="ArticleTitle" /><xsl:text>}}</xsl:text>
 <xsl:apply-templates select="AuthorList" />
 <xsl:apply-templates select="Journal" />
 <xsl:if test="string-length(Pagination/MedlinePgn) > 0"><xsl:text>,
