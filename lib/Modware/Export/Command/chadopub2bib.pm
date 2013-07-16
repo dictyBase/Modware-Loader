@@ -31,6 +31,24 @@ has 'email' => (
     required      => 1,
     documentation => "Email to use for NCBI Eutils, mandatory"
 );
+has 'entries' => (
+    is      => 'rw',
+    isa     => 'Int',
+    lazy    => 1,
+    default => sub {
+        return 200;
+    },
+    documentation =>
+        'No of pubmed entries retrieved per request, default is 200'
+);
+has 'wait' => (
+    is   => 'rw',
+    isa  => 'Int',
+    lazy => 1,
+    documentation =>
+        'No of secs to wait between every request, default is 60 secs/1 min',
+    default => sub { return 60 }
+);
 
 sub execute {
     my ($self) = @_;
@@ -39,7 +57,8 @@ sub execute {
     my $parser = $xslt->parse_stylesheet($style);
 
     my $url
-        = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&tool=modware&email=dictybase@northwetern.edu&id=';
+        = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&tool=modware&email=';
+    $url .= $self->email . '&id=';
     my $agent = LWP::UserAgent->new();
 
     my $logger = $self->logger;
@@ -48,7 +67,7 @@ sub execute {
 
     # Start with a paged resultset, 50 rows/page
     my $rs = $schema->resultset('Pub::Pub')
-        ->search( { 'pubplace' => "PUBMED" }, { rows => 150, page => 1 } );
+        ->search( { 'pubplace' => "PUBMED" }, { rows => $self->entries, page => 1 } );
     my $pager = $rs->pager;
     for my $page ( $pager->first_page .. $pager->last_page ) {
         $logger->debug("fetching entries for page $page");
@@ -66,8 +85,8 @@ sub execute {
         my $results = $parser->transform($pubxml);
         $output->print( $parser->output_as_bytes($results) );
         $logger->debug("finished fetching for page $page");
-        $logger->debug("going to wait....");
-        sleep 55;
+        $logger->debug("going to wait for ", $self->wait, " ...... ");
+        sleep $self->wait;
     }
 }
 
