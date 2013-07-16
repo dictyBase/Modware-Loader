@@ -64,14 +64,17 @@ sub execute {
     my $logger = $self->logger;
     my $schema = $self->schema;
     my $output = $self->output_handler;
+    my $count = 0;
 
     # Start with a paged resultset, 50 rows/page
     my $rs = $schema->resultset('Pub::Pub')
         ->search( { 'pubplace' => "PUBMED" }, { rows => $self->entries, page => 1 } );
     my $pager = $rs->pager;
     for my $page ( $pager->first_page .. $pager->last_page ) {
-        $logger->debug("fetching entries for page $page");
-        my @pmids = map { $_->uniquename } $rs->page($page)->all;
+        my $paged_rs = $rs->page($page);
+        $count += $paged_rs->count;
+        $logger->debug("fetching entries ", $paged_rs->count , " for page $page");
+        my @pmids = map { $_->uniquename } $paged_rs->all;
 
         my $fetch_url = $url . join( ",", @pmids );
         my $resp = $agent->get($fetch_url);
@@ -88,6 +91,7 @@ sub execute {
         $logger->debug("going to wait for ", $self->wait, " secs ...... ");
         sleep $self->wait;
     }
+    $logger->info("fetched total of $count entries from database");
 }
 
 __PACKAGE__->meta->make_immutable;

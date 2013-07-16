@@ -36,7 +36,7 @@
 <xsl:apply-templates select="MedlineCitation/Article" />
 <xsl:apply-templates select="PubmedData/ArticleIdList/ArticleId" />
 <xsl:if test="string-length(MedlineCitation/MedlineJournalInfo/NlmUniqueID) > 0"><xsl:text>,
-    nlmuniqueid = "</xsl:text><xsl:value-of select="MedlineCitation/MedlineJournalInfo/NlmUniqueID" /><xsl:text>"</xsl:text></xsl:if>
+    nlmuniqueid = "</xsl:text><xsl:value-of select="MedlineCitation/MedlineJournalInfo/NlmUniqueID" /><xsl:text>",</xsl:text></xsl:if>
 <xsl:text>
     pmid = "</xsl:text>
 <xsl:value-of select="MedlineCitation/PMID" /> <xsl:text>",</xsl:text>
