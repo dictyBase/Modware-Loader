@@ -85,7 +85,7 @@ sub execute {
         my $results = $parser->transform($pubxml);
         $output->print( $parser->output_as_bytes($results) );
         $logger->debug("finished fetching for page $page");
-        $logger->debug("going to wait for ", $self->wait, " ...... ");
+        $logger->debug("going to wait for ", $self->wait, " secs ...... ");
         sleep $self->wait;
     }
 }
