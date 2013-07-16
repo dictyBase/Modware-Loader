@@ -36,13 +36,13 @@
 <xsl:apply-templates select="MedlineCitation/Article" />
 <xsl:apply-templates select="PubmedData/ArticleIdList/ArticleId" />
 <xsl:if test="string-length(MedlineCitation/MedlineJournalInfo/NlmUniqueID) > 0"><xsl:text>,
-    nlmuniqueid = "</xsl:text><xsl:value-of select="MedlineCitation/MedlineJournalInfo/NlmUniqueID" /><xsl:text>",</xsl:text></xsl:if>
+    nlmuniqueid = {</xsl:text><xsl:value-of select="MedlineCitation/MedlineJournalInfo/NlmUniqueID" /><xsl:text>},</xsl:text></xsl:if>
 <xsl:text>
     pmid = {</xsl:text>
 <xsl:value-of select="MedlineCitation/PMID" /> <xsl:text>},</xsl:text>
 <xsl:text>
-    status = "</xsl:text>
-<xsl:value-of select="PubmedData/PublicationStatus" /><xsl:text>"</xsl:text>
+    status = {</xsl:text>
+<xsl:value-of select="PubmedData/PublicationStatus" /><xsl:text>}</xsl:text>
 <xsl:text>
 }
 
@@ -54,7 +54,7 @@
 <xsl:choose>
 <xsl:when test="@IdType='doi'">
 <xsl:text>,
-    doi = "</xsl:text><xsl:value-of select="." /><xsl:text>"</xsl:text>
+    doi = {</xsl:text><xsl:value-of select="." /><xsl:text>}</xsl:text>
 </xsl:when>
 </xsl:choose>
 </xsl:template>
@@ -66,9 +66,9 @@
 <xsl:apply-templates select="AuthorList" />
 <xsl:apply-templates select="Journal" />
 <xsl:if test="string-length(Pagination/MedlinePgn) > 0"><xsl:text>,
-    pages = "</xsl:text><xsl:value-of select="Pagination/MedlinePgn" /><xsl:text>"</xsl:text></xsl:if>
+    pages = {</xsl:text><xsl:value-of select="Pagination/MedlinePgn" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(Abstract/AbstractText) > 0"><xsl:text>,
-    abstract = "</xsl:text><xsl:value-of select="Abstract/AbstractText" /><xsl:text>"</xsl:text></xsl:if>
+    abstract = {</xsl:text><xsl:value-of select="Abstract/AbstractText" /><xsl:text>}</xsl:text></xsl:if>
 </xsl:template>
 
 
@@ -76,28 +76,28 @@
 <xsl:template match="Journal">
 <!-- going for the journal title's abbreviation, looks better -->
 <xsl:text>,
-    journal = "{</xsl:text><xsl:value-of select="ISOAbbreviation" /><xsl:text>}"</xsl:text>
+    journal = {{</xsl:text><xsl:value-of select="ISOAbbreviation" /><xsl:text>}}</xsl:text>
 <xsl:if test="string-length(JournalIssue/ISSN) > 0"><xsl:text>,
-    issn = "</xsl:text><xsl:value-of select="ISSN" /><xsl:text>"</xsl:text></xsl:if>
+        issn = {</xsl:text><xsl:value-of select="JournalIssue/ISSN" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(JournalIssue/Volume) > 0"><xsl:text>,
-    volume = "</xsl:text><xsl:value-of select="JournalIssue/Volume" /><xsl:text>"</xsl:text></xsl:if>
+    volume = {</xsl:text><xsl:value-of select="JournalIssue/Volume" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(JournalIssue/Issue) > 0"><xsl:text>,
-    number = "</xsl:text><xsl:value-of select="JournalIssue/Issue" /><xsl:text>"</xsl:text></xsl:if>
+    number = {</xsl:text><xsl:value-of select="JournalIssue/Issue" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(JournalIssue/PubDate/Year) > 0"><xsl:text>,
-    year = "</xsl:text><xsl:value-of select="JournalIssue/PubDate/Year" /><xsl:text>"</xsl:text></xsl:if>
+    year = {</xsl:text><xsl:value-of select="JournalIssue/PubDate/Year" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(JournalIssue/PubDate/Month) > 0"><xsl:text>,
-    month = "</xsl:text><xsl:value-of select="translate(JournalIssue/PubDate/Month, $uppercase, $smallcase)" /><xsl:text>"</xsl:text></xsl:if>
+    month = {</xsl:text><xsl:value-of select="translate(JournalIssue/PubDate/Month, $uppercase, $smallcase)" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(JournalIssue/PubDate/Day) > 0"><xsl:text>,
-    day = "</xsl:text><xsl:value-of select="translate(JournalIssue/PubDate/Day, $uppercase, $smallcase)" /><xsl:text>"</xsl:text></xsl:if>
+    day = {</xsl:text><xsl:value-of select="translate(JournalIssue/PubDate/Day, $uppercase, $smallcase)" /><xsl:text>}</xsl:text></xsl:if>
 </xsl:template>
 
 
 <xsl:template match="AuthorList">
 <xsl:text>,
-    author = "</xsl:text>
+    author = {</xsl:text>
 <xsl:apply-templates select="Author"/>
 <xsl:if test="@CompleteYN = 'N'"><xsl:text> and others</xsl:text></xsl:if>
-<xsl:text>"</xsl:text>
+<xsl:text>}</xsl:text>
 </xsl:template>
 
 <xsl:template match="Author">
