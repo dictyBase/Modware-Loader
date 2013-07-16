@@ -114,4 +114,34 @@ sub find_gene_id {
     }
 }
 
+has '_cvterm_row' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_cvterm_row  => 'set',
+        get_cvterm_row  => 'get',
+        has_cvterm_name => 'defined'
+    }
+);
+
+sub find_cvterm_name {
+    my ( $self, $cvterm_id ) = @_;
+
+    if ( $self->has_cvterm_name($cvterm_id) ) {
+        return $self->get_cvterm_row($cvterm_id)->name;
+    }
+    my $row = $self->schema->resultset('Cv::Cvterm')->search(
+        { cvterm_id => $cvterm_id },
+        {   select => [qw/cvterm_id name/],
+            cache  => 1
+        }
+    );
+    if ( $row->count > 0 ) {
+        $self->set_cvterm_row( $cvterm_id, $row->first );
+        return $self->get_cvterm_row($cvterm_id)->name;
+    }
+}
+
 1;
