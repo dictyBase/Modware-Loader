@@ -25,14 +25,8 @@
 </xsl:template>
 
 <xsl:template match="PubmedArticle">
-<!-- assuming that there are only journal references -->
-<xsl:if test="string-length(MedlineCitation/Article/AuthorList) > 0">
-    <xsl:text>@article{</xsl:text>
-    <xsl:value-of select="MedlineCitation/Article/AuthorList/Author/LastName" />
-</xsl:if>
-<xsl:if test="string-length(MedlineCitation/Article/Journal/JournalIssue/PubDate/Year) > 0">
-    <xsl:value-of select="MedlineCitation/Article/Journal/JournalIssue/PubDate/Year" />
-</xsl:if>
+<xsl:text>@article{pmid</xsl:text>
+<xsl:value-of select="MedlineCitation/PMID" />
 <xsl:apply-templates select="MedlineCitation/Article" />
 <xsl:apply-templates select="PubmedData/ArticleIdList/ArticleId" />
 <xsl:if test="string-length(MedlineCitation/MedlineJournalInfo/NlmUniqueID) > 0"><xsl:text>,
@@ -77,8 +71,8 @@
 <!-- going for the journal title's abbreviation, looks better -->
 <xsl:text>,
     journal = {{</xsl:text><xsl:value-of select="ISOAbbreviation" /><xsl:text>}}</xsl:text>
-<xsl:if test="string-length(JournalIssue/ISSN) > 0"><xsl:text>,
-        issn = {</xsl:text><xsl:value-of select="JournalIssue/ISSN" /><xsl:text>}</xsl:text></xsl:if>
+<xsl:if test="string-length(ISSN) > 0"><xsl:text>,
+    issn = {</xsl:text><xsl:value-of select="ISSN" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(JournalIssue/Volume) > 0"><xsl:text>,
     volume = {</xsl:text><xsl:value-of select="JournalIssue/Volume" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(JournalIssue/Issue) > 0"><xsl:text>,
