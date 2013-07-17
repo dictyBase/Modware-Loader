@@ -8,6 +8,9 @@ use XML::LibXML;
 use XML::LibXSLT;
 use LWP::UserAgent;
 use Modware::Loader;
+use Time::Piece;
+use Cwd;
+use Path::Class::Dir;
 extends qw/Modware::Export::Chado/;
 
 has '+organism' => ( traits        => [qw/NoGetopt/] );
@@ -50,6 +53,15 @@ has 'wait' => (
     default => sub { return 60 }
 );
 
+has 'xmldump' => (
+    is      => 'rw',
+    isa     => 'Str',
+    lazy    => 1,
+    default => sub { getcwd() },
+    documentation =>
+        'Name of the folder where the pubmed xml content will be dumped, default is current folder'
+);
+
 sub execute {
     my ($self) = @_;
     my $xslt = XML::LibXSLT->new;
@@ -64,16 +76,22 @@ sub execute {
     my $logger = $self->logger;
     my $schema = $self->schema;
     my $output = $self->output_handler;
-    my $count = 0;
+    my $count  = 0;
+    my $xml_dir = Path::Class::Dir->new($self->xmldump);
 
     # Start with a paged resultset, 50 rows/page
-    my $rs = $schema->resultset('Pub::Pub')
-        ->search( { 'pubplace' => "PUBMED" }, { rows => $self->entries, page => 1 } );
+    my $rs
+        = $schema->resultset('Pub::Pub')->search( { 'pubplace' => "PUBMED" },
+        { rows => $self->entries, page => 1 } );
     my $pager = $rs->pager;
     for my $page ( $pager->first_page .. $pager->last_page ) {
         my $paged_rs = $rs->page($page);
         $count += $paged_rs->count;
-        $logger->debug("fetching entries ", $paged_rs->count , " for page $page");
+        $logger->debug(
+            "fetching entries ",
+            $paged_rs->count,
+            " for page $page"
+        );
         my @pmids = map { $_->uniquename } $paged_rs->all;
 
         my $fetch_url = $url . join( ",", @pmids );
@@ -84,11 +102,24 @@ sub execute {
             $logger->logdie($msg);
         }
 
-        my $pubxml = XML::LibXML->load_xml( string => $resp->content );
+        my $content = $resp->content;
+        $logger->debug("finished fetching for page $page");
+
+        my $t = Time::Piece->new;
+        my $xml_file = $t->ymd('-').'-'.$t->hms('-').'-dictypub.xml';
+        my $xml_handler = $xml_dir->file($xml_file)->openw;
+        $xml_handler->print($content);
+        $xml_handler->close;
+        $logger->debug("dumped xml content in $xml_file");
+
+
+
+        my $pubxml = XML::LibXML->load_xml( string => $content );
         my $results = $parser->transform($pubxml);
         $output->print( $parser->output_as_bytes($results) );
-        $logger->debug("finished fetching for page $page");
-        $logger->debug("going to wait for ", $self->wait, " secs ...... ");
+        $logger->debug("converted bibtex for page $page");
+
+        $logger->debug( "now going to wait for ", $self->wait, " secs for the next retreival ...." );
         sleep $self->wait;
     }
     $logger->info("fetched total of $count entries from database");
