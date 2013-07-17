@@ -100,13 +100,71 @@ sub find_cvterm_name {
 
 sub resolve_references {
     my ( $self, $pubmedid, $internal, $other_ref ) = @_;
-	
-    print $pubmedid if $pubmedid;
-    print "\t";
-    print $internal if $internal;
-    print "\t";
-    print $other_ref if $other_ref;
-    print "\n";
+    my @pmids;
+    my @non_pmids;
+
+    if ($pubmedid) {
+        if ( $pubmedid =~ /,/ ) {
+            @pmids = split( /,/, $pubmedid );
+        }
+        else {
+            push( @pmids, $self->trim($pubmedid) )
+                if $pubmedid =~ /[0-9]{6,10}/;
+        }
+    }
+    else {
+        if ($internal) {
+            if ( $internal =~ /,/ ) {
+                my @internals = split( /,/, $internal );
+                foreach my $d_id (@internals) {
+                    if ( $d_id =~ /[0-9]{6,10}/ ) {
+                        print $self->trim($d_id) . "\n";
+                        push( @pmids, $self->trim($d_id) );
+                    }
+                    else {
+                        push( @non_pmids, $self->trim($d_id) )
+                            if $d_id =~ /d[0-9]{4}/;
+                    }
+                }
+            }
+            else {
+                push( @non_pmids, $self->trim($internal) )
+                    if $internal =~ /d[0-9]{4}/;
+            }
+        }
+
+        if ($other_ref) {
+            if ( $other_ref =~ /[,;\/]/ ) {
+                my @ref_data = split( /[,;\s\/]/, $other_ref );
+                foreach my $ref (@ref_data) {
+                    if ( $ref =~ /[0-9]{6,10}/ ) {
+                        push( @pmids, $self->trim($ref) );
+                    }
+                    else {
+                        push( @non_pmids, $self->trim($ref) )
+                            if $ref =~ /d[0-9]{4}/;
+                    }
+                }
+            }
+            else {
+                push( @pmids, $self->trim($other_ref) )
+                    if $other_ref =~ /[0-9]{6,10}/;
+            }
+        }
+    }
+    return ( \@pmids, \@non_pmids );
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Modware::Role::Stock::Commons - 
+
+=head1 DESCRIPTION
+
+
+
+=cut 
