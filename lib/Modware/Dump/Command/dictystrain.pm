@@ -45,7 +45,7 @@ sub execute {
     my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
         {},
         {   select => [
-                qw/id strain_name strain_description species dbxref_id pubmedid genotype/
+                qw/id strain_name strain_description species dbxref_id pubmedid genotype other_references internal_db_id/
             ],
             cache => 1
         }
@@ -83,21 +83,27 @@ sub execute {
         }
 
         if ( $io->{publications} ) {
-            my $pmid = $strain->pubmedid;
-            if ($pmid) {
-                my @pmids;
-                if ( $pmid =~ /,/ ) {
-                    @pmids = split( /,/, $pmid );
-                }
-                else {
-                    $pmids[0] = $pmid;
-                }
-                foreach my $pmid_ (@pmids) {
-                    $io->{publications}
-                        ->write( $dbs_id . "\t" . $self->trim($pmid_) . "\n" )
-                        if $pmid_;
-                }
-            }
+            $self->resolve_references( $strain->pubmedid,
+                $strain->internal_db_id, $strain->other_references );
+
+            #my $pmid = $strain->pubmedid;
+            #if ($pmid) {
+            #my @pmids;
+            #if ( $pmid =~ /,/ ) {
+            #@pmids = split( /,/, $pmid );
+            #}
+            #else {
+            #$pmids[0] = $pmid;
+            #}
+            #foreach my $pmid_ (@pmids) {
+
+            #$io->{publications}
+            #->write( $dbs_id . "\t" . $self->trim($pmid_) . "\n" )
+            #if $pmid_;
+            #print $dbs_id . "\t" . $self->trim($pmid_) . "\n"
+            #if $pmid_;
+            #}
+            #}
         }
 
         if ( exists $io->{genotype} ) {
@@ -170,7 +176,5 @@ version 0.0.1
 -c, --configfile Config file with required arguments
 
 =head1 DESCRIPTION
-
-
 
 =cut
