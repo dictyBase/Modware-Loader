@@ -40,12 +40,21 @@ sub execute {
             = IO::File->new( $self->output_dir . "/strain_" . $f . ".txt",
             'w' );
         $io->{$f} = $file_obj;
+
+        if ( $f eq 'publications' ) {
+            my $f_ = "other_refs";
+            my $file_obj_
+                = IO::File->new(
+                $self->output_dir . "/strain_publications_no_pubmed.txt",
+                'w' );
+            $io->{$f_} = $file_obj_;
+        }
     }
 
     my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
         {},
         {   select => [
-                qw/id strain_name strain_description species dbxref_id pubmedid genotype other_references internal_db_id/
+                qw/id strain_name strain_description species dbxref_id pubmedid phenotype genotype other_references internal_db_id/
             ],
             cache => 1
         }
@@ -83,15 +92,25 @@ sub execute {
         }
 
         if ( $io->{publications} ) {
-            my @pmids = $self->resolve_references( $strain->pubmedid,
+            my ( $pmids_ref, $non_pmids_ref )
+                = $self->resolve_references( $strain->pubmedid,
                 $strain->internal_db_id, $strain->other_references );
+
+            my @pmids     = @$pmids_ref;
+            my @non_pmids = @$non_pmids_ref;
 
             if (@pmids) {
                 foreach my $pmid (@pmids) {
-                    print $dbs_id . "\t" . $self->trim($pmid) . "\n" if $pmid;
                     $io->{publications}
                         ->write( $dbs_id . "\t" . $self->trim($pmid) . "\n" )
                         if $pmid;
+                }
+            }
+            if (@non_pmids) {
+                foreach my $non_pmid (@non_pmids) {
+                    $io->{other_refs}->write(
+                        $dbs_id . "\t" . $self->trim($non_pmid) . "\n" )
+                        if $non_pmid;
                 }
             }
         }
@@ -107,7 +126,7 @@ sub execute {
         }
 
         if ( exists $io->{phenotype} ) {
-
+            #print $dbs_id . "\t" . $strain->phenotype . "\n";
         }
 
         if ( exists $io->{genes} ) {

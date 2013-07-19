@@ -40,12 +40,21 @@ sub execute {
             = IO::File->new( $self->output_dir . "/plasmid_" . $f . ".txt",
             'w' );
         $io->{$f} = $file_obj;
+        if ( $f eq 'publications' ) {
+            my $f_ = "other_refs";
+            my $file_obj_
+                = IO::File->new(
+                $self->output_dir . "/plasmid_publications_no_pubmed.txt",
+                'w' );
+            $io->{$f_} = $file_obj_;
+        }
     }
 
     my $plasmid_rs = $self->legacy_schema->resultset('Plasmid')->search(
         {},
-        {   select =>
-                [qw/id name description pubmedid genbank_accession_number/],
+        {   select => [
+                qw/id name description pubmedid genbank_accession_number internal_db_id other_references/
+            ],
             cache => 1
         }
     );
@@ -62,20 +71,25 @@ sub execute {
         }
 
         if ( exists $io->{publications} ) {
-            my $pmid = $plasmid->pubmedid;
-            if ($pmid) {
-                $pmid = $self->trim($pmid);
-                my @pmids;
-                if ( $pmid =~ /,/ ) {
-                    @pmids = split( /,/, $pmid );
-                }
-                else {
-                    $pmids[0] = $pmid;
-                }
-                foreach my $pmid_ (@pmids) {
+            my ( $pmids_ref, $non_pmids_ref )
+                = $self->resolve_references( $plasmid->pubmedid,
+                $plasmid->internal_db_id, $plasmid->other_references );
+
+            my @pmids     = @$pmids_ref;
+            my @non_pmids = @$non_pmids_ref;
+
+            if (@pmids) {
+                foreach my $pmid (@pmids) {
                     $io->{publications}->write(
-                        $plasmid_id . "\t" . $self->trim($pmid_) . "\n" )
-                        if $pmid_;
+                        $plasmid_id . "\t" . $self->trim($pmid) . "\n" )
+                        if $pmid;
+                }
+            }
+            if (@non_pmids) {
+                foreach my $non_pmid (@non_pmids) {
+                    $io->{other_refs}->write(
+                        $plasmid_id . "\t" . $self->trim($non_pmid) . "\n" )
+                        if $non_pmid;
                 }
             }
         }
