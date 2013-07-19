@@ -81,7 +81,20 @@ sub execute {
         }
 
         if ( exists $io->{inventory} ) {
-
+            my $plasmid_invent_rs
+                = $self->find_plasmid_inventory($plasmid_id);
+            if ($plasmid_invent_rs) {
+                while ( my $plasmid_invent = $plasmid_invent_rs->next ) {
+                    $io->{inventory}->write( $plasmid_id . "\t"
+                            . $plasmid_invent->location . "\t"
+                            . $plasmid_invent->color . "\t"
+                            . $plasmid_invent->stored_as . "\t"
+                            . $plasmid_invent->storage_date
+                            . "\n" )
+                        if $plasmid_invent->location
+                        and $plasmid_invent->color;
+                }
+            }
         }
 
         if ( exists $io->{genbank} ) {
