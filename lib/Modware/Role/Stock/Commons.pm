@@ -100,13 +100,44 @@ sub find_cvterm_name {
 
 sub resolve_references {
     my ( $self, $pubmedid, $internal, $other_ref ) = @_;
-	
-    print $pubmedid if $pubmedid;
-    print "\t";
-    print $internal if $internal;
-    print "\t";
-    print $other_ref if $other_ref;
-    print "\n";
+    my @pmids;
+
+    if ($pubmedid) {
+        if ( $pubmedid =~ /,/ ) {
+            @pmids = split( /,/, $pubmedid );
+        }
+        else {
+            push( @pmids, $self->trim($pubmedid) )
+                if $pubmedid =~ /[0-9]{6,10}/;
+        }
+    }
+    if ($other_ref) {
+        if ( $other_ref =~ /[,;\s\/]/ ) {
+            my @ref_data = split( /[,;\s\/]/, $other_ref );
+            foreach my $ref (@ref_data) {
+                if ( $ref =~ /[0-9]{6,10}/ ) {
+                    push( @pmids, $self->trim($ref) );
+                }
+            }
+        }
+        else {
+            push( @pmids, $self->trim($other_ref) )
+                if $other_ref =~ /[0-9]{6,10}/;
+        }
+    }
+    return @pmids;
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Modware::Role::Stock::Commons - 
+
+=head1 DESCRIPTION
+
+
+
+=cut 

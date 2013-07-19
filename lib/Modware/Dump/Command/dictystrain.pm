@@ -83,27 +83,17 @@ sub execute {
         }
 
         if ( $io->{publications} ) {
-            $self->resolve_references( $strain->pubmedid,
+            my @pmids = $self->resolve_references( $strain->pubmedid,
                 $strain->internal_db_id, $strain->other_references );
 
-            #my $pmid = $strain->pubmedid;
-            #if ($pmid) {
-            #my @pmids;
-            #if ( $pmid =~ /,/ ) {
-            #@pmids = split( /,/, $pmid );
-            #}
-            #else {
-            #$pmids[0] = $pmid;
-            #}
-            #foreach my $pmid_ (@pmids) {
-
-            #$io->{publications}
-            #->write( $dbs_id . "\t" . $self->trim($pmid_) . "\n" )
-            #if $pmid_;
-            #print $dbs_id . "\t" . $self->trim($pmid_) . "\n"
-            #if $pmid_;
-            #}
-            #}
+            if (@pmids) {
+                foreach my $pmid (@pmids) {
+                    print $dbs_id . "\t" . $self->trim($pmid) . "\n" if $pmid;
+                    $io->{publications}
+                        ->write( $dbs_id . "\t" . $self->trim($pmid) . "\n" )
+                        if $pmid;
+                }
+            }
         }
 
         if ( exists $io->{genotype} ) {
