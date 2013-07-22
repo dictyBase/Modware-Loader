@@ -3,6 +3,8 @@ use strict;
 
 package Modware::Role::Stock::Strain;
 
+use FindBin qw($Bin);
+use IO::File;
 use Moose::Role;
 use namespace::autoclean;
 with 'Modware::Role::Stock::Commons';
@@ -46,13 +48,51 @@ sub find_strain_inventory {
         $self->set_strain_invent_row( $dbs_id, $strain_invent_rs );
         return $self->get_strain_invent_row($dbs_id);
     }
-
-    #else {
-    #    $self->dual_logger->warn("Cannot find strain inventory for $dbs_id");
-    #    return 0;
-    #}
 }
 
+has '_strain_characteristics' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    handles => { is_strain_characteristic => 'defined' },
+    lazy    => 1,
+    builder => '_load_list_characteristics'
+);
 
+sub _load_list_characteristics {
+    my ($self) = @_;
+    my $dir = Path::Class::Dir->new($Bin);
+    my $fh
+        = IO::File->new(
+        $dir->parent->subdir('share')->file('strain_characteristics.txt'),
+        'r' );
+    my $char_hashref;
+    while ( my $io = $fh->getline ) {
+        $char_hashref->{ $self->trim($io) } = 1;
+    }
+    return $char_hashref;
+}
+
+has '_strain_genotype' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    handles => { is_strain_genotype => 'defined' },
+    lazy    => 1,
+    builder => '_load_list_genotype'
+);
+
+sub _load_list_genotype {
+    my ($self) = @_;
+    my $dir = Path::Class::Dir->new($Bin);
+    my $fh
+        = IO::File->new(
+        $dir->parent->subdir('share')->file('strain_genotype.txt'), 'r' );
+    my $char_hashref;
+    while ( my $io = $fh->getline ) {
+        $char_hashref->{ $self->trim($io) } = 1;
+    }
+    return $char_hashref;
+}
 
 1;
