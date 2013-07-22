@@ -3,6 +3,7 @@ use strict;
 
 package Modware::Dump::Command::dictystrain;
 
+use Data::Dumper;
 use Modware::Legacy::Schema;
 use Moose;
 use namespace::autoclean;
@@ -23,6 +24,7 @@ sub execute {
     my ($self) = @_;
 
     my $io;
+	my $stats;
     my @data;
     if ( $self->data ne 'all' ) {
         @data = split( /,/, $self->data );
@@ -42,6 +44,7 @@ sub execute {
             = IO::File->new( $self->output_dir . "/strain_" . $f . ".txt",
             'w' );
         $io->{$f}    = $file_obj;
+		$stats->{$f} = 0;
 
         if ( $f eq 'publications' ) {
             my $f_ = "other_refs";
@@ -72,6 +75,7 @@ sub execute {
                     . $strain->species . "\t"
                     . $strain->strain_description
                     . "\n" );
+			$stats->{strain} = $stats->{strain} + 1;
         }
 
         if ( exists $io->{inventory} ) {
@@ -89,6 +93,7 @@ sub execute {
                         if $strain_invent->location
                         and $strain_invent->color
                         and $strain_invent->no_of_vials;
+					$stats->{inventory} = $stats->{inventory} + 1;
                 }
             }
         }
@@ -106,6 +111,7 @@ sub execute {
                     if ($pmid) {
                         $io->{publications}->write(
                             $dbs_id . "\t" . $self->trim($pmid) . "\n" );
+						$stats->{publications} = $stats->{publications} + 1;
                     }
                 }
             }
@@ -114,6 +120,7 @@ sub execute {
                     if ($non_pmid) {
                         $io->{other_refs}->write(
                             $dbs_id . "\t" . $self->trim($non_pmid) . "\n" );
+						$stats->{other_refs} = $stats->{other_refs} + 1;
                     }
                 }
             }
@@ -126,6 +133,7 @@ sub execute {
                         . $strain->strain_name . "\t"
                         . $genotype
                         . "\n" );
+				$stats->{genotype} = $stats->{genotype} + 1;
             }
         }
 
@@ -140,6 +148,7 @@ sub execute {
                         if ($phenotype) {
                             $io->{phenotype}
                                 ->write( $dbs_id . "\t" . $phenotype . "\n" );
+							$stats->{phenotype} = $stats->{phenotype} + 1;
                         }
                     }
                 }
@@ -153,6 +162,7 @@ sub execute {
             while ( my $strain_gene = $strain_gene_rs->next ) {
                 my $gene_id = $self->find_gene_id( $strain_gene->feature_id );
                 $io->{genes}->write( $dbs_id . "\t" . $gene_id . "\n" );
+				$stats->{genes} = $stats->{genes} + 1;
             }
         }
 
@@ -165,9 +175,11 @@ sub execute {
                     = $self->find_cvterm_name( $strain_char->cvterm_id );
                 $io->{characteristics}
                     ->write( $dbs_id . "\t" . $cvterm_name . "\n" );
+				$stats->{characteristics} = $stats->{characteristics} + 1;
             }
         }
     }
+	$self->dual_logger->info( Dumper($stats) );
 }
 
 sub trim {
