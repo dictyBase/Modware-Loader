@@ -14,7 +14,9 @@ with 'Modware::Role::Stock::Strain';
 has data => (
     is      => 'rw',
     isa     => 'Str',
-    default => 'all'
+    default => 'all',
+    documentation =>
+        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics)'
 );
 
 sub execute {
@@ -39,7 +41,7 @@ sub execute {
         my $file_obj
             = IO::File->new( $self->output_dir . "/strain_" . $f . ".txt",
             'w' );
-        $io->{$f} = $file_obj;
+        $io->{$f}    = $file_obj;
 
         if ( $f eq 'publications' ) {
             my $f_ = "other_refs";
@@ -101,16 +103,18 @@ sub execute {
 
             if (@pmids) {
                 foreach my $pmid (@pmids) {
-                    $io->{publications}
-                        ->write( $dbs_id . "\t" . $self->trim($pmid) . "\n" )
-                        if $pmid;
+                    if ($pmid) {
+                        $io->{publications}->write(
+                            $dbs_id . "\t" . $self->trim($pmid) . "\n" );
+                    }
                 }
             }
             if (@non_pmids) {
                 foreach my $non_pmid (@non_pmids) {
-                    $io->{other_refs}->write(
-                        $dbs_id . "\t" . $self->trim($non_pmid) . "\n" )
-                        if $non_pmid;
+                    if ($non_pmid) {
+                        $io->{other_refs}->write(
+                            $dbs_id . "\t" . $self->trim($non_pmid) . "\n" );
+                    }
                 }
             }
         }
@@ -126,7 +130,20 @@ sub execute {
         }
 
         if ( exists $io->{phenotype} ) {
-            #print $dbs_id . "\t" . $strain->phenotype . "\n";
+            if ( $strain->phenotype ) {
+                my @phenotypes = split( /[,;]/, $strain->phenotype );
+                foreach my $phenotype (@phenotypes) {
+                    $phenotype = $self->trim($phenotype);
+                    if (   !$self->is_strain_genotype($phenotype)
+                        && !$self->is_strain_characteristic($phenotype) )
+                    {
+                        if ($phenotype) {
+                            $io->{phenotype}
+                                ->write( $dbs_id . "\t" . $phenotype . "\n" );
+                        }
+                    }
+                }
+            }
         }
 
         if ( exists $io->{genes} ) {
@@ -157,8 +174,6 @@ sub trim {
     my ( $self, $s ) = @_;
     $s =~ s/^\s+//;
     $s =~ s/\s+$//;
-
-    # $s =~ s/[[:punct:]]//g;
     return $s;
 }
 
@@ -176,9 +191,9 @@ version 0.0.1
 
 =head1 SYNOPSIS
 
-	perl modware-dump dictystrain -c config.yaml --output_dir <data> 
+	perl modware-dump dictystrain -c config.yaml  
 
-	perl modware-dump dictystrain -c config.yaml --output_dir <data> --data <inventory|publications|genotype|phenotype> --format <text|json> 
+	perl modware-dump dictystrain -c config.yaml --data <inventory,publications,genotype,phenotype> 
 
 =head1 REQUIRED ARGUMENTS
 
