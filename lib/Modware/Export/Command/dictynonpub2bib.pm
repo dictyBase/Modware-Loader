@@ -23,6 +23,12 @@ has 'datetime'  => (
     },
     traits => [qw/NoGetopt/]
 );
+has 'timestamp' => (
+    is            => 'rw',
+    isa           => 'Bool',
+    default       => 1,
+    documentation => 'Export timestamp, default true'
+);
 
 sub execute {
     my ($self) = @_;
@@ -30,10 +36,14 @@ sub execute {
     # Start with a list of non-pubmed sources
 
     my $schema = $self->schema;
-    $schema->source('Pub::Pub')
-        ->add_column( 'created_at' => { 'data_type' => 'date' } );
-    $schema->class('Pub::Pub')
-        ->register_column( 'created_at' => { 'data_type' => 'date' } );
+
+    if ( $self->timestamp ) {
+        $schema->source('Pub::Pub')
+            ->add_column( 'created_at' => { 'data_type' => 'date' } );
+        $schema->class('Pub::Pub')
+            ->register_column( 'created_at' => { 'data_type' => 'date' } );
+    }
+
     my $rs = $schema->resultset('Pub::Pub')->search(
         { 'pubplace' => { '!=', 'PUBMED' } },
         {   group_by => 'pubplace',
@@ -82,7 +92,7 @@ sub bibtex {
     my @author_list;
     for my $auth ( $row->pubauthors ) {
         my $auth_str;
-        $auth_str .= $auth->surname           if $auth->surname;
+        $auth_str .= $auth->surname if $auth->surname;
         $auth_str .= ', ' . $auth->givennames if $auth->givennames;
         push @author_list, $auth_str;
     }
@@ -90,8 +100,10 @@ sub bibtex {
     $output->print( 'author = {{', join( ' and ', @author_list ), '}}', "\n" )
         if @author_list;
 
-    my $dt = $self->datetime->parse_datetime( $row->created_at );
-    $output->print( 'timestamp = {', $dt->ymd('.'), '}', "\n" );
+    if ( $self->timestamp ) {
+        my $dt = $self->datetime->parse_datetime( $row->created_at );
+        $output->print( 'timestamp = {', $dt->ymd('.'), '}', "\n" );
+    }
     $output->print( '}', "\n\n" );
 }
 
