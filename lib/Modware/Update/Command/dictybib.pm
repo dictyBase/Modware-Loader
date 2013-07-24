@@ -88,6 +88,6 @@ __PACKAGE__->meta->make_immutable;
 
 =head1 NAME
 
-Modware::Update::Command::dictybib - Update dicty bibtex file with keywords and timestamps
+Modware::Update::Command::dictybib - Update dicty bibtex file with timestamps
 
 

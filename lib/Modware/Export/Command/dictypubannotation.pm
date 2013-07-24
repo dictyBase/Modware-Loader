@@ -47,14 +47,32 @@ sub execute {
         if (@pubprops) {
 
     #get curator name, assuming all the pubprops are annotated by same curator
-            my $curator
-                = $pubprops[0]->curator_feature_pubprop->curator->initials;
+            my @cfp;
+            for my $prop (@pubprops) {
+                my $cfp_row = $prop->curator_feature_pubprop;
+                if ($cfp_row) {
+                    push @cfp,
+                          $cfp_row->curator->initials . ':'
+                        . $cfp_row->timecreated . ':'
+                        . $prop->type->name;
+                }
+                else {
+                    push @cfp, $prop->type->name;
+                    $self->logger->warn(
+                        sprintf(
+                            "pub:%s\tfeature:%s\tkeyword:%s\thave no curator assignment",
+                            $row->get_column('pubmed'),
+                            $row->get_column('accession'),
+                            $prop->type->name
+                        )
+                    );
+                }
+            }
             $csv->print(
                 $output,
                 [   $row->get_column('pubmed'),
                     $row->get_column('accession'),
-                    $curator,
-                    join( ':', map { $_->type->name } @pubprops )
+                    @cfp
                 ]
             );
         }
