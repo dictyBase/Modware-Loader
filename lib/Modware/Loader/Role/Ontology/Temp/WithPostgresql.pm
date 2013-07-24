@@ -1,4 +1,4 @@
-package Modware::Loader::Role::Ontology::Chado::WithPostgresql;
+package Modware::Loader::Role::Ontology::Temp::WithPostgresql;
 
 # Other modules:
 use namespace::autoclean;
@@ -7,6 +7,9 @@ with 'Modware::Loader::Role::Ontology::Temp::Generic';
 
 # Module implementation
 #
+has cache_threshold =>
+    ( is => 'rw', isa => 'Int', lazy => 1, default => 4000 );
+
 
 after 'load_data_in_staging' => sub {
     my ($self) = @_;
@@ -59,8 +62,19 @@ sub create_temp_statements {
     $storage->dbh->do(qq{ANALYZE dbxref});
 }
 
+around 'load_cvterms_in_staging' => sub {
+    my $orig = shift;
+    my $self = shift;
+    $self->$orig( @_, [ sub { $self->load_synonyms_in_staging(@_) } ] );
+};
+
+after 'load_cvterms_in_staging' => sub {
+	my ($self) = @_;
+    $self->load_cache( 'synonym', 'TempCvtermsynonym' );
+};
+
+
 sub drop_temp_statements {
-    my ( $self, $storage ) = @_;
 }
 
 1;    # Magic true value required at end of module
