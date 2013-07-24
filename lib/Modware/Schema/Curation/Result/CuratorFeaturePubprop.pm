@@ -1,4 +1,4 @@
-package Schema::Curation::Result::CuratorFeaturePubprop;
+package Modware::Schema::Curation::Result::CuratorFeaturePubprop;
 
 # Created by DBIx::Class::Schema::Loader
 # DO NOT MODIFY THE FIRST PART OF THIS FILE
@@ -95,7 +95,7 @@ Related object: L<Schema::Curation::Result::Curator>
 
 __PACKAGE__->belongs_to(
     "curator",
-    "Schema::Curation::Result::Curator",
+    "Modware::Schema::Curation::Result::Curator",
     { curator_id    => "curator_id" },
     { is_deferrable => 1, on_delete => "CASCADE", on_update => "CASCADE" },
 );

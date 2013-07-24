@@ -3,6 +3,10 @@ package Modware::Export::Command::dictypubannotation;
 use strict;
 use Moose;
 extends qw/Modware::Export::Chado/;
+use Text::CSV;
+use Modware::Schema::Curation::Result::Curator;
+use Modware::Schema::Curation::Result::CuratorFeaturePubprop;
+use Bio::Chado::Schema::Result::Sequence::FeaturePubprop;
 
 has '+input'    => ( traits => [qw/NoGetopt/] );
 has '+organism' => ( traits => [qw/NoGetopt/] );
@@ -11,11 +15,27 @@ has '+genus'    => ( traits => [qw/NoGetopt/] );
 
 sub execute {
     my ($self) = @_;
+    my $csv = Text::CSV->new( { eol => "\n" } );
     my $schema = $self->schema;
-    my $rs     = $schema->resultset('Pub::Pub')->search(
-        {},
-        {   join => 'feature_pubs'
+    $schema->register_class( 'Curator',
+        'Modware::Schema::Curation::Result::Curator' );
+    $schema->register_class( 'CuratorFeaturePubprop',
+        'Modware::Schema::Curation::Result::CuratorFeaturePubprop' );
+    $schema->class('Sequence::FeaturePubprop')->has_one(
+        'curator_feature_pubprop' =>
+            'Modware::Schema::Curation::Result::CuratorFeaturePubprop',
+        { 'foreign.feature_pubprop_id' => 'self.feature_pubprop_id' }
+    );
+    $schema->unregister_source('Sequence::FeaturePubprop');
+    $schema->register_class( 'Sequence::FeaturePubprop',
+        'Bio::Chado::Schema::Result::Sequence::FeaturePubprop' );
 
+    my $rs = $schema->resultset('Sequence::FeaturePub')->search(
+        {},
+        {   'join' => [ { 'feature' => 'dbxref' }, 'pub' ],
+            'prefetch' => 'feature_pubprops',
+            '+select'  => [ 'dbxref.accession', 'pub.uniquename' ],
+            '+as'      => [ 'accession', 'pubmed' ],
         }
     );
 
@@ -23,18 +43,26 @@ sub execute {
     my $count  = 0;
     while ( my $row = $rs->next ) {
         my $anno;
-        for my $fpub ( $row->feature_pubs ) {
-            my $anno;
-            for my $prop ( $fpub->feature_pubprops ) {
-                push @$anno, $prop->type->name;
-            }
-            $output->print(
-                sprintf( "%s\t%s\t%s\n",
-                    $row->uniquename, $fpub->feature->dbxref->accession,
-                    join( ':', @$anno ) )
+        my @pubprops = $row->feature_pubprops;
+        if (@pubprops) {
+
+    #get curator name, assuming all the pubprops are annotated by same curator
+            my $curator
+                = $pubprops[0]->curator_feature_pubprop->curator->initials;
+            $csv->print(
+                $output,
+                [   $row->get_column('pubmed'),
+                    $row->get_column('accession'),
+                    $curator,
+                    join( ':', map { $_->type->name } @pubprops )
+                ]
             );
         }
-        last if $count++ > 20;
+        else {
+            $csv->print( $output,
+                [ $row->get_column('pubmed'), $row->get_column('accession') ]
+            );
+        }
 
     }
     $output->close;

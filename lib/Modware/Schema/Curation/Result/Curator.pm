@@ -61,7 +61,7 @@ Related object: L<Schema::Curation::Result::CuratorFeaturePubprop>
 
 __PACKAGE__->has_many(
     "curator_feature_pubprops",
-    "Schema::Curation::Result::CuratorFeaturePubprop",
+    "Modware::Schema::Curation::Result::CuratorFeaturePubprop",
     { "foreign.curator_id" => "self.curator_id" },
     { cascade_copy         => 0, cascade_delete => 0 },
 );
