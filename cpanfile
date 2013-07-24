@@ -18,9 +18,12 @@ requires "Regexp::Common" => "2013030901";
 requires "Spreadsheet::WriteExcel" => "2.37";
 requires "Tie::Cache" => "0.17";
 requires "perl" => "5.010";
+recommends "BibTeX::Parser" => "0.64";
 recommends "Child" => "0.009";
+recommends "Text::CSV" => "1.32";
 recommends "Text::TablularDisplay" => "1.33";
 recommends "XML::LibXML" => "1.70";
+recommends "XML::LibXSLT" => "1.81";
 recommends "XML::Simple" => "2.18";
 
 on 'build' => sub {
@@ -42,8 +45,6 @@ on 'configure' => sub {
 };
 
 on 'develop' => sub {
-  requires "Pod::Coverage::TrustPod" => "0";
   requires "Test::CPAN::Meta" => "0";
-  requires "Test::Pod::Coverage" => "1.08";
   requires "version" => "0.9901";
 };

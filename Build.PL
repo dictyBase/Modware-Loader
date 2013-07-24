@@ -21,9 +21,12 @@ my %module_build_args = (
   "license" => "perl",
   "module_name" => "Modware::Loader",
   "recommends" => {
+    "BibTeX::Parser" => "0.64",
     "Child" => "0.009",
+    "Text::CSV" => "1.32",
     "Text::TablularDisplay" => "1.33",
     "XML::LibXML" => "1.70",
+    "XML::LibXSLT" => "1.81",
     "XML::Simple" => "2.18"
   },
   "recursive_test_files" => 1,
@@ -50,22 +53,22 @@ my %module_build_args = (
     "perl" => "5.010"
   },
   "script_files" => [
-    "bin/chado2dicty_gff3_parallel.sh",
-    "bin/discoideum-split-canonical.pl",
-    "bin/discoideum_tblastn_filter.pl",
-    "bin/modware",
-    "bin/modware-export",
-    "bin/modware-load",
-    "bin/modware-transform",
     "bin/modware-update",
-    "bin/chado2dicty_gff3_parallel.sh",
+    "bin/modware",
+    "bin/modware-transform",
+    "bin/modware-export",
     "bin/discoideum-split-canonical.pl",
     "bin/discoideum_tblastn_filter.pl",
-    "bin/modware",
-    "bin/modware-export",
+    "bin/chado2dicty_gff3_parallel.sh",
     "bin/modware-load",
+    "bin/modware-update",
+    "bin/modware",
     "bin/modware-transform",
-    "bin/modware-update"
+    "bin/modware-export",
+    "bin/discoideum-split-canonical.pl",
+    "bin/discoideum_tblastn_filter.pl",
+    "bin/chado2dicty_gff3_parallel.sh",
+    "bin/modware-load"
   ],
   "share_dir" => {
     "dist" => "share",
