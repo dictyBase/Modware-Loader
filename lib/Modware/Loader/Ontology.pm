@@ -258,6 +258,16 @@ sub merge_ontology {
     $logger->debug("created $relationships relationships");
 }
 
+around 'merge_ontology' => sub {
+    my $orig = shift;
+    my $self = shift;
+    $self->$orig(
+        create_hooks => [ sub { $self->create_synonyms(@_) } ],
+        update_hooks => [ sub { $self->update_synonyms(@_) } ]
+    );
+};
+
+
 sub finish {
 	my ($self) = @_;
 	$self->schema->storage->disconnect;

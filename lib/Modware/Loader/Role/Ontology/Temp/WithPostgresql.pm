@@ -11,27 +11,6 @@ has cache_threshold =>
     ( is => 'rw', isa => 'Int', lazy => 1, default => 4000 );
 
 
-after 'load_data_in_staging' => sub {
-    my ($self) = @_;
-    $self->schema->storage->dbh_do(
-        sub {
-            my ( $storage, $dbh ) = @_;
-            $dbh->do(
-                q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
-            );
-            $dbh->do(
-                q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)}
-            );
-        }
-    );
-
-    $self->logger->debug(
-        sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
-        $self->entries_in_staging('TempCvterm'),
-        $self->entries_in_staging('TempCvtermRelationship')
-    );
-};
-
 sub create_temp_statements {
     my ( $self, $storage ) = @_;
     $storage->dbh->do(
@@ -58,24 +37,45 @@ sub create_temp_statements {
                type_db_id integer NOT NULL
     )}
     );
+   $storage->dbh->do(qq{
+	        CREATE TEMP TABLE temp_cvterm_synonym (
+               accession varchar(256) NOT NULL, 
+               syn varchar(1024) NOT NULL, 
+               syn_scope_id integer NOT NULL, 
+               db_id integer NOT NULL
+    ) ON COMMIT PRESERVE ROWS }
+    );
+
     $storage->dbh->do(qq{ANALYZE  cvterm});
     $storage->dbh->do(qq{ANALYZE dbxref});
 }
 
-around 'load_cvterms_in_staging' => sub {
-    my $orig = shift;
-    my $self = shift;
-    $self->$orig( @_, [ sub { $self->load_synonyms_in_staging(@_) } ] );
-};
-
-after 'load_cvterms_in_staging' => sub {
-	my ($self) = @_;
-    $self->load_cache( 'synonym', 'TempCvtermsynonym' );
-};
-
 
 sub drop_temp_statements {
 }
+
+after 'load_data_in_staging' => sub {
+    my ($self) = @_;
+    $self->schema->storage->dbh_do(
+        sub {
+            my ( $storage, $dbh ) = @_;
+            $dbh->do(
+                q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
+            );
+            $dbh->do(
+                q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)}
+            );
+        }
+    );
+
+    $self->logger->debug(
+        sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
+        $self->entries_in_staging('TempCvterm'),
+        $self->entries_in_staging('TempCvtermRelationship')
+    );
+};
+
+
 
 1;    # Magic true value required at end of module
 

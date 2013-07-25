@@ -10,14 +10,6 @@ use feature qw/say/;
 
 sub transform_schema { }
 
-around 'merge_ontology' => sub {
-    my $orig = shift;
-    my $self = shift;
-    $self->$orig(
-        create_hooks => [ sub { $self->create_synonyms(@_) } ],
-        update_hooks => [ sub { $self->update_synonyms(@_) } ]
-    );
-};
 
 sub delete_non_existing_terms {
     my ( $self, $storage, $dbh ) = @_;
@@ -96,80 +88,6 @@ sub create_cvterms {
 			)
 			}
     );
-    return $rows;
-}
-
-sub create_synonyms {
-    my ( $self, $storage, $dbh ) = @_;
-    my $row = $dbh->do(
-        q{
-	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
-		SELECT tsyn.syn, tsyn.syn_scope_id, cvterm.cvterm_id
-		FROM temp_cvterm_synonym tsyn
-		INNER JOIN temp_accession tmacc ON
-		    tsyn.accession = tmacc.accession
-		INNER JOIN dbxref ON (
-			dbxref.accession = tsyn.accession
-			AND dbxref.db_id = tsyn.db_id
-		)
-		INNER JOIN cvterm ON
-		    dbxref.dbxref_id = cvterm.dbxref_id
-		
-	}
-    );
-    $self->logger->debug("created $row synonyms");
-    return $row;
-}
-
-sub update_synonyms {
-    my ( $self, $storage, $dbh ) = @_;
-
-    #First create a temp table with synonym that needs update
-    $dbh->do(
-        q{
-		 CREATE TEMP TABLE temp_synonym_update AS
-	       SELECT cvterm.cvterm_id,syn2.syn,syn2.syn_scope_id 
-    		FROM (
-    		 SELECT count(cvsyn.synonym) syncount, dbxref.accession 
-    		 FROM cvterm
-    		 INNER JOIN cvtermsynonym cvsyn ON cvsyn.cvterm_id = cvterm.cvterm_id
-    		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
-    		 WHERE cvterm.is_obsolete = 0
-    		 GROUP BY dbxref.accession
-            ) esyn 
-			INNER JOIN (
-             SELECT count(tsyn.syn) syncount, tsyn.accession
-             FROM temp_cvterm_synonym tsyn
-    		 GROUP BY tsyn.accession 
-    		) nsyn ON
-    		  esyn.accession = nsyn.accession
-    		  INNER JOIN temp_cvterm_synonym syn2 ON 
-    		    syn2.accession = nsyn.accession
-    		  INNER JOIN dbxref ON (
-    		  	dbxref.accession = syn2.accession
-    		  	AND
-    		  	dbxref.db_id = syn2.db_id
-    		  )
-    		  INNER JOIN cvterm ON
-    		    cvterm.dbxref_id = dbxref.dbxref_id
-    		WHERE   	
-    		esyn.syncount < nsyn.syncount
-	}
-    );
-
-    #Now delete all synonyms
-    $dbh->do(
-        q{ DELETE FROM cvtermsynonym WHERE cvterm_id IN (SELECT cvterm_id FROM temp_synonym_update)}
-    );
-
-    #Now insert the new batch
-    my $rows = $dbh->do(
-        q{
-	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
-	    SELECT syn,syn_scope_id,cvterm_id FROM temp_synonym_update 
-    }
-    );
-    $self->logger->debug("updated $rows synonyms");
     return $rows;
 }
 
@@ -289,6 +207,80 @@ sub create_relations {
       FROM cvterm_relationship cvrel
     }
     );
+    return $rows;
+}
+
+sub create_synonyms {
+    my ( $self, $storage, $dbh ) = @_;
+    my $row = $dbh->do(
+        q{
+	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
+		SELECT tsyn.syn, tsyn.syn_scope_id, cvterm.cvterm_id
+		FROM temp_cvterm_synonym tsyn
+		INNER JOIN temp_accession tmacc ON
+		    tsyn.accession = tmacc.accession
+		INNER JOIN dbxref ON (
+			dbxref.accession = tsyn.accession
+			AND dbxref.db_id = tsyn.db_id
+		)
+		INNER JOIN cvterm ON
+		    dbxref.dbxref_id = cvterm.dbxref_id
+		
+	}
+    );
+    $self->logger->debug("created $row synonyms");
+    return $row;
+}
+
+sub update_synonyms {
+    my ( $self, $storage, $dbh ) = @_;
+
+    #First create a temp table with synonym that needs update
+    $dbh->do(
+        q{
+		 CREATE TEMP TABLE temp_synonym_update AS
+	       SELECT cvterm.cvterm_id,syn2.syn,syn2.syn_scope_id 
+    		FROM (
+    		 SELECT count(cvsyn.synonym) syncount, dbxref.accession 
+    		 FROM cvterm
+    		 INNER JOIN cvtermsynonym cvsyn ON cvsyn.cvterm_id = cvterm.cvterm_id
+    		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
+    		 WHERE cvterm.is_obsolete = 0
+    		 GROUP BY dbxref.accession
+            ) esyn 
+			INNER JOIN (
+             SELECT count(tsyn.syn) syncount, tsyn.accession
+             FROM temp_cvterm_synonym tsyn
+    		 GROUP BY tsyn.accession 
+    		) nsyn ON
+    		  esyn.accession = nsyn.accession
+    		  INNER JOIN temp_cvterm_synonym syn2 ON 
+    		    syn2.accession = nsyn.accession
+    		  INNER JOIN dbxref ON (
+    		  	dbxref.accession = syn2.accession
+    		  	AND
+    		  	dbxref.db_id = syn2.db_id
+    		  )
+    		  INNER JOIN cvterm ON
+    		    cvterm.dbxref_id = dbxref.dbxref_id
+    		WHERE   	
+    		esyn.syncount < nsyn.syncount
+	}
+    );
+
+    #Now delete all synonyms
+    $dbh->do(
+        q{ DELETE FROM cvtermsynonym WHERE cvterm_id IN (SELECT cvterm_id FROM temp_synonym_update)}
+    );
+
+    #Now insert the new batch
+    my $rows = $dbh->do(
+        q{
+	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
+	    SELECT syn,syn_scope_id,cvterm_id FROM temp_synonym_update 
+    }
+    );
+    $self->logger->debug("updated $rows synonyms");
     return $rows;
 }
 

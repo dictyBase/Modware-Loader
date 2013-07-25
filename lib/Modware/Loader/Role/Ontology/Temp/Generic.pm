@@ -31,9 +31,20 @@ sub load_cvterms_in_staging {
     }
 }
 
+
+# use this hook to load data that is dependent of cvterm
+around 'load_cvterms_in_staging' => sub {
+    my $orig = shift;
+    my $self = shift;
+    $self->$orig( @_, [ sub { $self->load_synonyms_in_staging(@_) } ] );
+};
+
+
+# to load leftover cache in staging database
 after 'load_cvterms_in_staging' => sub {
     my ($self) = @_;
-    $self->load_cache( 'term', 'TempCvterm' );
+   $self->load_cache( 'term', 'TempCvterm' );
+   $self->load_cache( 'synonym', 'TempCvtermsynonym' );
 };
 
 sub load_synonyms_in_staging {
@@ -42,6 +53,20 @@ sub load_synonyms_in_staging {
         = $self->get_synonym_term_hash( $term, $insert_hash );
     $self->add_to_synonym_cache(@$synonym_insert_array);
     $self->load_cache( 'synonym', 'TempCvtermsynonym', 1 );
+}
+
+
+sub load_cache {
+    my ( $self, $cache, $result_class, $check_for_threshold ) = @_;
+    if ($check_for_threshold) {
+        my $count = 'count_entries_in_' . $cache . '_cache';
+        return if $self->$count < $self->cache_threshold;
+    }
+
+    my $entries = 'entries_in_' . $cache . '_cache';
+    my $clean   = 'clean_' . $cache . '_cache';
+    $self->schema->resultset($result_class)->populate( [ $self->$entries ] );
+    $self->$clean;
 }
 
 sub load_relationship_in_staging {
@@ -79,19 +104,6 @@ sub load_relationship_in_staging {
 }
 
 sub load_alt_ids_in_staging {
-}
-
-sub load_cache {
-    my ( $self, $cache, $result_class, $check_for_threshold ) = @_;
-    if ($check_for_threshold) {
-        my $count = 'count_entries_in_' . $cache . '_cache';
-        return if $self->$count < $self->cache_threshold;
-    }
-
-    my $entries = 'entries_in_' . $cache . '_cache';
-    my $clean   = 'clean_' . $cache . '_cache';
-    $self->schema->resultset($result_class)->populate( [ $self->$entries ] );
-    $self->$clean;
 }
 
 sub get_insert_term_hash {

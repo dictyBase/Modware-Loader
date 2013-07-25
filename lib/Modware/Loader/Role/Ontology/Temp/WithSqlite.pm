@@ -29,16 +29,6 @@ after 'load_data_in_staging' => sub {
     );
 };
 
-around 'load_cvterms_in_staging' => sub {
-    my $orig = shift;
-    my $self = shift;
-    $self->$orig( @_, [ sub { $self->load_synonyms_in_staging(@_) } ] );
-};
-
-after 'load_cvterms_in_staging' => sub {
-	my ($self) = @_;
-    $self->load_cache( 'synonym', 'TempCvtermsynonym' );
-};
 
 sub create_temp_statements {
     my ( $self, $storage ) = @_;
