@@ -25,7 +25,7 @@ sub load_cvterms_in_staging {
         $self->load_cache( 'term', 'TempCvterm', 1 );
 
         #hooks to run that depends on cvterms
-        if ( defined @$hooks ) {
+        if ( defined $hooks ) {
             $_->( $term, $insert_hash ) for @$hooks;
         }
     }

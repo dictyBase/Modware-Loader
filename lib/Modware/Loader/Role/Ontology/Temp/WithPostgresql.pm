@@ -43,7 +43,7 @@ sub create_temp_statements {
                syn varchar(1024) NOT NULL, 
                syn_scope_id integer NOT NULL, 
                db_id integer NOT NULL
-    ) ON COMMIT PRESERVE ROWS }
+    )}
     );
 
     $storage->dbh->do(qq{ANALYZE  cvterm});
