@@ -59,7 +59,7 @@ sub execute {
     my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
         {},
         {   select => [
-                qw/id strain_name strain_description species dbxref_id pubmedid phenotype genotype other_references internal_db_id/
+                qw/id strain_name strain_description species dbxref_id pubmedid phenotype genotype other_references internal_db_id mutagenesis_method mutant_type/
             ],
             cache => 1
         }
@@ -179,6 +179,36 @@ sub execute {
                 $io->{characteristics}
                     ->write( $dbs_id . "\t" . $cvterm_name . "\n" );
                 $stats->{characteristics} = $stats->{characteristics} + 1;
+            }
+        }
+
+        if ( exists $io->{props} ) {
+            my $mm = $strain->mutagenesis_method;
+            if ($mm) {
+                $mm =~ s/\?//;
+                $mm = $self->trim($mm);
+                if ( $self->has_mutagenesis_method($mm) ) {
+                    $io->{props}->write( $dbs_id . "\t"
+                            . 'mutagenesis method' . "\t"
+                            . $self->get_mutagenesis_method($mm) );
+                }
+            }
+
+            my $gm = $strain->mutant_type;
+            if ($gm) {
+                my $mutant_type = $self->find_cvterm_name($gm);
+                $io->{props}->write( $dbs_id . "\t"
+                        . 'mutant type' . "\t"
+                        . $mutant_type
+                        . "\n" );
+            }
+
+            my @synonyms = $self->get_synonyms( $strain->id );
+            if (@synonyms) {
+                foreach my $synonym (@synonyms) {
+                    $io->{props}->write(
+                        $dbs_id . "\t" . 'synonym' . "\t" . $synonym . "\n" );
+                }
             }
         }
     }

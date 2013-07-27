@@ -10,6 +10,7 @@ sub transform_schema {
     my ( $self, $schema ) = @_;
     my $phenotype_src = $schema->source('Phenotype::Phenotype');
     $phenotype_src->remove_column('name');
+    $phenotype_src->schema->source('Sequence::Synonym')->name('synonym_');
     return $phenotype_src->schema();
 }
 

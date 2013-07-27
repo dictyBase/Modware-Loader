@@ -95,4 +95,52 @@ sub _load_list_genotype {
     return $char_hashref;
 }
 
+has '_mutagenesis_method' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub {
+        {   'AS'        => 'Antisense',
+            'EX'        => 'Extrachromosomal',
+            'HR'        => 'Homologous Recombination',
+            'HS'        => 'Haploid Segregant',
+            'KD'        => 'Knockdown',
+            'MR'        => 'Meiotic Recombination',
+            'NG'        => 'N-Methyl-N-Nitro-N-Nitrosoguanidine',
+            'NQNO'      => '4-nitroquinolone-N-oxide',
+            'REMI'      => 'Restriction Enzyme-Mediated Integration',
+            'RI'        => 'Random Insertion',
+            'UV'        => 'Ultraviolet Light',
+            'gamma-ray' => 'Gamma-Ray Irradiation',
+            'spont'     => 'Spontaneous',
+        };
+    },
+    handles => {
+        get_mutagenesis_method => 'get',
+        has_mutagenesis_method => 'defined'
+    }
+);
+
+sub get_synonyms {
+    my ( $self, $strain_id ) = @_;
+    my @synonyms;
+    my $syn_rs
+        = $self->legacy_schema->resultset('StrainSynonym')
+        ->search( { strain_id => $strain_id },
+        { select => 'synonym_id', cache => 1 } );
+    while ( my $syn = $syn_rs->next ) {
+        my $synonym_rs
+            = $self->schema->resultset('Sequence::Synonym')->search(
+            { synonym_id => $syn->synonym_id },
+            { select     => 'name', cache => 1 }
+            );
+        if ( $synonym_rs->count > 0 ) {
+            while ( my $synonym = $synonym_rs->next ) {
+                push( @synonyms, $synonym->name );
+            }
+        }
+    }
+    return @synonyms;
+}
+
 1;
