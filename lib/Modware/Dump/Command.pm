@@ -13,10 +13,10 @@ use File::Basename;
 use Time::Piece;
 use YAML qw/LoadFile/;
 use Path::Class::File;
-use Modware::Factory::Chado::BCS;
 
 extends qw/MooseX::App::Cmd::Command/;
 with 'MooseX::ConfigFromFile';
+with 'Modware::Role::Stock::Chado::WithOracle';
 
 subtype 'DataDir'  => as 'Str' => where { -d $_ };
 subtype 'DataFile' => as 'Str' => where { -f $_ };
@@ -114,10 +114,13 @@ sub _build_chado {
     my ($self) = @_;
     my $schema = Bio::Chado::Schema->connect( $self->dsn, $self->user,
         $self->password, $self->attribute );
+    my $new_schema = $self->transform_schema($schema);
+    return $new_schema;
 
-    my $engine = Modware::Factory::Chado::BCS->new;
-    $engine->get_engine('Oracle')->transform($schema);
-    return $schema;
+    # $self->meta->make_mutable;
+    # my $engine = 'Modware::Role::Stock::Chado::WithOracle';
+    # ensure_all_roles( $self, $engine );
+    # $self->meta->make_immutable;
 }
 
 has 'legacy_dsn' => (
@@ -175,6 +178,9 @@ __END__
 
 =head1 NAME
 
-<Modware::Dump::Command> - [Base class for writing dump command module]
+Modware::Dump::Command - Base class for writing dump command module
+
+=head1 DESCRIPTION
+
 
 =cut
