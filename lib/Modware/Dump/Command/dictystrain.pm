@@ -163,7 +163,8 @@ sub execute {
                 ->search( { strain_id => $strain->id }, { cache => 1 } );
             while ( my $strain_gene = $strain_gene_rs->next ) {
                 my $gene_id = $self->find_gene_id( $strain_gene->feature_id );
-                $io->{genes}->write( $dbs_id . "\t" . $gene_id . "\n" );
+                $io->{genes}->write(
+                    $dbs_id . "\t" . $gene_id . "\t" . $dscg_id . "\n" );
                 $stats->{genes} = $stats->{genes} + 1;
             }
         }
