@@ -24,15 +24,15 @@ sub execute {
     my ($self) = @_;
 
     my $io;
-	my $stats;
+    my $stats;
     my @data;
     if ( $self->data ne 'all' ) {
         @data = split( /,/, $self->data );
     }
     else {
         @data = (
-            "strain",       "inventory", "genotype", "phenotype",
-            "publications", "genes",     "characteristics"
+            "strain",       "inventory", "genotype",        "phenotype",
+            "publications", "genes",     "characteristics", "props"
         );
     }
 
@@ -44,7 +44,7 @@ sub execute {
             = IO::File->new( $self->output_dir . "/strain_" . $f . ".txt",
             'w' );
         $io->{$f}    = $file_obj;
-		$stats->{$f} = 0;
+        $stats->{$f} = 0;
 
         if ( $f eq 'publications' ) {
             my $f_ = "other_refs";
@@ -65,9 +65,12 @@ sub execute {
         }
     );
 
+    my $dscg = 1;
+
     while ( my $strain = $strain_rs->next ) {
 
         my $dbs_id = $self->find_dbxref_accession( $strain->dbxref_id );
+        my $dscg_id = sprintf( "DSC_G%07d", $dscg );
 
         if ( exists $io->{strain} ) {
             $io->{strain}->write( $dbs_id . "\t"
@@ -75,7 +78,7 @@ sub execute {
                     . $strain->species . "\t"
                     . $strain->strain_description
                     . "\n" );
-			$stats->{strain} = $stats->{strain} + 1;
+            $stats->{strain} = $stats->{strain} + 1;
         }
 
         if ( exists $io->{inventory} ) {
@@ -93,7 +96,7 @@ sub execute {
                         if $strain_invent->location
                         and $strain_invent->color
                         and $strain_invent->no_of_vials;
-					$stats->{inventory} = $stats->{inventory} + 1;
+                    $stats->{inventory} = $stats->{inventory} + 1;
                 }
             }
         }
@@ -111,7 +114,7 @@ sub execute {
                     if ($pmid) {
                         $io->{publications}->write(
                             $dbs_id . "\t" . $self->trim($pmid) . "\n" );
-						$stats->{publications} = $stats->{publications} + 1;
+                        $stats->{publications} = $stats->{publications} + 1;
                     }
                 }
             }
@@ -120,21 +123,20 @@ sub execute {
                     if ($non_pmid) {
                         $io->{other_refs}->write(
                             $dbs_id . "\t" . $self->trim($non_pmid) . "\n" );
-						$stats->{other_refs} = $stats->{other_refs} + 1;
+                        $stats->{other_refs} = $stats->{other_refs} + 1;
                     }
                 }
             }
         }
 
-        if ( exists $io->{genotype} ) {
-            if ( $strain->genotype ) {
-                my $genotype = $self->trim( $strain->genotype );
-                $io->{genotype}->write( $dbs_id . "\t"
-                        . $strain->strain_name . "\t"
-                        . $genotype
-                        . "\n" );
-				$stats->{genotype} = $stats->{genotype} + 1;
+        if ( $strain->genotype ) {
+            my $genotype = $self->trim( $strain->genotype );
+            if ( exists $io->{genotype} ) {
+                $io->{genotype}->write(
+                    $dbs_id . "\t" . $dscg_id . "\t" . $genotype . "\n" );
+                $stats->{genotype} = $stats->{genotype} + 1;
             }
+            $dscg = $dscg + 1;
         }
 
         if ( exists $io->{phenotype} ) {
@@ -148,7 +150,7 @@ sub execute {
                         if ($phenotype) {
                             $io->{phenotype}
                                 ->write( $dbs_id . "\t" . $phenotype . "\n" );
-							$stats->{phenotype} = $stats->{phenotype} + 1;
+                            $stats->{phenotype} = $stats->{phenotype} + 1;
                         }
                     }
                 }
@@ -161,8 +163,9 @@ sub execute {
                 ->search( { strain_id => $strain->id }, { cache => 1 } );
             while ( my $strain_gene = $strain_gene_rs->next ) {
                 my $gene_id = $self->find_gene_id( $strain_gene->feature_id );
-                $io->{genes}->write( $dbs_id . "\t" . $gene_id . "\n" );
-				$stats->{genes} = $stats->{genes} + 1;
+                $io->{genes}->write(
+                    $dbs_id . "\t" . $gene_id . "\t" . $dscg_id . "\n" );
+                $stats->{genes} = $stats->{genes} + 1;
             }
         }
 
@@ -175,11 +178,11 @@ sub execute {
                     = $self->find_cvterm_name( $strain_char->cvterm_id );
                 $io->{characteristics}
                     ->write( $dbs_id . "\t" . $cvterm_name . "\n" );
-				$stats->{characteristics} = $stats->{characteristics} + 1;
+                $stats->{characteristics} = $stats->{characteristics} + 1;
             }
         }
     }
-	$self->dual_logger->info( Dumper($stats) );
+    $self->dual_logger->info( Dumper($stats) );
 }
 
 sub trim {
