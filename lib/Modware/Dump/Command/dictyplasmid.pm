@@ -26,10 +26,8 @@ sub execute {
         @data = split( /,/, $self->data );
     }
     else {
-        @data = (
-            "plasmid",      "inventory", "genbank", "phenotype",
-            "publications", "genes"
-        );
+        @data
+            = ( "plasmid", "inventory", "genbank", "publications", "genes" );
     }
 
     $self->dual_logger->info(
@@ -61,12 +59,16 @@ sub execute {
 
     while ( my $plasmid = $plasmid_rs->next ) {
 
-        my $plasmid_id = $plasmid->id;
+        my $dbp_id = sprintf( "DBP%07d", $plasmid->id );
 
         if ( exists $io->{plasmid} ) {
-            $io->{plasmid}->write( $plasmid_id . "\t"
-                    . $plasmid->name . "\t"
-                    . $plasmid->description
+            my $name = $self->trim( $plasmid->name ) if $plasmid->name;
+            my $desc = $self->trim( $plasmid->description )
+                if $plasmid->description;
+            $desc =~ s/\r/\n/g;
+            $io->{plasmid}->write( $dbp_id . "\t"
+                    . $self->trim($name) . "\t"
+                    . $self->trim($self->trim($desc))
                     . "\n" );
         }
 
@@ -80,15 +82,15 @@ sub execute {
 
             if (@pmids) {
                 foreach my $pmid (@pmids) {
-                    $io->{publications}->write(
-                        $plasmid_id . "\t" . $self->trim($pmid) . "\n" )
+                    $io->{publications}
+                        ->write( $dbp_id . "\t" . $self->trim($pmid) . "\n" )
                         if $pmid;
                 }
             }
             if (@non_pmids) {
                 foreach my $non_pmid (@non_pmids) {
                     $io->{other_refs}->write(
-                        $plasmid_id . "\t" . $self->trim($non_pmid) . "\n" )
+                        $dbp_id . "\t" . $self->trim($non_pmid) . "\n" )
                         if $non_pmid;
                 }
             }
@@ -96,10 +98,10 @@ sub execute {
 
         if ( exists $io->{inventory} ) {
             my $plasmid_invent_rs
-                = $self->find_plasmid_inventory($plasmid_id);
+                = $self->find_plasmid_inventory( $plasmid->id );
             if ($plasmid_invent_rs) {
                 while ( my $plasmid_invent = $plasmid_invent_rs->next ) {
-                    $io->{inventory}->write( $plasmid_id . "\t"
+                    $io->{inventory}->write( $dbp_id . "\t"
                             . $plasmid_invent->location . "\t"
                             . $plasmid_invent->color . "\t"
                             . $plasmid_invent->stored_as . "\t"
@@ -112,9 +114,8 @@ sub execute {
         }
 
         if ( exists $io->{genbank} ) {
-            $io->{genbank}->write( $plasmid_id . "\t"
-                    . $plasmid->genbank_accession_number
-                    . "\n" )
+            $io->{genbank}->write(
+                $dbp_id . "\t" . $plasmid->genbank_accession_number . "\n" )
                 if $plasmid->genbank_accession_number;
         }
 
@@ -125,7 +126,7 @@ sub execute {
             while ( my $plasmid_gene = $plasmid_gene_rs->next ) {
                 my $gene_id
                     = $self->find_gene_id( $plasmid_gene->feature_id );
-                $io->{genes}->write( $plasmid_id . "\t" . $gene_id . "\n" );
+                $io->{genes}->write( $dbp_id . "\t" . $gene_id . "\n" );
             }
         }
 
@@ -136,8 +137,6 @@ sub trim {
     my ( $self, $s ) = @_;
     $s =~ s/^\s+//;
     $s =~ s/\s+$//;
-
-    #$s =~ s/[[:punct:]]//g;
     return $s;
 }
 
@@ -157,7 +156,7 @@ version 0.0.1
 
 	perl modware-dump dictyplasmid -c config.yaml  
 
-	perl modware-dump dictyplasmid -c config.yaml --data inventory,genotype,phenotype --format <text|json> 
+	perl modware-dump dictyplasmid -c config.yaml --data inventory,genbank,genes --format <text|json> 
 
 =head1 REQUIRED ARGUMENTS
 
