@@ -143,4 +143,21 @@ sub get_synonyms {
     return @synonyms;
 }
 
+sub find_phenotypes {
+    my ( $self, $dbs_id ) = @_;
+    my @phenotypes;
+    my $pst_rs = $self->schema->resultset('Genetic::Phenstatement')->search(
+        { 'genotype.uniquename' => $dbs_id },
+        {   join     => [ 'genotype', { 'phenotype' => 'observable' } ],
+            prefetch => [ 'genotype', { 'phenotype' => 'observable' } ],
+            cache    => 1,
+        }
+    );
+    while ( my $pst = $pst_rs->next ) {
+        my $phenotype = $pst->phenotype;
+        push( @phenotypes, $phenotype->observable->name );
+    }
+	return @phenotypes;
+}
+
 1;
