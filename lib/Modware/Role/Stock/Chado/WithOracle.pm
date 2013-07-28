@@ -11,7 +11,10 @@ sub transform_schema {
     my $phenotype_src = $schema->source('Phenotype::Phenotype');
     $phenotype_src->remove_column('name');
     $phenotype_src->schema->source('Sequence::Synonym')->name('synonym_');
-    return $phenotype_src->schema();
+    my $genotype_src = $phenotype_src->schema->source('Genetic::Genotype');
+    $genotype_src->remove_column('type_id');
+    $genotype_src->remove_column('name');
+    return $genotype_src->schema();
 }
 
 1;

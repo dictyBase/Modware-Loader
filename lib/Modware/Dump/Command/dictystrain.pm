@@ -54,6 +54,13 @@ sub execute {
                 'w' );
             $io->{$f_} = $file_obj_;
         }
+        if ( $f eq 'phenotype' ) {
+            my $f_ = "phenotype_jakob";
+            my $file_obj_
+                = IO::File->new(
+                $self->output_dir . "/strain_phenotype_jakob.txt", 'w' );
+            $io->{$f_} = $file_obj_;
+        }
     }
 
     my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
@@ -140,17 +147,22 @@ sub execute {
         }
 
         if ( exists $io->{phenotype} ) {
+            my @phenotypes = $self->find_phenotypes($dbs_id);
+            foreach my $phenotype (@phenotypes) {
+                $io->{phenotype}->write( $dbs_id . "\t" . $phenotype . "\n" );
+                $stats->{phenotype} = $stats->{phenotype} + 1;
+            }
+
             if ( $strain->phenotype ) {
-                my @phenotypes = split( /[,;]/, $strain->phenotype );
-                foreach my $phenotype (@phenotypes) {
+                my @phenotypes_jakob = split( /[,;]/, $strain->phenotype );
+                foreach my $phenotype (@phenotypes_jakob) {
                     $phenotype = $self->trim($phenotype);
                     if (   !$self->is_strain_genotype($phenotype)
                         && !$self->is_strain_characteristic($phenotype) )
                     {
                         if ($phenotype) {
-                            $io->{phenotype}
+                            $io->{phenotype_jakob}
                                 ->write( $dbs_id . "\t" . $phenotype . "\n" );
-                            $stats->{phenotype} = $stats->{phenotype} + 1;
                         }
                     }
                 }
@@ -190,7 +202,8 @@ sub execute {
                 if ( $self->has_mutagenesis_method($mm) ) {
                     $io->{props}->write( $dbs_id . "\t"
                             . 'mutagenesis method' . "\t"
-                            . $self->get_mutagenesis_method($mm) );
+                            . $self->get_mutagenesis_method($mm)
+                            . "\n" );
                 }
             }
 
