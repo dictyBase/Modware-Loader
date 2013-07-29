@@ -166,18 +166,29 @@ sub get_synonyms {
 sub find_phenotypes {
     my ( $self, $dbs_id ) = @_;
     my @phenotypes;
-    my $pst_rs = $self->schema->resultset('Genetic::Phenstatement')->search(
-        { 'genotype.uniquename' => $dbs_id },
-        {   join     => [ 'genotype', { 'phenotype' => 'observable' } ],
-            prefetch => [ 'genotype', { 'phenotype' => 'observable' } ],
-            cache    => 1,
+    my $genotype_rs = $self->schema->resultset('Genetic::Genotype')->search(
+        { 'me.uniquename' => $dbs_id },
+        {   join =>
+                [ { 'phenstatements' => { 'phenotype' => 'observable' } } ],
+            select => [qw/observable.name/],
+            as     => [qw/phenotype_name/]
         }
     );
-    while ( my $pst = $pst_rs->next ) {
-        my $phenotype = $pst->phenotype;
-        push( @phenotypes, $phenotype->observable->name );
+    while ( my $genotype = $genotype_rs->next ) {
+        my $phenotype = $genotype->get_column('phenotype_name');
+        push( @phenotypes, $phenotype ) if $phenotype;
     }
     return @phenotypes;
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Modware::Role::Stock::Strain - 
+
+=head1 DESCRIPTION
+
+=cut
