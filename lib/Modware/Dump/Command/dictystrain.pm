@@ -149,7 +149,7 @@ sub execute {
         if ( exists $io->{phenotype} ) {
             my @phenotypes = $self->find_phenotypes($dbs_id);
             foreach my $phenotype (@phenotypes) {
-                $io->{phenotype}->write( $dbs_id . "\t" . $phenotype . "\n" );
+                $io->{phenotype}->write( $dbs_id . "\t" . $phenotype->[0] . "\n" );
                 $stats->{phenotype} = $stats->{phenotype} + 1;
             }
 

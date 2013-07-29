@@ -163,7 +163,7 @@ sub get_synonyms {
     return @synonyms;
 }
 
-sub find_phenotypes {
+sub find_phenotypes_2 {
     my ( $self, $dbs_id ) = @_;
     my @phenotypes;
     my $genotype_rs = $self->schema->resultset('Genetic::Genotype')->search(
@@ -179,6 +179,31 @@ sub find_phenotypes {
         push( @phenotypes, $phenotype ) if $phenotype;
     }
     return @phenotypes;
+}
+
+=head2 find_phenotypes
+	my @phenotypes = $command->find_phenotypes('dbs_id');
+	foreach my $phenotype (@phenotypes) {
+		print $phenotype->[0] ."\n";
+	}
+
+	Return a arrayref for the phenotypes of the given DBS ID. 
+	Pure SQL query is performed for speed.
+=cut
+
+sub find_phenotypes {
+    my ( $self, $dbs_id ) = @_;
+    my $phenotypes = $self->schema->storage->dbh->selectall_arrayref(
+        qq{
+	SELECT ct.name
+	FROM genotype g
+	JOIN phenstatement pst ON pst.genotype_id = g.genotype_id
+	JOIN phenotype p ON p.phenotype_id = pst.phenotype_id
+	JOIN cvterm ct ON ct.cvterm_id = p.observable_id
+	WHERE g.uniquename = '$dbs_id'
+	}
+    );
+    return @{$phenotypes};
 }
 
 1;
