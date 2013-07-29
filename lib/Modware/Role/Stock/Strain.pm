@@ -121,6 +121,18 @@ has '_mutagenesis_method' => (
     }
 );
 
+has '_synonym_row' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_synonym_row => 'set',
+        get_synonym_row => 'get',
+        has_synonym     => 'defined'
+    }
+);
+
 sub get_synonyms {
     my ( $self, $strain_id ) = @_;
     my @synonyms;
@@ -129,14 +141,22 @@ sub get_synonyms {
         ->search( { strain_id => $strain_id },
         { select => 'synonym_id', cache => 1 } );
     while ( my $syn = $syn_rs->next ) {
-        my $synonym_rs
-            = $self->schema->resultset('Sequence::Synonym')->search(
-            { synonym_id => $syn->synonym_id },
-            { select     => 'name', cache => 1 }
-            );
-        if ( $synonym_rs->count > 0 ) {
-            while ( my $synonym = $synonym_rs->next ) {
-                push( @synonyms, $synonym->name );
+        if ( $self->has_synonym( $syn->synonym_id ) ) {
+            push( @synonyms,
+                $self->get_synonym_row( $syn->synonym_id )->name );
+        }
+        else {
+            my $synonym_rs
+                = $self->schema->resultset('Sequence::Synonym')->search(
+                { synonym_id => $syn->synonym_id },
+                { select     => 'name', cache => 1 }
+                );
+            if ( $synonym_rs->count > 0 ) {
+                while ( my $synonym = $synonym_rs->next ) {
+                    $self->set_synonym_row( $syn->synonym_id, $synonym );
+                    push( @synonyms,
+                        $self->get_synonym_row( $syn->synonym_id )->name );
+                }
             }
         }
     }
@@ -157,7 +177,7 @@ sub find_phenotypes {
         my $phenotype = $pst->phenotype;
         push( @phenotypes, $phenotype->observable->name );
     }
-	return @phenotypes;
+    return @phenotypes;
 }
 
 1;
