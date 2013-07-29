@@ -65,7 +65,7 @@ sub execute {
             my $name = $self->trim( $plasmid->name ) if $plasmid->name;
             my $desc = $self->trim( $plasmid->description )
                 if $plasmid->description;
-            $desc =~ s/\r/\n/g;
+            $desc =~ s/\r\n/ /g;
             $io->{plasmid}->write( $dbp_id . "\t"
                     . $self->trim($name) . "\t"
                     . $self->trim($self->trim($desc))
