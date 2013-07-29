@@ -121,6 +121,18 @@ has '_mutagenesis_method' => (
     }
 );
 
+has '_synonym_row' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_synonym_row => 'set',
+        get_synonym_row => 'get',
+        has_synonym     => 'defined'
+    }
+);
+
 sub get_synonyms {
     my ( $self, $strain_id ) = @_;
     my @synonyms;
@@ -129,35 +141,79 @@ sub get_synonyms {
         ->search( { strain_id => $strain_id },
         { select => 'synonym_id', cache => 1 } );
     while ( my $syn = $syn_rs->next ) {
-        my $synonym_rs
-            = $self->schema->resultset('Sequence::Synonym')->search(
-            { synonym_id => $syn->synonym_id },
-            { select     => 'name', cache => 1 }
-            );
-        if ( $synonym_rs->count > 0 ) {
-            while ( my $synonym = $synonym_rs->next ) {
-                push( @synonyms, $synonym->name );
+        if ( $self->has_synonym( $syn->synonym_id ) ) {
+            push( @synonyms,
+                $self->get_synonym_row( $syn->synonym_id )->name );
+        }
+        else {
+            my $synonym_rs
+                = $self->schema->resultset('Sequence::Synonym')->search(
+                { synonym_id => $syn->synonym_id },
+                { select     => 'name', cache => 1 }
+                );
+            if ( $synonym_rs->count > 0 ) {
+                while ( my $synonym = $synonym_rs->next ) {
+                    $self->set_synonym_row( $syn->synonym_id, $synonym );
+                    push( @synonyms,
+                        $self->get_synonym_row( $syn->synonym_id )->name );
+                }
             }
         }
     }
     return @synonyms;
 }
 
-sub find_phenotypes {
+sub find_phenotypes_2 {
     my ( $self, $dbs_id ) = @_;
     my @phenotypes;
-    my $pst_rs = $self->schema->resultset('Genetic::Phenstatement')->search(
-        { 'genotype.uniquename' => $dbs_id },
-        {   join     => [ 'genotype', { 'phenotype' => 'observable' } ],
-            prefetch => [ 'genotype', { 'phenotype' => 'observable' } ],
-            cache    => 1,
+    my $genotype_rs = $self->schema->resultset('Genetic::Genotype')->search(
+        { 'me.uniquename' => $dbs_id },
+        {   join =>
+                [ { 'phenstatements' => { 'phenotype' => 'observable' } } ],
+            select => [qw/observable.name/],
+            as     => [qw/phenotype_name/]
         }
     );
-    while ( my $pst = $pst_rs->next ) {
-        my $phenotype = $pst->phenotype;
-        push( @phenotypes, $phenotype->observable->name );
+    while ( my $genotype = $genotype_rs->next ) {
+        my $phenotype = $genotype->get_column('phenotype_name');
+        push( @phenotypes, $phenotype ) if $phenotype;
     }
-	return @phenotypes;
+    return @phenotypes;
+}
+
+=head2 find_phenotypes
+	my @phenotypes = $command->find_phenotypes('dbs_id');
+	foreach my $phenotype (@phenotypes) {
+		print $phenotype->[0] ."\n";
+	}
+
+	Return a arrayref for the phenotypes of the given DBS ID. 
+	Pure SQL query is performed for speed.
+=cut
+
+sub find_phenotypes {
+    my ( $self, $dbs_id ) = @_;
+    my $phenotypes = $self->schema->storage->dbh->selectall_arrayref(
+        qq{
+	SELECT ct.name
+	FROM genotype g
+	JOIN phenstatement pst ON pst.genotype_id = g.genotype_id
+	JOIN phenotype p ON p.phenotype_id = pst.phenotype_id
+	JOIN cvterm ct ON ct.cvterm_id = p.observable_id
+	WHERE g.uniquename = '$dbs_id'
+	}
+    );
+    return @{$phenotypes};
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Modware::Role::Stock::Strain - 
+
+=head1 DESCRIPTION
+
+=cut

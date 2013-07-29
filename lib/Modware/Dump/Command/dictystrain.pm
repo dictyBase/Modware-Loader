@@ -17,51 +17,13 @@ has data => (
     isa     => 'Str',
     default => 'all',
     documentation =>
-        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics)'
+        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics, props)'
 );
 
 sub execute {
     my ($self) = @_;
 
-    my $io;
-    my $stats;
-    my @data;
-    if ( $self->data ne 'all' ) {
-        @data = split( /,/, $self->data );
-    }
-    else {
-        @data = (
-            "strain",       "inventory", "genotype",        "phenotype",
-            "publications", "genes",     "characteristics", "props"
-        );
-    }
-
-    $self->dual_logger->info(
-        "Data for {@data} will be exported to " . $self->output_dir );
-
-    foreach my $f (@data) {
-        my $file_obj
-            = IO::File->new( $self->output_dir . "/strain_" . $f . ".txt",
-            'w' );
-        $io->{$f}    = $file_obj;
-        $stats->{$f} = 0;
-
-        if ( $f eq 'publications' ) {
-            my $f_ = "other_refs";
-            my $file_obj_
-                = IO::File->new(
-                $self->output_dir . "/strain_publications_no_pubmed.txt",
-                'w' );
-            $io->{$f_} = $file_obj_;
-        }
-        if ( $f eq 'phenotype' ) {
-            my $f_ = "phenotype_jakob";
-            my $file_obj_
-                = IO::File->new(
-                $self->output_dir . "/strain_phenotype_jakob.txt", 'w' );
-            $io->{$f_} = $file_obj_;
-        }
-    }
+    my ( $io, $stats ) = $self->_create_files();
 
     my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
         {},
@@ -80,11 +42,24 @@ sub execute {
         my $dscg_id = sprintf( "DSC_G%07d", $dscg );
 
         if ( exists $io->{strain} ) {
-            $io->{strain}->write( $dbs_id . "\t"
-                    . $strain->strain_name . "\t"
-                    . $strain->species . "\t"
-                    . $strain->strain_description
-                    . "\n" );
+            my $row;
+            $row->{1} = $dbs_id;
+            $row->{2} = $strain->strain_name;
+            if ( $strain->species ) {
+                $row->{3} = $strain->species;
+            }
+            else {
+                $row->{3} = '';
+            }
+            if ( $strain->strain_description ) {
+                $row->{4} = $strain->strain_description;
+            }
+            else {
+                $row->{4} = '';
+            }
+            my $s = join "\t" => map $row->{$_} => sort { $a <=> $b }
+                keys %$row;
+            $io->{strain}->write( $s . "\n" );
             $stats->{strain} = $stats->{strain} + 1;
         }
 
@@ -92,17 +67,36 @@ sub execute {
             my $strain_invent_rs = $self->find_strain_inventory($dbs_id);
             if ($strain_invent_rs) {
                 while ( my $strain_invent = $strain_invent_rs->next ) {
-                    $io->{inventory}->write( $dbs_id . "\t"
-                            . $strain_invent->location . "\t"
-                            . $strain_invent->color . "\t"
-                            . $strain_invent->no_of_vials . "\t"
-                            . $strain_invent->obtained_as . "\t"
-                            . $strain_invent->stored_as . "\t"
-                            . $strain_invent->storage_date
-                            . "\n" )
-                        if $strain_invent->location
-                        and $strain_invent->color
-                        and $strain_invent->no_of_vials;
+                    my $row;
+                    $row->{1} = $dbs_id;
+                    if ( $strain_invent->location ) {
+                        $row->{2} = $strain_invent->location;
+                    }
+                    else { $row->{2} = '' }
+                    if ( $strain_invent->color ) {
+                        $row->{3} = $strain_invent->color;
+                    }
+                    else { $row->{3} = '' }
+                    if ( $strain_invent->no_of_vials ) {
+                        $row->{4} = $strain_invent->no_of_vials;
+                    }
+                    else { $row->{4} = '' }
+                    if ( $strain_invent->obtained_as ) {
+                        $row->{5} = $strain_invent->obtained_as;
+                    }
+                    else { $row->{5} = '' }
+                    if ( $strain_invent->stored_as ) {
+                        $row->{6} = $strain_invent->stored_as;
+                    }
+                    else { $row->{6} = '' }
+                    if ( $strain_invent->storage_date ) {
+                        $row->{7} = $strain_invent->storage_date;
+                    }
+                    else { $row->{7} = '' }
+
+                    my $s = join "\t" => map $row->{$_} => sort { $a <=> $b }
+                        keys %$row;
+                    $io->{inventory}->write( $s . "\n" );
                     $stats->{inventory} = $stats->{inventory} + 1;
                 }
             }
@@ -149,7 +143,8 @@ sub execute {
         if ( exists $io->{phenotype} ) {
             my @phenotypes = $self->find_phenotypes($dbs_id);
             foreach my $phenotype (@phenotypes) {
-                $io->{phenotype}->write( $dbs_id . "\t" . $phenotype . "\n" );
+                $io->{phenotype}
+                    ->write( $dbs_id . "\t" . $phenotype->[0] . "\n" );
                 $stats->{phenotype} = $stats->{phenotype} + 1;
             }
 
@@ -204,6 +199,7 @@ sub execute {
                             . 'mutagenesis method' . "\t"
                             . $self->get_mutagenesis_method($mm)
                             . "\n" );
+                    $stats->{props} = $stats->{props} + 1;
                 }
             }
 
@@ -214,6 +210,7 @@ sub execute {
                         . 'mutant type' . "\t"
                         . $mutant_type
                         . "\n" );
+                $stats->{props} = $stats->{props} + 1;
             }
 
             my @synonyms = $self->get_synonyms( $strain->id );
@@ -221,11 +218,16 @@ sub execute {
                 foreach my $synonym (@synonyms) {
                     $io->{props}->write(
                         $dbs_id . "\t" . 'synonym' . "\t" . $synonym . "\n" );
+                    $stats->{props} = $stats->{props} + 1;
                 }
             }
         }
     }
-    $self->dual_logger->info( Dumper($stats) );
+
+    foreach my $key ( keys $stats ) {
+        $self->logger->info(
+            "Exported " . $stats->{$key} . " entries for " . $key );
+    }
 }
 
 sub trim {
@@ -233,6 +235,52 @@ sub trim {
     $s =~ s/^\s+//;
     $s =~ s/\s+$//;
     return $s;
+}
+
+sub _create_files {
+    my ($self) = @_;
+    my @data;
+    my $io;
+    my $stats;
+    if ( $self->data ne 'all' ) {
+        @data = split( /,/, $self->data );
+    }
+    else {
+        @data = (
+            "strain",       "inventory", "genotype",        "phenotype",
+            "publications", "genes",     "characteristics", "props"
+        );
+    }
+
+    $self->logger->info( "Data for {@data} will be exported to "
+            . $self->output_dir
+            . " folder" );
+
+    foreach my $f (@data) {
+        my $file_obj
+            = IO::File->new( $self->output_dir . "/strain_" . $f . ".txt",
+            'w' );
+        $io->{$f}    = $file_obj;
+        $stats->{$f} = 0;
+
+        if ( $f eq 'publications' ) {
+            my $f_ = "other_refs";
+            my $file_obj_
+                = IO::File->new(
+                $self->output_dir . "/strain_publications_no_pubmed.txt",
+                'w' );
+            $io->{$f_}    = $file_obj_;
+            $stats->{$f_} = 0;
+        }
+        if ( $f eq 'phenotype' ) {
+            my $f_ = "phenotype_jakob";
+            my $file_obj_
+                = IO::File->new(
+                $self->output_dir . "/strain_phenotype_jakob.txt", 'w' );
+            $io->{$f_} = $file_obj_;
+        }
+    }
+    return ( $io, $stats );
 }
 
 1;
