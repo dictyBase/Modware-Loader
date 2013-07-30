@@ -19,6 +19,14 @@ has data => (
         'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes)'
 );
 
+has 'genbank_file' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'Option to fetch sequence in Genbank format and write to file'
+);
+
 has 'sequence' => (
     is      => 'rw',
     isa     => 'Bool',
@@ -47,7 +55,7 @@ sub execute {
         }
     );
 
-    my @genbank_ids;
+    my $gb_dbp_hash;
     my @plasmid_no_genbank;
 
     while ( my $plasmid = $plasmid_rs->next ) {
@@ -61,7 +69,7 @@ sub execute {
             $desc =~ s/\r\n/ /g;
             $io->{plasmid}->write( $dbp_id . "\t"
                     . $self->trim($name) . "\t"
-                    . $self->trim($self->trim($desc))
+                    . $self->trim( $self->trim($desc) )
                     . "\n" );
             $stats->{plasmid} = $stats->{plasmid} + 1;
         }
@@ -132,7 +140,8 @@ sub execute {
                 $io->{genbank}->write( $dbp_id . "\t"
                         . $plasmid->genbank_accession_number
                         . "\n" );
-                push( @genbank_ids, $plasmid->genbank_accession_number );
+                $gb_dbp_hash->{ $plasmid->genbank_accession_number }
+                    = $dbp_id;
                 $stats->{genbank} = $stats->{genbank} + 1;
             }
             else {
@@ -152,8 +161,8 @@ sub execute {
             }
         }
     }
-    if ( @genbank_ids and $self->sequence ) {
-        $self->export_seq( @genbank_ids, @plasmid_no_genbank );
+    if ( $gb_dbp_hash and $self->sequence ) {
+        $self->export_seq($gb_dbp_hash);
     }
 
     foreach my $key ( keys $stats ) {

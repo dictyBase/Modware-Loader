@@ -3,7 +3,7 @@ use strict;
 
 package Modware::Role::Stock::Plasmid;
 
-use Bio::DB::EUtilities;
+use Bio::DB::GenBank;
 use Bio::SeqIO;
 use File::Path qw(make_path);
 use Moose::Role;
@@ -22,10 +22,6 @@ has '_plasmid_invent_row' => (
     }
 );
 
-=item find_plasmid_inventory (Str $dbs_id)
-
-=cut
-
 sub find_plasmid_inventory {
     my ( $self, $plasmid_id ) = @_;
     if ( $self->has_plasmid_invent($plasmid_id) ) {
@@ -34,10 +30,8 @@ sub find_plasmid_inventory {
     my $plasmid_invent_rs
         = $self->legacy_schema->resultset('PlasmidInventory')->search(
         { plasmid_id => $plasmid_id },
-        {   select => [
-                qw/me.location me.color me.stored_as me.storage_date/
-            ],
-            cache => 1
+        {   select => [qw/me.location me.color me.stored_as me.storage_date/],
+            cache  => 1
         }
         );
     if ( $plasmid_invent_rs->count > 0 ) {
@@ -47,72 +41,40 @@ sub find_plasmid_inventory {
 }
 
 sub export_seq {
-    my ( $self, @genbank_ids, @plasmid_ids ) = @_;
-    $self->_get_genbank(@genbank_ids);
+    my ( $self, $gb_dbp_hash ) = @_;
+    $self->_get_genbank($gb_dbp_hash);
     $self->_export_existing_seq();
 }
 
 =head2 _get_ganbank
 	my @ids = qw(1621261 89318838 68536103 20807972 730439);
-	$command->get_ganbank(@ids);
+	$command->_get_ganbank(@ids);
 
-Writes a file named plasmid_genbank.gb in the C<output_dir> folder
-=item Reference L<EUtilities Cookbook|http://www.bioperl.org/wiki/HOWTO:EUtilities_Cookbook>
+Writes files in GenBank format for each DBP_ID in the C<output_dir> folder
 =cut
 
 sub _get_genbank {
-    my ( $self, @genbank_ids ) = @_;
-    my $factory = Bio::DB::EUtilities->new(
-        -eutil   => 'efetch',
-        -db      => 'protein',
-        -rettype => 'gb',
-        -email   => $self->email,
-        -id      => \@genbank_ids
-    );
-    my $file = $self->output_dir . "/plasmid_genbank.gb";
-    $factory->get_Response( -file => $file );
-}
-
-=head2 _export_existing_seq
-
-Parses dirty sequences in either FastA or GenBank formats and writes to files by DBP_ID
-
-=cut 
-
-sub _export_existing_seq {
-    my ($self) = @_;
-    my @formats = qw(genbank fasta);
+    my ( $self, $gb_dbp_hash ) = @_;
 
     my $seq_dir = Path::Class::Dir->new( $self->output_dir, 'sequence' );
     if ( !-d $seq_dir ) {
         make_path( $seq_dir->stringify );
     }
-    foreach my $format (@formats) {
-        my $d = Path::Class::Dir->new( 'share', 'plasmid', $format );
-        while ( my $input = $d->next ) {
 
-         # TODO - Fix 8 sequences that are almost GenBank (in genbank2 folder)
-         # $format = 'genbank' if $format eq 'genbank2';
-            if ( ref($input) ne 'Path::Class::Dir' ) {
-                my $dbp_id = sprintf( "DBP%07d", $input->basename );
-                my $seqin = Bio::SeqIO->new(
-                    -file   => $input,
-                    -format => $format
-                );
-                my $outfile
-                    = $seq_dir->file( $dbp_id . "." . $format )->stringify;
-                my $seqout = Bio::SeqIO->new(
-                    -file   => ">$outfile",
-                    -format => $format
-                );
-                while ( my $seq = $seqin->next_seq ) {
-                    if ($seq) {
-                        $seq->id($dbp_id);
-                        $seqout->write_seq($seq);
-                    }
-                }
-            }
-        }
+    my $gb  = Bio::DB::GenBank->new();
+    my @ids = keys %$gb_dbp_hash;
+
+    my $seqio = $gb->get_Stream_by_acc("@ids");
+    while ( my $seq = $seqio->next_seq ) {
+        my $outfile
+            = $seq_dir->file(
+            $gb_dbp_hash->{ $seq->accession_number } . ".genbank" )
+            ->stringify;
+        my $seqout = Bio::SeqIO->new(
+            -file   => ">$outfile",
+            -format => "genbank"
+        );
+        $seqout->write_seq($seq);
     }
 }
 
