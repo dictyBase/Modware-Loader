@@ -14,7 +14,17 @@ with 'Modware::Role::Stock::Plasmid';
 has data => (
     is      => 'rw',
     isa     => 'Str',
-    default => 'all'
+    default => 'all',
+    documentation =>
+        'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes)'
+);
+
+has 'genbank_file' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation =>
+        'Option to fetch sequence in Genbank format and write to file'
 );
 
 sub execute {
@@ -57,6 +67,8 @@ sub execute {
         }
     );
 
+    my @genbank_ids;
+
     while ( my $plasmid = $plasmid_rs->next ) {
 
         my $dbp_id = sprintf( "DBP%07d", $plasmid->id );
@@ -68,7 +80,7 @@ sub execute {
             $desc =~ s/\r\n/ /g;
             $io->{plasmid}->write( $dbp_id . "\t"
                     . $self->trim($name) . "\t"
-                    . $self->trim($self->trim($desc))
+                    . $self->trim( $self->trim($desc) )
                     . "\n" );
         }
 
@@ -114,9 +126,12 @@ sub execute {
         }
 
         if ( exists $io->{genbank} ) {
-            $io->{genbank}->write(
-                $dbp_id . "\t" . $plasmid->genbank_accession_number . "\n" )
-                if $plasmid->genbank_accession_number;
+            if ( $plasmid->genbank_accession_number ) {
+                $io->{genbank}->write( $dbp_id . "\t"
+                        . $plasmid->genbank_accession_number
+                        . "\n" );
+                push( @genbank_ids, $plasmid->genbank_accession_number );
+            }
         }
 
         if ( exists $io->{genes} ) {
@@ -129,7 +144,9 @@ sub execute {
                 $io->{genes}->write( $dbp_id . "\t" . $gene_id . "\n" );
             }
         }
-
+    }
+    if ( @genbank_ids and $self->genbank_file ) {
+        $self->get_genbank(@genbank_ids);
     }
 }
 
