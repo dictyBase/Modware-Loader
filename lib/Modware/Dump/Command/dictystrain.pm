@@ -17,7 +17,7 @@ has data => (
     isa     => 'Str',
     default => 'all',
     documentation =>
-        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics)'
+        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics, props)'
 );
 
 sub execute {

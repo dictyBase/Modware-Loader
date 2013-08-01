@@ -19,7 +19,7 @@ has data => (
         'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes)'
 );
 
-has 'genbank_file' => (
+has 'sequence_file' => (
     is      => 'rw',
     isa     => 'Bool',
     default => 0,
@@ -68,6 +68,7 @@ sub execute {
     );
 
     my @genbank_ids;
+    my @plasmid_no_genbank;
 
     while ( my $plasmid = $plasmid_rs->next ) {
 
@@ -132,6 +133,9 @@ sub execute {
                         . "\n" );
                 push( @genbank_ids, $plasmid->genbank_accession_number );
             }
+            else {
+                push( @plasmid_no_genbank, $plasmid->id );
+            }
         }
 
         if ( exists $io->{genes} ) {
@@ -145,8 +149,8 @@ sub execute {
             }
         }
     }
-    if ( @genbank_ids and $self->genbank_file ) {
-        $self->get_genbank(@genbank_ids);
+    if ( @genbank_ids and $self->sequence_file ) {
+        $self->export_seq( @genbank_ids, @plasmid_no_genbank );
     }
 }
 
@@ -171,7 +175,7 @@ version 0.0.1
 
 =head1 SYNOPSIS
 
-	perl modware-dump dictyplasmid -c config.yaml  
+	perl modware-dump dictyplasmid -c config.yaml --sequence_file 
 
 	perl modware-dump dictyplasmid -c config.yaml --data inventory,genbank,genes --format <text|json> 
 
