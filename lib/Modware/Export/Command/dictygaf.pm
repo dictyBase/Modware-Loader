@@ -175,7 +175,7 @@ __END__
 
 =head1 NAME
 
-dictygaf - Dump GAF2.0 file for dictyBase from Chado database
+Modware::Export::Command::dictygaf - Dump GAF2.0 file for dictyBase from Chado database
 
 =head1 SYNOPSIS
 
