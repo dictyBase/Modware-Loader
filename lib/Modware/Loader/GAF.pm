@@ -32,7 +32,7 @@ sub set_input {
 sub load_gaf {
     my ($self) = @_;
     if ( !$self->gaf ) {
-        $self->logger->warn('Input not set');
+        $self->manager->logger->warn('Input not set');
         exit;
     }
     else {
