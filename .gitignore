@@ -14,3 +14,7 @@ perltidy.LOG
 *.gaf
 nytprof*
 gaf_check/
+local/
+.carton/
+.perl-version
+

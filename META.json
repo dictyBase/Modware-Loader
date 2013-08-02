@@ -4,7 +4,7 @@
       "Siddhartha Basu <biosidd@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.300034, CPAN::Meta::Converter version 2.130880",
+   "generated_by" : "Dist::Zilla version 4.300035, CPAN::Meta::Converter version 2.130880",
    "license" : [
       "perl_5"
    ],
@@ -26,17 +26,18 @@
       },
       "develop" : {
          "requires" : {
-            "Pod::Coverage::TrustPod" : "0",
             "Test::CPAN::Meta" : "0",
-            "Test::Pod::Coverage" : "1.08",
             "version" : "0.9901"
          }
       },
       "runtime" : {
          "recommends" : {
+            "BibTeX::Parser" : "0.64",
             "Child" : "0.009",
+            "Text::CSV" : "1.32",
             "Text::TablularDisplay" : "1.33",
             "XML::LibXML" : "1.70",
+            "XML::LibXSLT" : "1.81",
             "XML::Simple" : "2.18"
          },
          "requires" : {
@@ -56,6 +57,7 @@
             "MooseX::Event" : "v0.2.0",
             "MooseX::Getopt" : "0.56",
             "MooseX::Types::Path::Class" : "0.06",
+            "Regexp::Common" : "2013030901",
             "Spreadsheet::WriteExcel" : "2.37",
             "Tie::Cache" : "0.17",
             "perl" : "5.010"
@@ -73,6 +75,7 @@
       }
    },
    "release_status" : "stable",
+   "resources" : {},
    "version" : "1.1.0"
 }
 
