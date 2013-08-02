@@ -5,6 +5,7 @@ package Modware::Role::Stock::Plasmid;
 
 use Bio::DB::EUtilities;
 use Bio::SeqIO;
+use File::Path qw(make_path);
 use Moose::Role;
 use namespace::autoclean;
 with 'Modware::Role::Stock::Commons';
@@ -41,8 +42,7 @@ sub find_plasmid_inventory {
 
 sub export_seq {
     my ( $self, @genbank_ids, @plasmid_ids ) = @_;
-
-    # $self->_get_genbank(@genbank_ids);
+    $self->_get_genbank(@genbank_ids);
     $self->_export_existing_seq();
 }
 
@@ -60,7 +60,7 @@ sub _get_genbank {
         -eutil   => 'efetch',
         -db      => 'protein',
         -rettype => 'gb',
-        -email   => 'developer@email.net',
+        -email   => $self->email,
         -id      => \@genbank_ids
     );
     my $file = $self->output_dir . "/plasmid_genbank.gb";
@@ -76,31 +76,32 @@ Parses dirty sequences in either FastA or GenBank formats and writes to files by
 sub _export_existing_seq {
     my ($self) = @_;
     my @formats = qw(genbank fasta);
+
+    my $seq_dir = Path::Class::Dir->new( $self->output_dir, 'sequence' );
+    if ( !-d $seq_dir ) {
+        make_path( $seq_dir->stringify );
+    }
     foreach my $format (@formats) {
         my $d = Path::Class::Dir->new( 'share', 'plasmid', $format );
         while ( my $input = $d->next ) {
 
-            # $format = 'genbank' if $format eq 'genbank2';
-            if ( ref($input) ne 'Path::Class::Dir'
-                and $input->basename ne '.DS_Store' )
-            {
+         # TODO - Fix 8 sequences that are almost GenBank (in genbank2 folder)
+         # $format = 'genbank' if $format eq 'genbank2';
+            if ( ref($input) ne 'Path::Class::Dir' ) {
                 my $dbp_id = sprintf( "DBP%07d", $input->basename );
                 my $seqin = Bio::SeqIO->new(
                     -file   => $input,
                     -format => $format
                 );
                 my $outfile
-                    = $self->output_dir
-                    . "/sequence/"
-                    . $dbp_id . "."
-                    . $format;
+                    = $seq_dir->file( $dbp_id . "." . $format )->stringify;
                 my $seqout = Bio::SeqIO->new(
                     -file   => ">$outfile",
                     -format => $format
                 );
                 while ( my $seq = $seqin->next_seq ) {
                     if ($seq) {
-                        $seq->id( $dbp_id . "|" . $seq->id );
+                        $seq->id($dbp_id);
                         $seqout->write_seq($seq);
                     }
                 }

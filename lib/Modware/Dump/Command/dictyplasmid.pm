@@ -19,12 +19,18 @@ has data => (
         'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes)'
 );
 
-has 'sequence_file' => (
+has 'sequence' => (
     is      => 'rw',
     isa     => 'Bool',
     default => 0,
     documentation =>
         'Option to fetch sequence in Genbank format and write to file'
+);
+
+has 'email' => (
+    is            => 'rw',
+    isa           => 'Str',
+    documentation => 'Email for EUtilities to retrieve GenBank sequences'
 );
 
 sub execute {
@@ -56,6 +62,10 @@ sub execute {
                 'w' );
             $io->{$f_} = $file_obj_;
         }
+
+        #if ( $f eq 'genbank' and $self->sequence ) {
+        #    $self->email( );
+        #}
     }
 
     my $plasmid_rs = $self->legacy_schema->resultset('Plasmid')->search(
@@ -149,7 +159,7 @@ sub execute {
             }
         }
     }
-    if ( @genbank_ids and $self->sequence_file ) {
+    if ( @genbank_ids and $self->sequence ) {
         $self->export_seq( @genbank_ids, @plasmid_no_genbank );
     }
 }
