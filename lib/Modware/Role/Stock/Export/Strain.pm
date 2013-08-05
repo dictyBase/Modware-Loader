@@ -1,13 +1,13 @@
 
 use strict;
 
-package Modware::Role::Stock::Strain;
+package Modware::Role::Stock::Export::Strain;
 
 use FindBin qw($Bin);
 use IO::File;
 use Moose::Role;
 use namespace::autoclean;
-with 'Modware::Role::Stock::Commons';
+with 'Modware::Role::Stock::Export::Commons';
 
 has '_strain_invent_row' => (
     is      => 'rw',

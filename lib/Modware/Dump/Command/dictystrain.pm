@@ -3,14 +3,13 @@ use strict;
 
 package Modware::Dump::Command::dictystrain;
 
-use Data::Dumper;
 use Modware::Legacy::Schema;
 use Moose;
 use namespace::autoclean;
 
 extends qw/Modware::Dump::Command/;
 with 'Modware::Role::Command::WithLogger';
-with 'Modware::Role::Stock::Strain';
+with 'Modware::Role::Stock::Export::Strain';
 
 has data => (
     is      => 'rw',

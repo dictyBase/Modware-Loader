@@ -1,14 +1,16 @@
 
 use strict;
 
-package Modware::Role::Stock::Plasmid;
+package Modware::Role::Stock::Export::Plasmid;
 
 use Bio::DB::GenBank;
 use Bio::SeqIO;
 use File::Path qw(make_path);
+
+# use IO::String;
 use Moose::Role;
 use namespace::autoclean;
-with 'Modware::Role::Stock::Commons';
+with 'Modware::Role::Stock::Export::Commons';
 
 has '_plasmid_invent_row' => (
     is      => 'rw',
@@ -53,29 +55,30 @@ sub export_seq {
 Writes files in GenBank format for each DBP_ID in the C<output_dir> folder
 =cut
 
-sub _get_genbank {
-    my ( $self, $gb_dbp_hash ) = @_;
+sub get_genbank {
+    my ( $self, @genbank_ids ) = @_;
+    my $factory = Bio::DB::EUtilities->new(
+        -eutil   => 'efetch',
+        -db      => 'protein',
+        -rettype => 'gb',
+        -email   => 'mymail@foo.bar',
+        -id      => \@genbank_ids
+    );
 
-    my $seq_dir = Path::Class::Dir->new( $self->output_dir, 'sequence' );
-    if ( !-d $seq_dir ) {
-        make_path( $seq_dir->stringify );
-    }
+    my $file = $self->output_dir . "/plasmid_genbank.gb";
+    $factory->get_Response( -file => $file );
 
-    my $gb  = Bio::DB::GenBank->new();
-    my @ids = keys %$gb_dbp_hash;
-
-    my $seqio = $gb->get_Stream_by_acc("@ids");
-    while ( my $seq = $seqio->next_seq ) {
-        my $outfile
-            = $seq_dir->file(
-            $gb_dbp_hash->{ $seq->accession_number } . ".genbank" )
-            ->stringify;
-        my $seqout = Bio::SeqIO->new(
-            -file   => ">$outfile",
-            -format => "genbank"
-        );
-        $seqout->write_seq($seq);
-    }
+    # my $response = $factory->get_Response();
+    #if ( $response->is_success ) {
+    #my $str     = IO::String->new( $response->decoded_content );
+    #my $gb_seqs = Bio::SeqIO->new(
+    #-fh     => $str,
+    #-format => 'genbank'
+    #);
+    #while ( my $seq = $gb_seqs->next_seq ) {
+    #print $seq->accession . "\n";
+    #}
+    # }
 }
 
 1;

@@ -1,7 +1,7 @@
 
 use strict;
 
-package Modware::Role::Stock::Commons;
+package Modware::Role::Stock::Export::Commons;
 
 use Moose::Role;
 use namespace::autoclean;

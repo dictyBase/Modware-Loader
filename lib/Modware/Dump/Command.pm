@@ -16,7 +16,7 @@ use Path::Class::File;
 
 extends qw/MooseX::App::Cmd::Command/;
 with 'MooseX::ConfigFromFile';
-with 'Modware::Role::Stock::Chado::WithOracle';
+with 'Modware::Role::Stock::Export::Chado::WithOracle';
 
 subtype 'DataDir'  => as 'Str' => where { -d $_ };
 subtype 'DataFile' => as 'Str' => where { -f $_ };

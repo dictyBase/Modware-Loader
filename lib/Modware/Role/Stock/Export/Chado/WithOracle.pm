@@ -1,7 +1,7 @@
 
 use strict;
 
-package Modware::Role::Stock::Chado::WithOracle;
+package Modware::Role::Stock::Export::Chado::WithOracle;
 
 use Moose::Role;
 use namespace::autoclean;
