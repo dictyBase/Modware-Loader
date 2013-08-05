@@ -19,7 +19,7 @@ has data => (
     default =>
 
         # sub { [qw/characteristics publications inventory genotype props/] }
-        sub { [qw/genotype phenotype/] }
+        sub { [qw/characteristics inventory genotype phenotype props/] }
 );
 
 has mock_pub => (
@@ -88,7 +88,7 @@ sub execute {
                     $stock_rs->create_related(
                         'stock_cvterms',
                         {   cvterm_id => $char_cvterm_id,
-                            pub_id  => $char_pub_id
+                            pub_id    => $char_pub_id
                         }
                     );
                 }
@@ -98,11 +98,6 @@ sub execute {
                     "Strain characteristics cannot be loaded. Required reference missing"
                 );
             }
-        }
-        else {
-            $self->logger->warn(
-                "Strain characteristics cannot be loaded. Required reference missing"
-            );
         }
 
         if ( $self->has_publications( $hash->{uniquename} ) ) {
@@ -194,8 +189,8 @@ sub execute {
                     if $phenotype_env;
 
                 my $phenotype_id
-                    = $self->find_or_create_phenotype( $hash->{uniquename},
-                    $phenotype_term, $phenotype_assay )
+                    = $self->find_or_create_phenotype( $phenotype_term,
+                    $phenotype_assay )
                     if $phenotype_term;
 
                 my $genotype_id = $self->find_genotype( $hash->{uniquename} );
