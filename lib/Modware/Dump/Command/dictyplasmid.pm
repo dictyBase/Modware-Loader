@@ -36,37 +36,7 @@ has 'email' => (
 sub execute {
     my ($self) = @_;
 
-    my $io;
-    my @data;
-    if ( $self->data ne 'all' ) {
-        @data = split( /,/, $self->data );
-    }
-    else {
-        @data
-            = ( "plasmid", "inventory", "genbank", "publications", "genes" );
-    }
-
-    $self->dual_logger->info(
-        "Data for {@data} will be exported to " . $self->output_dir );
-
-    foreach my $f (@data) {
-        my $file_obj
-            = IO::File->new( $self->output_dir . "/plasmid_" . $f . ".txt",
-            'w' );
-        $io->{$f} = $file_obj;
-        if ( $f eq 'publications' ) {
-            my $f_ = "other_refs";
-            my $file_obj_
-                = IO::File->new(
-                $self->output_dir . "/plasmid_publications_no_pubmed.txt",
-                'w' );
-            $io->{$f_} = $file_obj_;
-        }
-
-        #if ( $f eq 'genbank' and $self->sequence ) {
-        #    $self->email( );
-        #}
-    }
+    my ( $io, $stats ) = $self->_create_files();
 
     my $plasmid_rs = $self->legacy_schema->resultset('Plasmid')->search(
         {},
@@ -93,6 +63,7 @@ sub execute {
                     . $self->trim($name) . "\t"
                     . $self->trim( $self->trim($desc) )
                     . "\n" );
+            $stats->{plasmid} = $stats->{plasmid} + 1;
         }
 
         if ( exists $io->{publications} ) {
@@ -105,16 +76,21 @@ sub execute {
 
             if (@pmids) {
                 foreach my $pmid (@pmids) {
-                    $io->{publications}
-                        ->write( $dbp_id . "\t" . $self->trim($pmid) . "\n" )
-                        if $pmid;
+                    if ($pmid) {
+                        $io->{publications}->write(
+                            $dbp_id . "\t" . $self->trim($pmid) . "\n" );
+                        $stats->{publications} = $stats->{publications} + 1;
+                    }
+
                 }
             }
             if (@non_pmids) {
                 foreach my $non_pmid (@non_pmids) {
-                    $io->{other_refs}->write(
-                        $dbp_id . "\t" . $self->trim($non_pmid) . "\n" )
-                        if $non_pmid;
+                    if ($non_pmid) {
+                        $io->{other_refs}->write(
+                            $dbp_id . "\t" . $self->trim($non_pmid) . "\n" );
+                        $stats->{other_refs} = $stats->{other_refs} + 1;
+                    }
                 }
             }
         }
@@ -124,14 +100,29 @@ sub execute {
                 = $self->find_plasmid_inventory( $plasmid->id );
             if ($plasmid_invent_rs) {
                 while ( my $plasmid_invent = $plasmid_invent_rs->next ) {
-                    $io->{inventory}->write( $dbp_id . "\t"
-                            . $plasmid_invent->location . "\t"
-                            . $plasmid_invent->color . "\t"
-                            . $plasmid_invent->stored_as . "\t"
-                            . $plasmid_invent->storage_date
-                            . "\n" )
-                        if $plasmid_invent->location
-                        and $plasmid_invent->color;
+                    my $row;
+                    $row->{1} = $dbp_id;
+                    if ( $plasmid_invent->location ) {
+                        $row->{2} = $plasmid_invent->location;
+                    }
+                    else { $row->{2} = ''; }
+                    if ( $plasmid_invent->color ) {
+                        $row->{3} = $plasmid_invent->color;
+                    }
+                    else { $row->{3} = ''; }
+                    if ( $plasmid_invent->stored_as ) {
+                        $row->{4} = $plasmid_invent->stored_as;
+                    }
+                    else { $row->{4} = ''; }
+                    if ( $plasmid_invent->storage_date ) {
+                        $row->{5} = $plasmid_invent;
+                    }
+                    else { $row->{5} = ''; }
+
+                    my $s = join "\t" => map $row->{$_} => sort { $a <=> $b }
+                        keys %$row;
+                    $io->{inventory}->write( $s . "\n" );
+                    $stats->{inventory} = $stats->{inventory} + 1;
                 }
             }
         }
@@ -142,6 +133,7 @@ sub execute {
                         . $plasmid->genbank_accession_number
                         . "\n" );
                 push( @genbank_ids, $plasmid->genbank_accession_number );
+                $stats->{genbank} = $stats->{genbank} + 1;
             }
             else {
                 push( @plasmid_no_genbank, $plasmid->id );
@@ -156,11 +148,17 @@ sub execute {
                 my $gene_id
                     = $self->find_gene_id( $plasmid_gene->feature_id );
                 $io->{genes}->write( $dbp_id . "\t" . $gene_id . "\n" );
+                $stats->{genes} = $stats->{genes} + 1;
             }
         }
     }
     if ( @genbank_ids and $self->sequence ) {
         $self->export_seq( @genbank_ids, @plasmid_no_genbank );
+    }
+
+    foreach my $key ( keys $stats ) {
+        $self->logger->info(
+            "Exported " . $stats->{$key} . " entries for " . $key );
     }
 }
 
@@ -169,6 +167,46 @@ sub trim {
     $s =~ s/^\s+//;
     $s =~ s/\s+$//;
     return $s;
+}
+
+sub _create_files {
+    my ($self) = @_;
+
+    my $io;
+    my $stats;
+    my @data;
+    if ( $self->data ne 'all' ) {
+        @data = split( /,/, $self->data );
+    }
+    else {
+        @data
+            = ( "plasmid", "inventory", "genbank", "publications", "genes" );
+    }
+
+    $self->logger->info(
+        "Data for {@data} will be exported to " . $self->output_dir );
+
+    foreach my $f (@data) {
+        my $file_obj
+            = IO::File->new( $self->output_dir . "/plasmid_" . $f . ".txt",
+            'w' );
+        $io->{$f}    = $file_obj;
+        $stats->{$f} = 0;
+        if ( $f eq 'publications' ) {
+            my $f_ = "other_refs";
+            my $file_obj_
+                = IO::File->new(
+                $self->output_dir . "/plasmid_publications_no_pubmed.txt",
+                'w' );
+            $io->{$f_}    = $file_obj_;
+            $stats->{$f_} = 0;
+        }
+
+        #if ( $f eq 'genbank' and $self->sequence ) {
+        #    $self->email( );
+        #}
+    }
+    return ( $io, $stats );
 }
 
 1;
