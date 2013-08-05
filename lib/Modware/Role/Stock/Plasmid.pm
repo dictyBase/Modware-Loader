@@ -6,6 +6,8 @@ package Modware::Role::Stock::Plasmid;
 use Bio::DB::EUtilities;
 use Bio::SeqIO;
 use File::Path qw(make_path);
+
+# use IO::String;
 use Moose::Role;
 use namespace::autoclean;
 with 'Modware::Role::Stock::Commons';
@@ -63,8 +65,21 @@ sub _get_genbank {
         -email   => $self->email,
         -id      => \@genbank_ids
     );
+
     my $file = $self->output_dir . "/plasmid_genbank.gb";
     $factory->get_Response( -file => $file );
+
+    # my $response = $factory->get_Response();
+    #if ( $response->is_success ) {
+    #my $str     = IO::String->new( $response->decoded_content );
+    #my $gb_seqs = Bio::SeqIO->new(
+    #-fh     => $str,
+    #-format => 'genbank'
+    #);
+    #while ( my $seq = $gb_seqs->next_seq ) {
+    #print $seq->accession . "\n";
+    #}
+    # }
 }
 
 =head2 _export_existing_seq
