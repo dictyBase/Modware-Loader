@@ -69,27 +69,47 @@ sub execute {
                     my $row;
                     $row->{1} = $dbs_id;
                     if ( $strain_invent->location ) {
-                        $row->{2} = $strain_invent->location;
+                        $row->{2} = $self->trim( $strain_invent->location );
                     }
                     else { $row->{2} = '' }
-                    if ( $strain_invent->color ) {
-                        $row->{3} = $strain_invent->color;
+
+                    my $C = $self->trim( ucfirst( $strain_invent->color ) );
+                    if ( length($C) > 1 ) {
+                        $row->{3} = $C;
                     }
                     else { $row->{3} = '' }
-                    if ( $strain_invent->no_of_vials ) {
-                        $row->{4} = $strain_invent->no_of_vials;
+
+                    if (    $strain_invent->no_of_vials
+                        and $strain_invent->no_of_vials =~ /^\d+$/ )
+                    {
+                        $row->{4}
+                            = $self->trim( $strain_invent->no_of_vials );
                     }
                     else { $row->{4} = '' }
+
                     if ( $strain_invent->obtained_as ) {
-                        $row->{5} = $strain_invent->obtained_as;
+                        my $OA = $self->trim( $strain_invent->obtained_as );
+                        if ( length($OA) > 1 ) {
+                            $row->{5} = $OA;
+                        }
+                        else { $row->{5} = '' }
                     }
                     else { $row->{5} = '' }
-                    if ( $strain_invent->stored_as ) {
-                        $row->{6} = $strain_invent->stored_as;
+
+                    my $SA = $strain_invent->stored_as;
+                    if ( $SA and length($SA) > 1 ) {
+                        $SA =~ s/\?//g;
+                        $SA = $self->trim($SA);
+                        if ( length($SA) > 1 ) {
+                            $row->{6} = $SA;
+                        }
+                        else { $row->{6} = '' }
                     }
                     else { $row->{6} = '' }
+
                     if ( $strain_invent->storage_date ) {
-                        $row->{7} = $strain_invent->storage_date;
+                        $row->{7}
+                            = $self->trim( $strain_invent->storage_date );
                     }
                     else { $row->{7} = '' }
 
