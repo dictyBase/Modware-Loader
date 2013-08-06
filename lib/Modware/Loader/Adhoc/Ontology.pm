@@ -10,13 +10,15 @@ use utf8;
 with 'Modware::Role::Chado::Helper::BCS::WithDataStash';
 
 has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has 'app_instance' =>
+    ( is => 'rw', isa => 'Modware::Load::Command::adhocobo2chado' );
 
 has 'chado' => (
     is      => 'rw',
     isa     => 'Bio::Chado::Schema',
-    trigger => sub { 
-         my ($self, $schema) = @_; 
-         $self->load_engine($schema) 
+    trigger => sub {
+        my ( $self, $schema ) = @_;
+        $self->load_engine($schema);
     }
 );
 has 'cv_namespace' =>
@@ -26,7 +28,7 @@ has 'db_namespace' =>
 
 # revisit
 sub load_engine {
-    my ($self, $schema) = @_;
+    my ( $self, $schema ) = @_;
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Adhoc::Role::Ontology::Chado::With'
         . ucfirst lc( $self->chado->storage->sqlt_type );
@@ -137,7 +139,7 @@ sub create_relationship {
     $logger->debug( "created relationship ",
         $relation->type, " between ",
         $relation->tail->id, " and ", $relation->head->id );
-        return $row;
+    return $row;
 }
 
 #Not getting to be used for the time being

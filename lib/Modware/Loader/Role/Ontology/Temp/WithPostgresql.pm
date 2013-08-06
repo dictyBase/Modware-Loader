@@ -13,6 +13,11 @@ has cache_threshold =>
 
 sub create_temp_statements {
     my ( $self, $storage ) = @_;
+    if ($self->app_instance->has_pg_schema) {
+        my $schema = $self->app_instance->pg_schema;
+        $storage->dbh->do(qq{SET SCHEMA '$schema'});
+    }
+
     $storage->dbh->do(
         qq{
 	        CREATE TEMP TABLE temp_cvterm (

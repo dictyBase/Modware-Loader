@@ -17,10 +17,18 @@ has 'dry_run' => (
     documentation => 'Dry run do not save anything in database'
 );
 
+has 'pg_schema' => (
+    is  => 'rw',
+    isa => 'Str',
+    predicate => 'has_pg_schema',
+    documentation =>
+        'Name of postgresql schema where the ontology will be loaded, default is public, obviously ignored for other backend'
+);
+
 sub execute {
     my ($self) = @_;
     my $logger = $self->logger;
-    my $loader = Modware::Loader::Ontology->new;
+    my $loader = Modware::Loader::Ontology->new( app_instance => $self );
 
     $logger->info( "start parsing file ", $self->input );
     my $ontology = OBO::Parser::OBOParser->new->work( $self->input );

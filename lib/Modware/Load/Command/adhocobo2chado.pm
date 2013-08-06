@@ -6,6 +6,13 @@ use OBO::Parser::OBOParser;
 use Modware::Loader::Adhoc::Ontology;
 extends qw/Modware::Load::Chado/;
 
+has 'pg_schema' => (
+    is  => 'rw',
+    isa => 'Str',
+    documentation =>
+        'Name of postgresql schema where the ontology will be loaded, default is public and makes no sense to set it for any other backend'
+);
+
 sub execute {
     my ($self) = @_;
 
@@ -19,6 +26,7 @@ sub execute {
     #2a. Get a loader object and set it up
     my $loader = Modware::Loader::Adhoc::Ontology->new(
         logger => $self->logger,
+        app_instance => $self,
         chado  => $schema
     );
     $loader->load_namespaces($onto);
@@ -39,14 +47,13 @@ sub execute {
 
     #4. do upsert of terms
     $loader->update_or_create_term($_) for @{ $onto->get_terms };
+
     #5. do insert of relationships
     $guard->commit;
 
-
-    my $guard2  = $schema->txn_scope_guard;
-    $loader->create_relationship($_) for @{$onto->get_relationships};
+    my $guard2 = $schema->txn_scope_guard;
+    $loader->create_relationship($_) for @{ $onto->get_relationships };
     $guard2->commit;
-
 
 }
 

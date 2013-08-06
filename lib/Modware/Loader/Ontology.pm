@@ -8,6 +8,8 @@ use feature qw/switch/;
 use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
 
+has 'app_instance' => (is => 'rw', isa => 'Modware::Load::Command::obo2chado');
+
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
 
