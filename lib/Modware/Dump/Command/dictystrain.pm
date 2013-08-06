@@ -43,19 +43,23 @@ sub execute {
         if ( exists $io->{strain} ) {
             my $row;
             $row->{1} = $dbs_id;
-            $row->{2} = $strain->strain_name;
+            $row->{2} = $self->trim( $strain->strain_name );
             if ( $strain->species ) {
                 $row->{3} = $strain->species;
             }
             else {
                 $row->{3} = '';
             }
+
             if ( $strain->strain_description ) {
-                $row->{4} = $strain->strain_description;
+                my $s_desc = $self->trim( $strain->strain_description );
+                $s_desc =~ s/\r\n//g;
+                $row->{4} = $s_desc;
             }
             else {
                 $row->{4} = '';
             }
+
             my $s = join "\t" => map $row->{$_} => sort { $a <=> $b }
                 keys %$row;
             $io->{strain}->write( $s . "\n" );
