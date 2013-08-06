@@ -102,20 +102,31 @@ sub execute {
                 while ( my $plasmid_invent = $plasmid_invent_rs->next ) {
                     my $row;
                     $row->{1} = $dbp_id;
+
                     if ( $plasmid_invent->location ) {
                         $row->{2} = $plasmid_invent->location;
                     }
                     else { $row->{2} = ''; }
-                    if ( $plasmid_invent->color ) {
-                        $row->{3} = $plasmid_invent->color;
+
+                    my $C = $self->trim( ucfirst( $plasmid_invent->color ) );
+                    if ( length($C) > 1 ) {
+                        $row->{3} = $C;
                     }
-                    else { $row->{3} = ''; }
-                    if ( $plasmid_invent->stored_as ) {
-                        $row->{4} = $plasmid_invent->stored_as;
+                    else { $row->{3} = '' }
+
+                    my $SA = $plasmid_invent->stored_as;
+                    if ( $SA and length($SA) > 1 ) {
+                        $SA =~ s/\?//g;
+                        $SA = $self->trim($SA);
+                        if ( length($SA) > 1 ) {
+                            $row->{4} = $SA;
+                        }
+                        else { $row->{4} = '' }
                     }
-                    else { $row->{4} = ''; }
+                    else { $row->{4} = '' }
+
                     if ( $plasmid_invent->storage_date ) {
-                        $row->{5} = $plasmid_invent;
+                        $row->{5} = $plasmid_invent->storage_date;
                     }
                     else { $row->{5} = ''; }
 
