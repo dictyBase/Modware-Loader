@@ -47,7 +47,7 @@ sub execute {
         }
     );
 
-    my @genbank_ids;
+    my $gb_dbp_hash;
     my @plasmid_no_genbank;
 
     while ( my $plasmid = $plasmid_rs->next ) {
@@ -132,7 +132,8 @@ sub execute {
                 $io->{genbank}->write( $dbp_id . "\t"
                         . $plasmid->genbank_accession_number
                         . "\n" );
-                push( @genbank_ids, $plasmid->genbank_accession_number );
+                $gb_dbp_hash->{ $plasmid->genbank_accession_number }
+                    = $dbp_id;
                 $stats->{genbank} = $stats->{genbank} + 1;
             }
             else {
@@ -152,8 +153,8 @@ sub execute {
             }
         }
     }
-    if ( @genbank_ids and $self->sequence ) {
-        $self->export_seq( @genbank_ids, @plasmid_no_genbank );
+    if ( $gb_dbp_hash and $self->sequence ) {
+        $self->export_seq($gb_dbp_hash);
     }
 
     foreach my $key ( keys $stats ) {

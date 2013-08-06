@@ -3,11 +3,10 @@ use strict;
 
 package Modware::Role::Stock::Plasmid;
 
-use Bio::DB::EUtilities;
+use Bio::DB::GenBank;
 use Bio::SeqIO;
 use File::Path qw(make_path);
 
-# use IO::String;
 use Moose::Role;
 use namespace::autoclean;
 with 'Modware::Role::Stock::Commons';
@@ -43,43 +42,41 @@ sub find_plasmid_inventory {
 }
 
 sub export_seq {
-    my ( $self, @genbank_ids, @plasmid_ids ) = @_;
-    $self->_get_genbank(@genbank_ids);
+    my ( $self, $gb_dbp_hash ) = @_;
+    $self->_get_genbank($gb_dbp_hash);
     $self->_export_existing_seq();
 }
 
 =head2 _get_ganbank
 	my @ids = qw(1621261 89318838 68536103 20807972 730439);
-	$command->get_ganbank(@ids);
+	$command->_get_ganbank(@ids);
 
-Writes a file named plasmid_genbank.gb in the C<output_dir> folder
-=item Reference L<EUtilities Cookbook|http://www.bioperl.org/wiki/HOWTO:EUtilities_Cookbook>
+Writes files in GenBank format for each DBP_ID in the C<output_dir> folder
 =cut
 
 sub _get_genbank {
-    my ( $self, @genbank_ids ) = @_;
-    my $factory = Bio::DB::EUtilities->new(
-        -eutil   => 'efetch',
-        -db      => 'protein',
-        -rettype => 'gb',
-        -email   => $self->email,
-        -id      => \@genbank_ids
-    );
+    my ( $self, $gb_dbp_hash ) = @_;
 
-    my $file = $self->output_dir . "/plasmid_genbank.gb";
-    $factory->get_Response( -file => $file );
+    my $seq_dir = Path::Class::Dir->new( $self->output_dir, 'sequence' );
+    if ( !-d $seq_dir ) {
+        make_path( $seq_dir->stringify );
+    }
 
-    # my $response = $factory->get_Response();
-    #if ( $response->is_success ) {
-    #my $str     = IO::String->new( $response->decoded_content );
-    #my $gb_seqs = Bio::SeqIO->new(
-    #-fh     => $str,
-    #-format => 'genbank'
-    #);
-    #while ( my $seq = $gb_seqs->next_seq ) {
-    #print $seq->accession . "\n";
-    #}
-    # }
+    my $gb  = Bio::DB::GenBank->new();
+    my @ids = keys %$gb_dbp_hash;
+
+    my $seqio = $gb->get_Stream_by_acc("@ids");
+    while ( my $seq = $seqio->next_seq ) {
+        my $outfile
+            = $seq_dir->file(
+            $gb_dbp_hash->{ $seq->accession_number } . ".genbank" )
+            ->stringify;
+        my $seqout = Bio::SeqIO->new(
+            -file   => ">$outfile",
+            -format => "genbank"
+        );
+        $seqout->write_seq($seq);
+    }
 }
 
 =head2 _export_existing_seq
