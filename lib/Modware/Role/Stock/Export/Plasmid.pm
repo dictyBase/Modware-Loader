@@ -1,7 +1,7 @@
 
 use strict;
 
-package Modware::Role::Stock::Plasmid;
+package Modware::Role::Stock::Export::Plasmid;
 
 use Bio::DB::GenBank;
 use Bio::SeqIO;
@@ -9,7 +9,7 @@ use File::Path qw(make_path);
 
 use Moose::Role;
 use namespace::autoclean;
-with 'Modware::Role::Stock::Commons';
+with 'Modware::Role::Stock::Export::Commons';
 
 has '_plasmid_invent_row' => (
     is      => 'rw',

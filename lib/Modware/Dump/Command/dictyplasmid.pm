@@ -9,7 +9,7 @@ use namespace::autoclean;
 
 extends qw/Modware::Dump::Command/;
 with 'Modware::Role::Command::WithLogger';
-with 'Modware::Role::Stock::Plasmid';
+with 'Modware::Role::Stock::Export::Plasmid';
 
 has data => (
     is      => 'rw',
