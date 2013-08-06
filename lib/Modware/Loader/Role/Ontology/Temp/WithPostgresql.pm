@@ -88,6 +88,7 @@ after 'load_data_in_staging' => sub {
     $self->logger->debug(
         sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
         $self->entries_in_staging('TempCvterm'),
+        $self->entries_in_staging('TempCvtermsynonym'),
         $self->entries_in_staging('TempCvtermRelationship')
     );
 };
