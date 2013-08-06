@@ -1,0 +1,61 @@
+format-version: 1.2
+date: 29:03:2013 17:01
+saved-by: pfey
+auto-generated-by: OBO-Edit 2.2
+default-namespace: strain_inventory
+
+[Term]
+id: STRAININVENT:0000001
+name: strain_inventory
+def: "An ontology to hold strain stock center inventory information." [DDB:pf]
+
+[Term]
+id: STRAININVENT:0000002
+name: location
+def: "Physical location of strain stock in the stock center." [DDB:pf]
+is_a: STRAININVENT:0000001 ! strain_inventory
+
+[Term]
+id: STRAININVENT:0000003
+name: color
+def: "Color of stored vial." [DDB:pf]
+is_a: STRAININVENT:0000001 ! strain_inventory
+
+[Term]
+id: STRAININVENT:0000004
+name: storage date
+def: "Storage date for strain stock." [DDB:pf]
+is_a: STRAININVENT:0000001 ! strain_inventory
+
+[Term]
+id: STRAININVENT:0000005
+name: number of vials
+def: "Number of vials used for this strain stock." [DDB:pf]
+is_a: STRAININVENT:0000001 ! strain_inventory
+
+[Term]
+id: STRAININVENT:0000006
+name: obtained as
+def: "Conditions that the strain is obtained in at the stock center." [DDB:pf]
+is_a: STRAININVENT:0000001 ! strain_inventory
+
+[Term]
+id: STRAININVENT:0000007
+name: private comment
+def: "Private comments about the stored strain." [DDB:pf]
+is_a: STRAININVENT:0000001 ! strain_inventory
+
+[Term]
+id: STRAININVENT:0000008
+name: public comment
+def: "Public comments about the stored strain." [DDB:pf]
+is_a: STRAININVENT:0000001 ! strain_inventory
+
+[Term]
+id: STRAININVENT:0000009
+name: stored as
+def: "Conditions the obtained strain is stored in the stock center." [DDB:pf]
+is_a: STRAININVENT:0000001 ! strain_inventory
+created_by: pfey
+creation_date: 2013-03-29T16:47:17Z
+
