@@ -16,7 +16,7 @@ has data => (
     isa     => 'Str',
     default => 'all',
     documentation =>
-        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics, props)'
+        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics, props, parent)'
 );
 
 sub execute {
@@ -27,7 +27,7 @@ sub execute {
     my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
         {},
         {   select => [
-                qw/id strain_name strain_description species dbxref_id pubmedid phenotype genotype other_references internal_db_id mutagenesis_method mutant_type/
+                qw/id strain_name strain_description species dbxref_id pubmedid phenotype genotype other_references internal_db_id mutagenesis_method mutant_type parental_strain/
             ],
             cache => 1
         }
@@ -216,6 +216,35 @@ sub execute {
             }
         }
 
+        if ( exists $io->{parent} ) {
+            if ( $strain->parental_strain ) {
+                my $P        = $self->trim( $strain->parental_strain );
+                my @dbs_id_2 = $P =~ m/(DBS[0-9]{7})/;
+                if (@dbs_id_2) {
+                    foreach my $dbs_id2 (@dbs_id_2) {
+                        $io->{parent}
+                            ->write( $dbs_id . "\t" . $dbs_id2 . "\n" );
+                    }
+                }
+                else {
+                    my @strains = $self->find_strain($P);
+                    if (@strains) {
+                        foreach my $str (@strains) {
+                            my $dbs_id_2
+                                = $self->find_dbxref_accession( $str->[0] );
+                            my $outstr = $dbs_id . "\t" . $dbs_id_2;
+                            $outstr = $outstr . "\t" . $str->[1] if $str->[1];
+                            $outstr = $outstr . "\n";
+                            $io->{parent}->write($outstr);
+                        }
+                    }
+                    else {
+                        $io->{parent}->write( $dbs_id . "\t" . $P . "\n" );
+                    }
+                }
+            }
+        }
+
         if ( exists $io->{props} ) {
             my $mm = $strain->mutagenesis_method;
             if ($mm) {
@@ -275,7 +304,8 @@ sub _create_files {
     else {
         @data = (
             "strain",       "inventory", "genotype",        "phenotype",
-            "publications", "genes",     "characteristics", "props"
+            "publications", "genes",     "characteristics", "props",
+            "parent"
         );
     }
 
