@@ -156,6 +156,10 @@ sub execute {
         if ( $strain->genotype ) {
             my $genotype = $self->trim( $strain->genotype );
             if ( exists $io->{genotype} ) {
+                $genotype =~ s/(,\W|,)/,/g;
+
+                # $genotype =~ s/\?$//g;
+
                 $io->{genotype}->write(
                     $dbs_id . "\t" . $dscg_id . "\t" . $genotype . "\n" );
                 $stats->{genotype} = $stats->{genotype} + 1;
