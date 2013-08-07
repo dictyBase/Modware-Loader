@@ -12,6 +12,35 @@ use Moose::Role;
 use namespace::autoclean;
 with 'Modware::Role::Stock::Export::Commons';
 
+has '_plasmid_row' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_plasmid_row => 'set',
+        get_plasmid_row => 'get',
+        has_plasmid     => 'defined'
+    }
+);
+
+sub find_plasmid {
+    my ( $self, $plasmid_name ) = @_;
+    if ( $self->has_plasmid($plasmid_name) ) {
+        return $self->get_plasmid_row($plasmid_name)->first->id;
+    }
+    my $plasmid_rs = $self->legacy_schema->resultset('Plasmid')->search(
+        { name => $plasmid_name },
+        {   select => [qw/me.id me.name/],
+            cache  => 1
+        }
+    );
+    if ( $plasmid_rs->count > 0 ) {
+        $self->set_plasmid_row( $plasmid_name, $plasmid_rs );
+        return $self->get_plasmid_row($plasmid_name)->first->id;
+    }
+}
+
 has '_plasmid_invent_row' => (
     is      => 'rw',
     isa     => 'HashRef',

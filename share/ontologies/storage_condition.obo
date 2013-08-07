@@ -1,0 +1,404 @@
+format-version: 1.2
+date: 01:08:2013 12:06
+saved-by: pfey
+auto-generated-by: OBO-Edit 2.2
+default-namespace: storage_conditions
+
+[Term]
+id: DDSTORCON:0000001
+name: Storage Condition
+def: "Conditions strains and plasmids are received or stored at the DSC." [DDB:pf]
+
+[Term]
+id: DDSTORCON:0000002
+name: bacterial plate
+def: "A bacterial plate grown with bacteria serving as a food source for a Dictyostelid strain." [DDB:pf]
+is_a: DDSTORCON:0000024 ! agar plate
+created_by: pfey
+creation_date: 2013-07-30T11:00:16Z
+
+[Term]
+id: DDSTORCON:0000003
+name: axenic medium
+def: "A liquid medium used to grow axenic Dictyostelium strains." [DDB:pf]
+is_a: DDSTORCON:0000001 ! Storage Condition
+created_by: pfey
+creation_date: 2013-07-30T11:03:53Z
+
+[Term]
+id: DDSTORCON:0000004
+name: DNA
+def: "A plasmid stored or received as DNA." [DDB:pf]
+is_a: DDSTORCON:0000001 ! Storage Condition
+created_by: pfey
+creation_date: 2013-07-30T11:20:16Z
+
+[Term]
+id: DDSTORCON:0000005
+name: bacterial stock
+def: "A plasmid stored or received in a bacterial host." [DDB:pf]
+is_a: DDSTORCON:0000001 ! Storage Condition
+created_by: pfey
+creation_date: 2013-07-30T11:21:57Z
+
+[Term]
+id: DDSTORCON:0000006
+name: cells
+def: "Dictyostelid received or stored as cells." [DDB:pf]
+is_a: DDSTORCON:0000001 ! Storage Condition
+created_by: pfey
+creation_date: 2013-07-30T11:23:34Z
+
+[Term]
+id: DDSTORCON:0000007
+name: spores
+def: "Dictyostelid received or stored as spores." [DDB:pf]
+is_a: DDSTORCON:0000001 ! Storage Condition
+created_by: pfey
+creation_date: 2013-07-30T11:24:41Z
+
+[Term]
+id: DDSTORCON:0000008
+name: HL5 medium
+def: "A rich broth used to grow axenic Dictyostelium strains." [DDB:pf]
+is_a: DDSTORCON:0000003 ! axenic medium
+created_by: pfey
+creation_date: 2013-07-30T11:26:52Z
+
+[Term]
+id: DDSTORCON:0000009
+name: HL5 medium + Bs
+def: "HL5 medium containing the selective drug blasticidin." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T11:28:25Z
+
+[Term]
+id: DDSTORCON:0000010
+name: HL5 medium + Neo
+def: "HL5 medium containing the selective drug neomycin or G418." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T11:30:37Z
+
+[Term]
+id: DDSTORCON:0000011
+name: HL5 medium + Bs + Neo
+def: "HL5 medium containing the selective drugs blasticidin and neomycin (G418)." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T11:43:05Z
+
+[Term]
+id: DDSTORCON:0000012
+name: HL5 medium + Hyg
+def: "HL5 medium containing the selective drug hygromycin." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T11:45:36Z
+
+[Term]
+id: DDSTORCON:0000013
+name: HL5 medium + Bs + Hyg
+def: "HL5 medium containing the selective drugs blasticidin and hygromycin." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T11:47:20Z
+
+[Term]
+id: DDSTORCON:0000014
+name: HL5 medium + Ura
+def: "HL5 medium supplemented with 20 ug/ml  uracil." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T12:06:07Z
+
+[Term]
+id: DDSTORCON:0000015
+name: HL5 medium + Neo + Ura
+def: "HL5 medium containing the selective drug neomycin or G418 and supplemented with 20 ug/ml  uracil." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T12:16:17Z
+
+[Term]
+id: DDSTORCON:0000016
+name: HL5 medium + Bs + Ura
+def: "HL5 medium containing the selective drug blasticidin and supplemented with 20 ug/ml  uracil." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T12:17:37Z
+
+[Term]
+id: DDSTORCON:0000017
+name: HL5 medium + Bs + Neo + Ura
+def: "HL5 medium containing the selective drugs blasticidin and neomycin (G418), and supplemented with 20 ug/ml  uracil." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T12:19:31Z
+
+[Term]
+id: DDSTORCON:0000018
+name: HL5 medium + Thy
+def: "HL5 medium supplemented with 100 ug/ml  thymidine." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T12:20:57Z
+
+[Term]
+id: DDSTORCON:0000019
+name: HL5 medium + Neo + Thy
+def: "HL5 medium containing the selective drug neomycin or G418 and supplemented with 100 ug/ml  thymidine." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T12:23:41Z
+
+[Term]
+id: DDSTORCON:0000020
+name: HL5 medium + Hyg + Thy
+def: "HL5 medium containing the selective drug hygromycin and supplemented with 100 ug/ml  thymidine." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T12:25:08Z
+
+[Term]
+id: DDSTORCON:0000021
+name: HL5 medium + Bs + Thy
+def: "HL5 medium containing the selective drug blasticidin and supplemented with 100 ug/ml  thymidine." [DDB:pf]
+is_a: DDSTORCON:0000008 ! HL5 medium
+created_by: pfey
+creation_date: 2013-07-30T12:26:19Z
+
+[Term]
+id: DDSTORCON:0000022
+name: SM plate
+def: "An SM agar plate containing glucose and bacto peptone, named after it's creator Maurice Sussman and to grow Dictyostelid strains." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-07-30T14:09:00Z
+
+[Term]
+id: DDSTORCON:0000023
+name: SM/5 plate
+def: "An SM agar plate with only a fifth of the glucose and bacto peptone of the original recipe  to grow Dictyostelid strains." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-07-30T16:07:15Z
+
+[Term]
+id: DDSTORCON:0000024
+name: agar plate
+def: "A plate to culture cells." [DDB:pf]
+is_a: DDSTORCON:0000001 ! Storage Condition
+created_by: pfey
+creation_date: 2013-07-30T16:11:38Z
+
+[Term]
+id: DDSTORCON:0000025
+name: non-nutrient agar plate
+def: "An agar plate that has no nutrients for growth." [DDB:pf]
+synonym: "water agar" RELATED []
+is_a: DDSTORCON:0000024 ! agar plate
+created_by: pfey
+creation_date: 2013-07-30T16:13:29Z
+
+[Term]
+id: DDSTORCON:0000026
+name: SM + charcoal plate
+def: "An SM agar plate with charcoal added to promote development." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-07-30T16:15:57Z
+
+[Term]
+id: DDSTORCON:0000027
+name: SM/5 + charcoal plate
+def: "An SM/5 agar plate with charcoal added to promote development." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-07-30T16:22:15Z
+
+[Term]
+id: DDSTORCON:0000028
+name: SM + Neo plate
+def: "An SM agar plate containing the selective drug neomycin or G418." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-07-30T16:23:27Z
+
+[Term]
+id: DDSTORCON:0000029
+name: SM/5 + Neo plate
+def: "An SM/5 agar plate containing the selective drug neomycin or G418." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-07-30T16:25:26Z
+
+[Term]
+id: DDSTORCON:0000030
+name: SM/5 + Neo + charcoal plate
+def: "An SM/5 agar plate containing the selective drug neomycin or G418  with charcoal added to promote development." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-07-30T16:26:16Z
+
+[Term]
+id: DDSTORCON:0000031
+name: LPB plate
+def: "A buffered lactose peptone agar less nutritious than most other media." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-07-30T16:29:23Z
+
+[Term]
+id: DDSTORCON:0000032
+name: KK2 plate
+def: "A non nutritious agar plate used for development of Dictyostelids." [DDB:pf]
+is_a: DDSTORCON:0000025 ! non-nutrient agar plate
+created_by: pfey
+creation_date: 2013-07-30T17:04:27Z
+
+[Term]
+id: DDSTORCON:0000033
+name: LP plate
+def: "An LP agar plate containing lactose and peptone to grow Dictyostelid strains." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-08-01T10:22:56Z
+
+[Term]
+id: DDSTORCON:0000034
+name: LP + charcoal plate
+def: "An LP agar plate with charcoal added to promote development." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-08-01T10:23:27Z
+
+[Term]
+id: DDSTORCON:0000035
+name: LP/2 plate
+def: "An LP agar plate with only half of the lactose and  peptone of the original recipe to grow Dictyostelid strains." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-08-01T11:19:00Z
+
+[Term]
+id: DDSTORCON:0000036
+name: LP/2 + charcoal plate
+def: "An LP/2 agar plate with charcoal added to promote development." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-08-01T11:19:44Z
+
+[Term]
+id: DDSTORCON:0000037
+name: SM + Neo + charcoal plate
+def: "An SM agar plate containing the selective drug neomycin or G418  with charcoal added to promote development." [DDB:pf]
+is_a: DDSTORCON:0000002 ! bacterial plate
+created_by: pfey
+creation_date: 2013-08-01T11:25:18Z
+
+[Term]
+id: DDSTORCON:0000038
+name: frozen cells
+def: "Dictyostelid received or stored as frozen cells." [DDB:pf]
+is_a: DDSTORCON:0000006 ! cells
+created_by: pfey
+creation_date: 2013-08-01T11:26:48Z
+
+[Term]
+id: DDSTORCON:0000039
+name: frozen spores
+def: "Dictyostelid received or stored as frozen spores." [DDB:pf]
+is_a: DDSTORCON:0000007 ! spores
+created_by: pfey
+creation_date: 2013-08-01T11:28:08Z
+
+[Term]
+id: DDSTORCON:0000040
+name: silica spores
+def: "Dictyostelid spores received or stored on silica gel." [DDB:pf]
+is_a: DDSTORCON:0000007 ! spores
+created_by: pfey
+creation_date: 2013-08-01T11:29:10Z
+
+[Term]
+id: DDSTORCON:0000041
+name: XL1-Blue
+def: "A plasmid stored or received in the bacterial host XL1-Blue." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:34:16Z
+
+[Term]
+id: DDSTORCON:0000042
+name: DH5alpha
+def: "A plasmid stored or received in the bacterial host DH5alpha." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:34:34Z
+
+[Term]
+id: DDSTORCON:0000043
+name: SURE
+def: "A plasmid stored or received in the bacterial host SURE." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:35:11Z
+
+[Term]
+id: DDSTORCON:0000044
+name: TOP10
+def: "A plasmid stored or received in the bacterial host TOP10." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:35:24Z
+
+[Term]
+id: DDSTORCON:0000045
+name: DH10B
+def: "A plasmid stored or received in the bacterial host DH10B." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:35:38Z
+
+[Term]
+id: DDSTORCON:0000046
+name: XL10 GOLD
+def: "A plasmid stored or received in the bacterial host XL10-Gold." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:35:50Z
+
+[Term]
+id: DDSTORCON:0000047
+name: BL21-Gold
+def: "A plasmid stored or received in the bacterial host BL21-Gold." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:36:05Z
+
+[Term]
+id: DDSTORCON:0000048
+name: STBL2
+def: "A plasmid stored or received in the bacterial host STBL2." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:36:19Z
+
+[Term]
+id: DDSTORCON:0000049
+name: DB3.1
+def: "A plasmid stored or received in the bacterial host DB3.1." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:37:29Z
+
+[Term]
+id: DDSTORCON:0000050
+name: ES28
+def: "A plasmid stored or received in the bacterial host ES28." [DDB:pf]
+is_a: DDSTORCON:0000005 ! bacterial stock
+created_by: pfey
+creation_date: 2013-08-01T11:37:43Z
+

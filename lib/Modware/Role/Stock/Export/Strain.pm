@@ -9,6 +9,24 @@ use Moose::Role;
 use namespace::autoclean;
 with 'Modware::Role::Stock::Export::Commons';
 
+=head1 find_dbs_id
+
+=cut 
+
+sub find_strain {
+    my ( $self, $strain_name ) = @_;
+
+    my $strain = $self->legacy_schema->storage->dbh->selectall_arrayref(
+        qq{
+	SELECT DISTINCT dbxref_id, obtained_on
+	FROM stock_center
+	WHERE strain_name = '$strain_name'
+	ORDER BY obtained_on ASC
+	}
+    );
+    return @{$strain};
+}
+
 has '_strain_invent_row' => (
     is      => 'rw',
     isa     => 'HashRef',
