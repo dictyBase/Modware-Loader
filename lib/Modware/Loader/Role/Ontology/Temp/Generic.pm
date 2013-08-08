@@ -3,9 +3,10 @@ package Modware::Loader::Role::Ontology::Temp::Generic;
 use namespace::autoclean;
 use Moose::Role;
 use Encode;
+use feature qw/say/;
 use utf8;
 with 'Modware::Role::WithDataStash' =>
-    { create_stash_for => [qw/term relationship synonym/] };
+    { create_stash_for => [qw/term relationship synonym comment/] };
 
 sub load_cvterms_in_staging {
     my ( $self, $hooks ) = @_;
@@ -31,20 +32,24 @@ sub load_cvterms_in_staging {
     }
 }
 
-
 # use this hook to load data that is dependent of cvterm
 around 'load_cvterms_in_staging' => sub {
     my $orig = shift;
     my $self = shift;
-    $self->$orig( @_, [ sub { $self->load_synonyms_in_staging(@_) } ] );
+    $self->$orig(
+        @_,
+        [   sub { $self->load_synonyms_in_staging(@_) },
+            sub { $self->load_comments_in_staging(@_) }
+        ]
+    );
 };
-
 
 # to load leftover cache in staging database
 after 'load_cvterms_in_staging' => sub {
     my ($self) = @_;
-   $self->load_cache( 'term', 'TempCvterm' );
-   $self->load_cache( 'synonym', 'TempCvtermsynonym' );
+    $self->load_cache( 'term',    'TempCvterm' );
+    $self->load_cache( 'synonym', 'TempCvtermsynonym' );
+    $self->load_cache( 'comment', 'TempCvtermcomment' );
 };
 
 sub load_synonyms_in_staging {
@@ -55,6 +60,15 @@ sub load_synonyms_in_staging {
     $self->load_cache( 'synonym', 'TempCvtermsynonym', 1 );
 }
 
+sub load_comments_in_staging {
+    my ( $self, $term, $insert_hash ) = @_;
+    my $comment_insert_array
+        = $self->get_comment_term_hash( $term, $insert_hash );
+    if ( defined $comment_insert_array ) {
+        $self->add_to_comment_cache(@$comment_insert_array);
+        $self->load_cache( 'comment', 'TempCvtermcomment', 1 );
+    }
+}
 
 sub load_cache {
     my ( $self, $cache, $result_class, $check_for_threshold ) = @_;
@@ -146,6 +160,23 @@ sub get_synonym_term_hash {
             };
     }
     return $insert_array;
+}
+
+sub get_comment_term_hash {
+    my ( $self, $term, $term_insert_hash ) = @_;
+    if ( my $comment = $term->comment ) {
+        my $insert_array;
+        push @$insert_array,
+            {
+            accession => $term_insert_hash->{accession},
+            comment   => $comment,
+            comment_type_id =>
+                $self->find_or_create_cvterm_namespace( 'comment',
+                'cvterm_property_type' )->cvterm_id,
+            db_id => $term_insert_hash->{db_id}
+            };
+        return $insert_array;
+    }
 }
 
 1;

@@ -22,9 +22,10 @@ after 'load_data_in_staging' => sub {
     );
 
     $self->logger->debug(
-        sprintf "terms:%d\tsynonyms:%d\trelationships:%d in staging tables",
+        sprintf "terms:%d\tsynonyms:%d\tcomments:%d\trelationships:%d in staging tables",
         $self->entries_in_staging('TempCvterm'),
         $self->entries_in_staging('TempCvtermsynonym'),
+        $self->entries_in_staging('TempCvtermcomment'),
         $self->entries_in_staging('TempCvtermRelationship')
     );
 };
@@ -62,6 +63,15 @@ sub create_temp_statements {
                accession varchar(256) NOT NULL, 
                syn varchar(1024) NOT NULL, 
                syn_scope_id integer NOT NULL, 
+               db_id integer NOT NULL
+    )});
+
+    $storage->dbh->do(
+        qq{
+	        CREATE TEMP TABLE temp_cvterm_comment (
+               accession varchar(256) NOT NULL, 
+               comment varchar(1024) NOT NULL, 
+               comment_type_id integer NOT NULL, 
                db_id integer NOT NULL
     )}
     );
