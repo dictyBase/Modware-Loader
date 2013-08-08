@@ -50,7 +50,6 @@ sub execute {
 
     my $io = IO::File->new( $self->input, 'r' );
     my $hash;
-
     while ( my $line = $io->getline ) {
         my @cols = split( /\t/, $line );
         $hash->{uniquename}  = $cols[0] if $cols[0] =~ /^DBS[0-9]{7}/;
