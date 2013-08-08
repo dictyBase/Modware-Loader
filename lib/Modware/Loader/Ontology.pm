@@ -79,6 +79,8 @@ sub _register_schema_classes {
             'Modware::Loader::Schema::Temporary::CvtermRelationship' );
     $schema->register_class( 'TempCvtermsynonym' =>
             'Modware::Loader::Schema::Temporary::Cvtermsynonym' );
+    $schema->register_class( 'TempCvtermcomment' =>
+            'Modware::Loader::Schema::Temporary::Cvtermcomment' );
 }
 
 sub is_cvprop_present {
