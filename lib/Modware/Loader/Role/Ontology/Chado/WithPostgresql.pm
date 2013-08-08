@@ -195,6 +195,11 @@ sub create_relations {
 
 sub create_synonyms {
     my ( $self, $storage, $dbh ) = @_;
+
+    # The logic here is as follows
+    #  Get the list of new synonyms for new dbxrefs(from temp_accession table)
+    #  Join across cvterm table to get their cvterm_id
+    #  Join with db table to make sure the dbxref belong to correct namespace
     my $row = $dbh->do(
         q{
 	    INSERT INTO cvtermsynonym(synonym_, type_id, cvterm_id)

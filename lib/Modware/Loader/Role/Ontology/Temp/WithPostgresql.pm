@@ -51,6 +51,18 @@ sub create_temp_statements {
     )}
     );
 
+    # temp table for holding comments
+    $storage->dbh->do(
+        qq{
+	        CREATE TEMP TABLE temp_cvterm_comment (
+               accession varchar(256) NOT NULL, 
+               comment varchar(1024) NOT NULL, 
+               comment_type_id integer NOT NULL, 
+               db_id integer NOT NULL
+    )}
+    );
+
+
     $storage->dbh->do(qq{ANALYZE  cvterm});
     $storage->dbh->do(qq{ANALYZE dbxref});
 }
