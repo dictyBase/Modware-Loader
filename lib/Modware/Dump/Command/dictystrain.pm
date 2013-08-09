@@ -10,13 +10,14 @@ use namespace::autoclean;
 extends qw/Modware::Dump::Command/;
 with 'Modware::Role::Command::WithLogger';
 with 'Modware::Role::Stock::Export::Strain';
+with 'Modware::Role::Stock::Export::Plasmid';
 
 has data => (
     is      => 'rw',
     isa     => 'Str',
     default => 'all',
     documentation =>
-        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics, props, parent)'
+        'Option to dump all data (default) or (strain, inventory, genotype, phenotype, publications, genes, characteristics, props, parent, plasmid)'
 );
 
 sub execute {
@@ -27,7 +28,7 @@ sub execute {
     my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
         {},
         {   select => [
-                qw/id strain_name strain_description species dbxref_id pubmedid phenotype genotype other_references internal_db_id mutagenesis_method mutant_type parental_strain/
+                qw/id strain_name strain_description species dbxref_id pubmedid phenotype genotype other_references internal_db_id mutagenesis_method mutant_type parental_strain plasmid/
             ],
             cache => 1
         }
@@ -278,6 +279,40 @@ sub execute {
                 }
             }
         }
+
+        if ( exists $io->{plasmid} ) {
+            if ( $strain->plasmid ) {
+                my $pl_name = $self->trim( $strain->plasmid );
+                my @plasmids;
+                if ( length($pl_name) > 1 ) {
+                    if ( $pl_name =~ /,/ ) {
+                        $pl_name
+                            =~ s/(\(Lee and Falkow, 1998\)|\(partially impaired in retrieval\))//;
+                        @plasmids = split( /,/, $pl_name );
+                    }
+                    else {
+                        $plasmids[0] = $pl_name;
+                    }
+                    foreach my $plasmid (@plasmids) {
+                        $plasmid = $self->trim($plasmid);
+                        my $plasmid_id = $self->find_plasmid($plasmid);
+                        my $dbp_id = sprintf( "DBP%07d", $plasmid_id )
+                            if $plasmid_id and $plasmid_id != 0;
+                        if ($dbp_id) {
+                            $io->{plasmid}
+                                ->write( $dbs_id . "\t" . $dbp_id . "\n" );
+                            $stats->{plasmid} = $stats->{plasmid} + 1;
+                        }
+                        else {
+                            $io->{plasmid}
+                                ->write( $dbs_id . "\t" . $plasmid . "\n" );
+                            $stats->{plasmid} = $stats->{plasmid} + 1;
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
     foreach my $key ( keys $stats ) {
@@ -305,7 +340,7 @@ sub _create_files {
         @data = (
             "strain",       "inventory", "genotype",        "phenotype",
             "publications", "genes",     "characteristics", "props",
-            "parent"
+            "parent",       "plasmid"
         );
     }
 
