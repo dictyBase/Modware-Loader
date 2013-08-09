@@ -16,7 +16,7 @@ has data => (
     isa     => 'Str',
     default => 'all',
     documentation =>
-        'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes)'
+        'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes, props)'
 );
 
 has 'sequence' => (
@@ -41,7 +41,7 @@ sub execute {
     my $plasmid_rs = $self->legacy_schema->resultset('Plasmid')->search(
         {},
         {   select => [
-                qw/id name description pubmedid genbank_accession_number internal_db_id other_references/
+                qw/id name description pubmedid genbank_accession_number internal_db_id other_references depositor synonymn/
             ],
             cache => 1
         }
@@ -163,7 +163,24 @@ sub execute {
                 $stats->{genes} = $stats->{genes} + 1;
             }
         }
+
+        if ( exists $io->{props} ) {
+            if ( $plasmid->depositor ) {
+                $io->{props}->write( $dbp_id . "\t"
+                        . 'depositor' . "\t"
+                        . $self->trim( $plasmid->depositor )
+                        . "\n" );
+                $stats->{props} = $stats->{props} + 1;
+            }
+            if ( $plasmid->synonymn ) {
+                print $dbp_id. "\t"
+                    . 'synonym' . "\t"
+                    . $plasmid->synonym . "\n";
+            }
+        }
+
     }
+
     if ( $gb_dbp_hash and $self->sequence ) {
         $self->export_seq($gb_dbp_hash);
     }
@@ -191,8 +208,10 @@ sub _create_files {
         @data = split( /,/, $self->data );
     }
     else {
-        @data
-            = ( "plasmid", "inventory", "genbank", "publications", "genes" );
+        @data = (
+            "plasmid", "inventory", "genbank", "publications",
+            "genes",   "props"
+        );
     }
 
     $self->logger->info(
