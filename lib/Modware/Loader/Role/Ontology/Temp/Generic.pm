@@ -33,9 +33,10 @@ has 'post_cvterm_dependencies' => (
 
 sub load_cvterms_in_staging {
     my ( $self, $hooks ) = @_;
+    my @dep_hooks     = @{ $self->cvterm_dependencies };
     my $onto          = $self->ontology;
     my $schema        = $self->schema;
-    my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
+    my $default_cv_id = $self->get_cvrow( $self->ontology_namespace )->cv_id;
 
     #Term
     for my $term ( @{ $onto->get_relationship_types }, @{ $onto->get_terms } )
@@ -49,9 +50,7 @@ sub load_cvterms_in_staging {
         $self->load_cache( 'term', 'TempCvterm', 1 );
 
         #hooks to run that depends on cvterms
-        for my $hook ( @{ $self->cvterm_dependencies } ) {
-            $self->$hook( $term, $insert_hash );
-        }
+        $self->$_( $term, $insert_hash ) for @dep_hooks;
     }
 
     # to load leftover cache in staging database
@@ -78,7 +77,6 @@ sub load_comments_in_staging {
         $self->load_cache( 'comment', 'TempCvtermcomment', 1 );
     }
 }
-
 
 sub load_relationship_in_staging {
     my ($self) = @_;
@@ -176,7 +174,6 @@ sub get_comment_term_hash {
     }
 }
 
-
 sub load_cache {
     my ( $self, $cache, $result_class, $check_for_threshold ) = @_;
     if ($check_for_threshold) {
@@ -189,6 +186,5 @@ sub load_cache {
     $self->schema->resultset($result_class)->populate( [ $self->$entries ] );
     $self->$clean;
 }
-
 
 1;

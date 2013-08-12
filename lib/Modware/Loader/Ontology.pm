@@ -8,7 +8,8 @@ use feature qw/switch/;
 use DateTime::Format::Strptime;
 use Modware::Loader::Schema::Temporary;
 
-has 'app_instance' => (is => 'rw', isa => 'Modware::Load::Command::obo2chado');
+has 'app_instance' =>
+    ( is => 'rw', isa => 'Modware::Load::Command::obo2chado' );
 
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
@@ -34,10 +35,19 @@ has 'schema' => (
     }
 );
 
+has 'ontology_namespace' => (
+    is  => 'rw',
+    isa => 'Str',
+);
+
 has 'ontology' => (
-    is     => 'rw',
-    isa    => 'OBO::Core::Ontology',
-    writer => 'set_ontology'
+    is      => 'rw',
+    isa     => 'OBO::Core::Ontology',
+    writer  => 'set_ontology',
+    trigger => sub {
+        my ( $self, $onto ) = @_;
+        $self->ontology_namespace( $onto->default_namespace || $onto->id );
+    }
 );
 
 has '_date_parser' => (
@@ -49,6 +59,24 @@ has '_date_parser' => (
             pattern  => '%d:%m:%Y',
             on_error => 'croak'
         );
+    }
+);
+
+has 'create_ontology_hooks' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    lazy    => 1,
+    default => sub {
+        return ['create_synonyms'];
+    }
+);
+
+has 'update_ontology_hooks' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    lazy    => 1,
+    default => sub {
+        return ['update_synonyms'];
     }
 );
 
@@ -99,7 +127,7 @@ sub _load_engine {
         . ucfirst lc( $schema->storage->sqlt_type );
     my $tmp_engine = 'Modware::Loader::Role::Ontology::Temp::With'
         . ucfirst lc( $schema->storage->sqlt_type );
-    ensure_all_roles( $self, ($engine, $tmp_engine) );
+    ensure_all_roles( $self, ( $engine, $tmp_engine ) );
 
     $self->meta->make_immutable;
     $self->transform_schema($schema);
@@ -108,9 +136,9 @@ sub _load_engine {
 sub is_ontology_in_db {
     my ($self) = @_;
     my $row = $self->schema->resultset('Cv::Cv')
-        ->find( { name => $self->ontology->default_namespace } );
+        ->find( { name => $self->ontology_namespace } );
     if ($row) {
-        $self->set_cvrow( $self->ontology->default_namespace, $row );
+        $self->set_cvrow( $self->ontology_namespace, $row );
         return $row;
     }
 }
@@ -131,7 +159,7 @@ sub is_ontology_new_version {
 sub _get_ontology_date_from_db {
     my ($self) = @_;
     my $cvrow;
-    my $cvname = $self->ontology->default_namespace;
+    my $cvname = $self->ontology_namespace;
     if ( $self->has_cvrow($cvname) ) {
         $cvrow = $self->get_cvrow($cvname);
     }
@@ -155,7 +183,7 @@ sub store_metadata {
     my $schema = $self->schema;
     my $onto   = $self->ontology;
     my $cvrow  = $schema->resultset('Cv::Cv')
-        ->find_or_new( { name => $onto->default_namespace } );
+        ->find_or_new( { name => $self->ontology_namespace } );
     if ( $cvrow->in_storage ) {
         my $rs = $cvrow->search_related(
             'cvprops',
@@ -240,9 +268,8 @@ sub merge_ontology {
         = $storage->dbh_do( sub { $self->update_cvterm_names(@_) } );
     $logger->debug("updated $cvterm_names cvterm names");
 
-    if ( defined $arg{update_hooks} ) {
-        $storage->dbh_do($_) for @{ $arg{update_hooks} };
-    }
+    $storage->dbh_do( sub { $self->$_(@_) } )
+        for @{ $self->update_ontology_hooks };
 
     #create new terms both in dbxref and cvterm tables
     my $dbxrefs = $storage->dbh_do( sub { $self->create_dbxrefs(@_) } );
@@ -251,9 +278,8 @@ sub merge_ontology {
         my $cvterms = $storage->dbh_do( sub { $self->create_cvterms(@_) } );
         $logger->debug("created $cvterms cvterms");
 
-        if ( defined $arg{create_hooks} ) {
-            $storage->dbh_do($_) for @{ $arg{create_hooks} };
-        }
+        $storage->dbh_do( sub { $self->$_(@_) } )
+            for @{ $self->create_ontology_hooks };
     }
 
     #create relationships
@@ -262,50 +288,18 @@ sub merge_ontology {
     $logger->debug("created $relationships relationships");
 }
 
-around 'merge_ontology' => sub {
-    my $orig = shift;
-    my $self = shift;
-    $self->$orig(
-        create_hooks => [ sub { $self->create_synonyms(@_) } ],
-        update_hooks => [ sub { $self->update_synonyms(@_) } ]
-    );
-};
-
-
 sub finish {
-	my ($self) = @_;
-	$self->schema->storage->disconnect;
+    my ($self) = @_;
+    $self->schema->storage->disconnect;
 }
 
 sub entries_in_staging {
-	my ($self, $resultset_class) = @_;
-	return $self->schema->resultset($resultset_class)->count({});
+    my ( $self, $resultset_class ) = @_;
+    return $self->schema->resultset($resultset_class)->count( {} );
 }
 
 with 'Modware::Loader::Role::Ontology::WithHelper';
 __PACKAGE__->meta->make_immutable;
 
 1;    # Magic true value required at end of module
-
-__END__
-
-=head1 NAME
-
-    }
-
-    #create relationships
-    my $relationships
-        = $storage->dbh_do( sub { $self->create_relations(@_) } );
-    $logger->info("created $relationships relationships");
-
-}
-
-with 'Modware::Loader::Role::Ontology::WithHelper';
-__PACKAGE__->meta->make_immutable;
-
-1;    # Magic true value required at end of module
-
-__END__
-
-=head1 NAME
 
