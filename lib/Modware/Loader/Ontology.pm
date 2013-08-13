@@ -67,7 +67,7 @@ has 'create_ontology_hooks' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return ['create_synonyms'];
+        return ['create_synonyms', 'create_comments'];
     }
 );
 
@@ -251,7 +251,7 @@ sub load_data_in_staging {
 }
 
 sub merge_ontology {
-    my ( $self, %arg ) = @_;
+    my ( $self ) = @_;
     my $storage = $self->schema->storage;
     my $logger  = $self->logger;
 

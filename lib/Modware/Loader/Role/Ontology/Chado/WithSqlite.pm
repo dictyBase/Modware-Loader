@@ -170,7 +170,67 @@ sub update_cvterms {
     return scalar @$data;
 }
 
-sub merge_comments {
+sub create_comments {
+    my ( $self, $storage, $dbh ) = @_;
+    
+    # The logic here to get a list of new cvterms and their comments.
+    # A temp table(temp_accession) with all the new cvterms were created which is turn joined
+    # with cvterm table to get their cvterm_id
+    my $row = $dbh->do(
+        q{
+	    INSERT INTO cvtermprop(cvterm_id, type_id, value)
+		SELECT cvterm.cvterm_id, tcomm.comment_type_id, tcomm.comment
+		FROM temp_cvterm_comment tcomm
+		INNER JOIN temp_accession tmacc ON
+		    tcomm.accession = tmacc.accession
+		INNER JOIN dbxref ON (
+			dbxref.accession = tcomm.accession
+			AND dbxref.db_id = tcomm.db_id
+		)
+		INNER JOIN cvterm ON
+		    dbxref.dbxref_id = cvterm.dbxref_id
+	}
+    );
+    $self->logger->debug("created $row comment");
+    return $row;
+}
+
+
+sub update_comments {
+    my ( $self, $storage, $dbh ) = @_;
+
+    #First create a temp table with synonym that needs update
+    $dbh->do(
+        q{
+		 CREATE TEMP TABLE temp_comment_update AS
+	       SELECT cvterm.cvterm_id,tcomm.comment_type_id,tcomm.comment 
+    		FROM dbxref
+            LEFT JOIN temp_accession tmacc ON
+                dbxref.accession = tmacc.accession
+            INNER JOIN temp_cvterm_comment tcomm ON (
+                dbxref.accession = tcomm.accession
+                AND dbxref.db_id = tcomm.db_id
+            )
+            INNER JOIN cvterm ON
+                dbxref.dbxref_id = cvterm.dbxref_id
+            WHERE tmacc.accession IS NULL
+	}
+    );
+
+    #Now delete all synonyms
+    $dbh->do(
+        q{ DELETE FROM cvtermsynonym WHERE cvterm_id IN (SELECT cvterm_id FROM temp_synonym_update)}
+    );
+
+    #Now insert the new batch
+    my $rows = $dbh->do(
+        q{
+	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
+	    SELECT syn,syn_scope_id,cvterm_id FROM temp_synonym_update 
+    }
+    );
+    $self->logger->debug("updated $rows synonyms");
+    return $rows;
 }
 
 sub create_relations {
@@ -212,6 +272,8 @@ sub create_relations {
 
 sub create_synonyms {
     my ( $self, $storage, $dbh ) = @_;
+
+    # Identical to comment creation logic
     my $row = $dbh->do(
         q{
 	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
