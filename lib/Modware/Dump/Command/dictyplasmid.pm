@@ -41,7 +41,7 @@ sub execute {
     my $plasmid_rs = $self->legacy_schema->resultset('Plasmid')->search(
         {},
         {   select => [
-                qw/id name description pubmedid genbank_accession_number internal_db_id other_references depositor synonymn/
+                qw/id name description pubmedid genbank_accession_number internal_db_id other_references depositor synonymn keywords/
             ],
             cache => 1
         }
@@ -173,9 +173,36 @@ sub execute {
                 $stats->{props} = $stats->{props} + 1;
             }
             if ( $plasmid->synonymn ) {
-                print $dbp_id. "\t"
-                    . 'synonym' . "\t"
-                    . $plasmid->synonym . "\n";
+                my @syns;
+                if ( $plasmid->synonymn =~ /,/ ) {
+                    @syns = split( /,/, $self->trim( $plasmid->synonymn ) );
+                }
+                else {
+                    $syns[0] = $self->trim( $plasmid->synonymn );
+                }
+                foreach my $syn (@syns) {
+                    $io->{props}->write( $dbp_id . "\t"
+                            . 'synonym' . "\t"
+                            . $self->trim($syn)
+                            . "\n" );
+                    $stats->{props} = $stats->{props} + 1;
+                }
+            }
+            if ( $plasmid->keywords ) {
+                my @keywords;
+                if ( $plasmid->keywords ) {
+                    @keywords = split( /[,;]/, $plasmid->keywords );
+                }
+                else {
+                    $keywords[0] = $plasmid->keywords;
+                }
+                foreach my $keyword (@keywords) {
+                    $io->{props}->write( $dbp_id . "\t"
+                            . 'keyword' . "\t"
+                            . $self->trim($keyword)
+                            . "\n" );
+                    $stats->{props} = $stats->{props} + 1;
+                }
             }
         }
 
@@ -254,9 +281,9 @@ version 0.0.1
 
 =head1 SYNOPSIS
 
-	perl modware-dump dictyplasmid -c config.yaml --sequence_file 
+	perl modware-dump dictyplasmid -c config.yaml --sequence
 
-	perl modware-dump dictyplasmid -c config.yaml --data inventory,genbank,genes --format <text|json> 
+	perl modware-dump dictyplasmid -c config.yaml --data inventory,genbank,genes 
 
 =head1 REQUIRED ARGUMENTS
 
