@@ -4,12 +4,36 @@ use namespace::autoclean;
 use Carp;
 use Moose;
 use Moose::Util qw/ensure_all_roles/;
-use feature qw/switch/;
 use DateTime::Format::Strptime;
+use File::ShareDir qw/module_dir/;
+use SQL::Library;
+use File::Spec::Functions qw/catfile/;
+use Modware::Loader;
 use Modware::Loader::Schema::Temporary;
 
-has 'app_instance' =>
-    ( is => 'rw', isa => 'Modware::Load::Command::obo2chado' );
+has 'storage_type' => ( is => 'rw', isa => 'Str' );
+
+has 'sqllib' => (
+    is      => 'rw',
+    isa     => 'SQL::Library',
+    lazy => 1,
+    default => sub {
+        my ($self) = @_;
+        my $lib = SQL::Library->new(
+            {   lib => catfile(
+                    module_dir('Modware::Loader'),
+                    $self->storage_type . '.lib'
+                )
+            }
+        );
+        return $lib;
+    }
+);
+
+has 'app_instance' => (
+    is      => 'rw',
+    isa     => 'Modware::Load::Command::obo2chado',
+);
 
 has 'logger' =>
     ( is => 'rw', isa => 'Log::Log4perl::Logger', writer => 'set_logger' );
@@ -32,6 +56,7 @@ has 'schema' => (
     trigger => sub {
         my ( $self, $schema ) = @_;
         $self->_load_engine($schema);
+        $self->storage_type(lc $schema->storage->sqlt_type);
     }
 );
 
@@ -67,7 +92,7 @@ has 'create_ontology_hooks' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return ['create_synonyms', 'create_comments'];
+        return [ 'create_synonyms', 'create_comments' ];
     }
 );
 
@@ -122,6 +147,7 @@ sub is_cvprop_present {
 
 sub _load_engine {
     my ( $self, $schema ) = @_;
+    $self->storage_type( lc $schema->storage->sqlt_type );
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
@@ -251,7 +277,7 @@ sub load_data_in_staging {
 }
 
 sub merge_ontology {
-    my ( $self ) = @_;
+    my ($self)  = @_;
     my $storage = $self->schema->storage;
     my $logger  = $self->logger;
 

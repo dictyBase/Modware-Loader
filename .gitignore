@@ -17,4 +17,10 @@ gaf_check/
 local/
 .carton/
 .perl-version
+Build
+MYMETA.json
+MYMETA.yml
+_build/
+blib/
+
 
