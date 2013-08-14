@@ -12,6 +12,12 @@ with 'Modware::Role::Stock::Import::Strain';
 
 has 'prune' => ( is => 'rw', isa => 'Bool', default => 0 );
 
+has data => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    default => sub { [qw/characteristics publications inventory/] }
+);
+
 sub execute {
 
     my ($self) = @_;
@@ -23,6 +29,8 @@ sub execute {
             sub {
                 my ( $storage, $dbh ) = @_;
                 my $sth = $dbh->prepare(qq{DELETE FROM stock});
+                $sth->execute;
+                $sth = $dbh->prepare(qq{DELETE FROM stockprop});
                 $sth->execute;
             }
         );
@@ -41,10 +49,66 @@ sub execute {
             if $cols[2];
         $hash->{description} = $self->trim( $cols[3] );
         $hash->{type_id}     = $type_id;
-        $self->schema->resultset('Stock::Stock')->create($hash);
-        print $hash->{uniquename} . "\t"
-            . $hash->{organism_id} . "\t"
-            . $type_id . "\n";
+
+        my $stock_rs
+            = $self->schema->resultset('Stock::Stock')->create($hash);
+
+        if ( $self->has_characteristics( $hash->{uniquename} ) ) {
+            my $rank         = 0;
+            my $char_type_id = $self->find_cvterm('characteristics');
+            foreach my $characteristics (
+                @{ $self->get_characteristics( $hash->{uniquename} ) } )
+            {
+                # print $hash->{uniquename} . "\t" . $characteristics;
+                $stock_rs->create_related(
+                    'stockprops',
+                    {   type_id => $char_type_id,
+                        value   => $characteristics,
+                        rank    => $rank
+                    }
+                );
+                $rank = $rank + 1;
+            }
+        }
+
+        if ( $self->has_publications( $hash->{uniquename} ) ) {
+
+            foreach my $pmid (
+                @{ $self->get_publications( $hash->{uniquename} ) } )
+            {
+                my $pub_id = $self->find_pub($pmid);
+                if ($pub_id) {
+                    $stock_rs->create_related( 'stock_pubs',
+                        { pub_id => $pub_id } );
+                }
+                else {
+                    $self->logger->warn(
+                        "Reference does not exist for PMID:$pmid");
+                }
+            }
+        }
+
+        if ( $self->has_inventory( $hash->{uniquename} ) ) {
+            my $rank = 0;
+            foreach my $inventory (
+                @{ $self->get_inventory( $hash->{uniquename} ) } )
+            {
+                foreach my $key ( keys $inventory ) {
+                    my $type = $key;
+                    $type =~ s/_/ /g if $type =~ /_/;
+                    # print $type. "\t" . $inventory->{$key} . "\n";
+                    $stock_rs->create_related(
+                        'stockprops',
+                        {   type_id => $self->find_cvterm($type),
+                            value   => $inventory->{$key},
+                            rank    => $rank
+                        }
+                    ) if $inventory->{$key};
+                }
+                $rank = $rank + 1;
+            }
+        }
+
     }
 
     $guard->commit;
