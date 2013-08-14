@@ -3,6 +3,7 @@ use strict;
 
 package Modware::Dump::Command::dictyplasmid;
 
+use File::Spec::Functions qw/catfile/;
 use Modware::Legacy::Schema;
 use Moose;
 use namespace::autoclean;
@@ -12,9 +13,10 @@ with 'Modware::Role::Command::WithLogger';
 with 'Modware::Role::Stock::Export::Plasmid';
 
 has data => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => 'all',
+    is  => 'rw',
+    isa => 'ArrayRef',
+    default =>
+        sub { [qw/plasmid inventory genbank publications genes props/] },
     documentation =>
         'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes, props)'
 );
@@ -224,39 +226,25 @@ sub _create_files {
 
     my $io;
     my $stats;
-    my @data;
-    if ( $self->data ne 'all' ) {
-        @data = split( /,/, $self->data );
-    }
-    else {
-        @data = (
-            "plasmid", "inventory", "genbank", "publications",
-            "genes",   "props"
-        );
-    }
 
-    $self->logger->info(
-        "Data for {@data} will be exported to " . $self->output_dir );
+    $self->logger->info( "Data for [@{$self->data}] will be exported to "
+            . $self->output_dir );
 
-    foreach my $f (@data) {
+    foreach my $f ( @{ $self->data } ) {
+        my $outfile = "plasmid_" . $f . ".txt";
         my $file_obj
-            = IO::File->new( $self->output_dir . "/plasmid_" . $f . ".txt",
-            'w' );
+            = IO::File->new( catfile( $self->output_dir, $outfile ), 'w' );
         $io->{$f}    = $file_obj;
         $stats->{$f} = 0;
         if ( $f eq 'publications' ) {
-            my $f_ = "other_refs";
+            my $f_       = "other_refs";
+            my $outfile_ = "plasmid_publications_no_pubmed.txt";
             my $file_obj_
-                = IO::File->new(
-                $self->output_dir . "/plasmid_publications_no_pubmed.txt",
+                = IO::File->new( catfile( $self->output_dir, $outfile_ ),
                 'w' );
             $io->{$f_}    = $file_obj_;
             $stats->{$f_} = 0;
         }
-
-        #if ( $f eq 'genbank' and $self->sequence ) {
-        #    $self->email( );
-        #}
     }
     return ( $io, $stats );
 }
@@ -277,7 +265,7 @@ version 0.0.1
 
 	perl modware-dump dictyplasmid -c config.yaml --sequence
 
-	perl modware-dump dictyplasmid -c config.yaml --data inventory,genbank,genes 
+	perl modware-dump dictyplasmid -c config.yaml --data inventory --data genbank --data genes 
 
 =head1 REQUIRED ARGUMENTS
 
