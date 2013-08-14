@@ -27,12 +27,6 @@ has 'sequence' => (
         'Option to fetch sequence in Genbank format and write to file'
 );
 
-has 'email' => (
-    is            => 'rw',
-    isa           => 'Str',
-    documentation => 'Email for EUtilities to retrieve GenBank sequences'
-);
-
 sub execute {
     my ($self) = @_;
 
