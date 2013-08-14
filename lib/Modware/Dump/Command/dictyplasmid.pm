@@ -71,23 +71,30 @@ sub execute {
             my @non_pmids = @$non_pmids_ref;
 
             if (@pmids) {
+                my $outstr = '';
                 foreach my $pmid (@pmids) {
                     if ($pmid) {
-                        $io->{publications}->write(
-                            $dbp_id . "\t" . $self->trim($pmid) . "\n" );
+                        $outstr
+                            = $outstr
+                            . $dbp_id . "\t"
+                            . $self->trim($pmid) . "\n";
                         $stats->{publications} = $stats->{publications} + 1;
                     }
-
                 }
+                $io->{publications}->write($outstr);
             }
             if (@non_pmids) {
+                my $outstr = '';
                 foreach my $non_pmid (@non_pmids) {
                     if ($non_pmid) {
-                        $io->{other_refs}->write(
-                            $dbp_id . "\t" . $self->trim($non_pmid) . "\n" );
+                        $outstr
+                            = $outstr
+                            . $dbp_id . "\t"
+                            . $self->trim($non_pmid) . "\n";
                         $stats->{other_refs} = $stats->{other_refs} + 1;
                     }
                 }
+                $io->{other_refs}->write($outstr);
             }
         }
 
@@ -104,18 +111,19 @@ sub execute {
                     }
                     else { $row->{2} = ''; }
 
-                    my $C = $self->trim( ucfirst( $plasmid_invent->color ) );
-                    if ( length($C) > 1 ) {
-                        $row->{3} = $C;
+                    my $color
+                        = $self->trim( ucfirst( $plasmid_invent->color ) );
+                    if ( length($color) > 1 ) {
+                        $row->{3} = $color;
                     }
                     else { $row->{3} = '' }
 
-                    my $SA = $plasmid_invent->stored_as;
-                    if ( $SA and length($SA) > 1 ) {
-                        $SA =~ s/\?//g;
-                        $SA = $self->trim($SA);
-                        if ( length($SA) > 1 ) {
-                            $row->{4} = $SA;
+                    my $stored_as = $plasmid_invent->stored_as;
+                    if ($stored_as) {
+                        $stored_as =~ s/\?//g;
+                        $stored_as = $self->trim($stored_as);
+                        if ( length($stored_as) > 1 ) {
+                            $row->{4} = $stored_as;
                         }
                         else { $row->{4} = '' }
                     }
@@ -144,7 +152,7 @@ sub execute {
                 $stats->{genbank} = $stats->{genbank} + 1;
             }
             else {
-                push( @plasmid_no_genbank, $plasmid->id );
+                push @plasmid_no_genbank, $plasmid->id;
             }
         }
 
@@ -161,11 +169,13 @@ sub execute {
         }
 
         if ( exists $io->{props} ) {
+            my $outstr = '';
             if ( $plasmid->depositor ) {
-                $io->{props}->write( $dbp_id . "\t"
-                        . 'depositor' . "\t"
-                        . $self->trim( $plasmid->depositor )
-                        . "\n" );
+                $outstr
+                    = $outstr
+                    . $dbp_id . "\t"
+                    . 'depositor' . "\t"
+                    . $self->trim( $plasmid->depositor ) . "\n";
                 $stats->{props} = $stats->{props} + 1;
             }
             if ( $plasmid->synonymn ) {
@@ -177,10 +187,11 @@ sub execute {
                     $syns[0] = $self->trim( $plasmid->synonymn );
                 }
                 foreach my $syn (@syns) {
-                    $io->{props}->write( $dbp_id . "\t"
-                            . 'synonym' . "\t"
-                            . $self->trim($syn)
-                            . "\n" );
+                    $outstr
+                        = $outstr
+                        . $dbp_id . "\t"
+                        . 'synonym' . "\t"
+                        . $self->trim($syn) . "\n";
                     $stats->{props} = $stats->{props} + 1;
                 }
             }
@@ -193,13 +204,15 @@ sub execute {
                     $keywords[0] = $plasmid->keywords;
                 }
                 foreach my $keyword (@keywords) {
-                    $io->{props}->write( $dbp_id . "\t"
-                            . 'keyword' . "\t"
-                            . $self->trim($keyword)
-                            . "\n" );
+                    $outstr
+                        = $outstr
+                        . $dbp_id . "\t"
+                        . 'keyword' . "\t"
+                        . $self->trim($keyword) . "\n";
                     $stats->{props} = $stats->{props} + 1;
                 }
             }
+            $io->{props}->write($outstr);
         }
 
     }
