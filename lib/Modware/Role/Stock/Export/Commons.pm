@@ -1,7 +1,7 @@
 
-use strict;
-
 package Modware::Role::Stock::Export::Commons;
+
+use strict;
 
 use Moose::Role;
 use namespace::autoclean;
@@ -164,7 +164,7 @@ __END__
 Modware::Role::Stock::Commons - 
 
 =head1 DESCRIPTION
-
-
-
+=head1 VERSION
+=head1 AUTHOR
+=head1 LICENSE AND COPYRIGHT
 =cut 

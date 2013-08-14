@@ -1,8 +1,9 @@
 
-use strict;
-
 package Modware::Dump::Command::dictyplasmid;
 
+use strict;
+
+use File::Spec::Functions qw/catfile/;
 use Modware::Legacy::Schema;
 use Moose;
 use namespace::autoclean;
@@ -12,9 +13,10 @@ with 'Modware::Role::Command::WithLogger';
 with 'Modware::Role::Stock::Export::Plasmid';
 
 has data => (
-    is      => 'rw',
-    isa     => 'Str',
-    default => 'all',
+    is  => 'rw',
+    isa => 'ArrayRef',
+    default =>
+        sub { [qw/plasmid inventory genbank publications genes props/] },
     documentation =>
         'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes, props)'
 );
@@ -33,12 +35,6 @@ has 'sequence' => (
     default => 0,
     documentation =>
         'Option to fetch sequence in Genbank format and write to file'
-);
-
-has 'email' => (
-    is            => 'rw',
-    isa           => 'Str',
-    documentation => 'Email for EUtilities to retrieve GenBank sequences'
 );
 
 sub execute {
@@ -79,27 +75,34 @@ sub execute {
                 = $self->resolve_references( $plasmid->pubmedid,
                 $plasmid->internal_db_id, $plasmid->other_references );
 
-            my @pmids     = @$pmids_ref;
-            my @non_pmids = @$non_pmids_ref;
+            my @pmids     = @{$pmids_ref};
+            my @non_pmids = @{$non_pmids_ref};
 
             if (@pmids) {
-                foreach my $pmid (@pmids) {
+                my $outstr = '';
+                for my $pmid (@pmids) {
                     if ($pmid) {
-                        $io->{publications}->write(
-                            $dbp_id . "\t" . $self->trim($pmid) . "\n" );
+                        $outstr
+                            = $outstr
+                            . $dbp_id . "\t"
+                            . $self->trim($pmid) . "\n";
                         $stats->{publications} = $stats->{publications} + 1;
                     }
-
                 }
+                $io->{publications}->write($outstr);
             }
             if (@non_pmids) {
-                foreach my $non_pmid (@non_pmids) {
+                my $outstr = '';
+                for my $non_pmid (@non_pmids) {
                     if ($non_pmid) {
-                        $io->{other_refs}->write(
-                            $dbp_id . "\t" . $self->trim($non_pmid) . "\n" );
+                        $outstr
+                            = $outstr
+                            . $dbp_id . "\t"
+                            . $self->trim($non_pmid) . "\n";
                         $stats->{other_refs} = $stats->{other_refs} + 1;
                     }
                 }
+                $io->{other_refs}->write($outstr);
             }
         }
 
@@ -108,38 +111,48 @@ sub execute {
                 = $self->find_plasmid_inventory( $plasmid->id );
             if ($plasmid_invent_rs) {
                 while ( my $plasmid_invent = $plasmid_invent_rs->next ) {
-                    my $row;
-                    $row->{1} = $dbp_id;
+                    my @row;
+                    push @row, $dbp_id;
 
                     if ( $plasmid_invent->location ) {
-                        $row->{2} = $plasmid_invent->location;
+                        push @row, $plasmid_invent->location;
                     }
-                    else { $row->{2} = ''; }
-
-                    my $C = $self->trim( ucfirst( $plasmid_invent->color ) );
-                    if ( length($C) > 1 ) {
-                        $row->{3} = $C;
+                    else {
+                        push @row, '';
                     }
-                    else { $row->{3} = '' }
 
-                    my $SA = $plasmid_invent->stored_as;
-                    if ( $SA and length($SA) > 1 ) {
-                        $SA =~ s/\?//g;
-                        $SA = $self->trim($SA);
-                        if ( length($SA) > 1 ) {
-                            $row->{4} = $SA;
+                    my $color
+                        = $self->trim( ucfirst( $plasmid_invent->color ) );
+                    if ( length($color) > 1 ) {
+                        push @row, $color;
+                    }
+                    else {
+                        push @row, '';
+                    }
+
+                    my $stored_as = $plasmid_invent->stored_as;
+                    if ($stored_as) {
+                        $stored_as =~ s/\?//g;
+                        $stored_as = $self->trim($stored_as);
+                        if ( length($stored_as) > 1 ) {
+                            push @row, $stored_as;
                         }
-                        else { $row->{4} = '' }
+                        else {
+                            push @row, '';
+                        }
                     }
-                    else { $row->{4} = '' }
+                    else {
+                        push @row, '';
+                    }
 
                     if ( $plasmid_invent->storage_date ) {
-                        $row->{5} = $plasmid_invent->storage_date;
+                        push @row, $plasmid_invent->storage_date;
                     }
-                    else { $row->{5} = ''; }
+                    else {
+                        push @row, '';
+                    }
 
-                    my $s = join "\t" => map $row->{$_} => sort { $a <=> $b }
-                        keys %$row;
+                    my $s = join( "\t", @row );
                     $io->{inventory}->write( $s . "\n" );
                     $stats->{inventory} = $stats->{inventory} + 1;
                 }
@@ -156,7 +169,7 @@ sub execute {
                 $stats->{genbank} = $stats->{genbank} + 1;
             }
             else {
-                push( @plasmid_no_genbank, $plasmid->id );
+                push @plasmid_no_genbank, $plasmid->id;
             }
         }
 
@@ -173,11 +186,13 @@ sub execute {
         }
 
         if ( exists $io->{props} ) {
+            my $outstr = '';
             if ( $plasmid->depositor ) {
-                $io->{props}->write( $dbp_id . "\t"
-                        . 'depositor' . "\t"
-                        . $self->trim( $plasmid->depositor )
-                        . "\n" );
+                $outstr
+                    = $outstr
+                    . $dbp_id . "\t"
+                    . 'depositor' . "\t"
+                    . $self->trim( $plasmid->depositor ) . "\n";
                 $stats->{props} = $stats->{props} + 1;
             }
             if ( $plasmid->synonymn ) {
@@ -188,11 +203,12 @@ sub execute {
                 else {
                     $syns[0] = $self->trim( $plasmid->synonymn );
                 }
-                foreach my $syn (@syns) {
-                    $io->{props}->write( $dbp_id . "\t"
-                            . 'synonym' . "\t"
-                            . $self->trim($syn)
-                            . "\n" );
+                for my $syn (@syns) {
+                    $outstr
+                        = $outstr
+                        . $dbp_id . "\t"
+                        . 'synonym' . "\t"
+                        . $self->trim($syn) . "\n";
                     $stats->{props} = $stats->{props} + 1;
                 }
             }
@@ -204,14 +220,16 @@ sub execute {
                 else {
                     $keywords[0] = $plasmid->keywords;
                 }
-                foreach my $keyword (@keywords) {
-                    $io->{props}->write( $dbp_id . "\t"
-                            . 'keyword' . "\t"
-                            . $self->trim($keyword)
-                            . "\n" );
+                for my $keyword (@keywords) {
+                    $outstr
+                        = $outstr
+                        . $dbp_id . "\t"
+                        . 'keyword' . "\t"
+                        . $self->trim($keyword) . "\n";
                     $stats->{props} = $stats->{props} + 1;
                 }
             }
+            $io->{props}->write($outstr);
         }
 
     }
@@ -220,10 +238,11 @@ sub execute {
         $self->export_seq($gb_dbp_hash);
     }
 
-    foreach my $key ( keys $stats ) {
+    for my $key ( keys $stats ) {
         $self->logger->info(
             "Exported " . $stats->{$key} . " entries for " . $key );
     }
+    return;
 }
 
 sub trim {
@@ -238,39 +257,25 @@ sub _create_files {
 
     my $io;
     my $stats;
-    my @data;
-    if ( $self->data ne 'all' ) {
-        @data = split( /,/, $self->data );
-    }
-    else {
-        @data = (
-            "plasmid", "inventory", "genbank", "publications",
-            "genes",   "props"
-        );
-    }
 
-    $self->logger->info(
-        "Data for {@data} will be exported to " . $self->output_dir );
+    $self->logger->info( "Data for [@{$self->data}] will be exported to "
+            . $self->output_dir );
 
-    foreach my $f (@data) {
+    for my $data_type ( @{ $self->data } ) {
+        my $outfile = "plasmid_" . $data_type . ".txt";
         my $file_obj
-            = IO::File->new( $self->output_dir . "/plasmid_" . $f . ".txt",
-            'w' );
-        $io->{$f}    = $file_obj;
-        $stats->{$f} = 0;
-        if ( $f eq 'publications' ) {
-            my $f_ = "other_refs";
+            = IO::File->new( catfile( $self->output_dir, $outfile ), 'w' );
+        $io->{$data_type}    = $file_obj;
+        $stats->{$data_type} = 0;
+        if ( $data_type eq 'publications' ) {
+            my $data_type_ = "other_refs";
+            my $outfile_   = "plasmid_publications_no_pubmed.txt";
             my $file_obj_
-                = IO::File->new(
-                $self->output_dir . "/plasmid_publications_no_pubmed.txt",
+                = IO::File->new( catfile( $self->output_dir, $outfile_ ),
                 'w' );
-            $io->{$f_}    = $file_obj_;
-            $stats->{$f_} = 0;
+            $io->{$data_type_}    = $file_obj_;
+            $stats->{$data_type_} = 0;
         }
-
-        #if ( $f eq 'genbank' and $self->sequence ) {
-        #    $self->email( );
-        #}
     }
     return ( $io, $stats );
 }
@@ -291,7 +296,7 @@ version 0.0.1
 
 	perl modware-dump dictyplasmid -c config.yaml --sequence
 
-	perl modware-dump dictyplasmid -c config.yaml --data inventory,genbank,genes 
+	perl modware-dump dictyplasmid -c config.yaml --data inventory --data genbank --data genes 
 
 =head1 REQUIRED ARGUMENTS
 
@@ -300,5 +305,6 @@ version 0.0.1
 =head1 DESCRIPTION
 
 
-
+=head1 AUTHOR
+=head1 LICENSE AND COPYRIGHT 
 =cut

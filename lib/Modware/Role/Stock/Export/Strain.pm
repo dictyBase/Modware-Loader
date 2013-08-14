@@ -1,7 +1,7 @@
 
-use strict;
-
 package Modware::Role::Stock::Export::Strain;
+
+use strict;
 
 use FindBin qw($Bin);
 use IO::File;
@@ -39,7 +39,7 @@ has '_strain_invent_row' => (
     }
 );
 
-=item find_strain_inventory (Str $dbs_id)
+=head2 find_strain_inventory (Str $dbs_id)
 
 =cut
 
@@ -82,7 +82,7 @@ sub _load_list_characteristics {
     my $dir = Path::Class::Dir->new($Bin);
     my $fh
         = IO::File->new(
-        $dir->parent->subdir('share')->file('strain_characteristics.txt'),
+        $dir->parent->subdir('data')->file('strain_characteristics.txt'),
         'r' );
     my $char_hashref;
     while ( my $io = $fh->getline ) {
@@ -105,7 +105,7 @@ sub _load_list_genotype {
     my $dir = Path::Class::Dir->new($Bin);
     my $fh
         = IO::File->new(
-        $dir->parent->subdir('share')->file('strain_genotype.txt'), 'r' );
+        $dir->parent->subdir('data')->file('strain_genotype.txt'), 'r' );
     my $char_hashref;
     while ( my $io = $fh->getline ) {
         $char_hashref->{ $self->trim($io) } = 1;
@@ -181,23 +181,23 @@ sub get_synonyms {
     return @synonyms;
 }
 
-sub find_phenotypes_2 {
-    my ( $self, $dbs_id ) = @_;
-    my @phenotypes;
-    my $genotype_rs = $self->schema->resultset('Genetic::Genotype')->search(
-        { 'me.uniquename' => $dbs_id },
-        {   join =>
-                [ { 'phenstatements' => { 'phenotype' => 'observable' } } ],
-            select => [qw/observable.name/],
-            as     => [qw/phenotype_name/]
-        }
-    );
-    while ( my $genotype = $genotype_rs->next ) {
-        my $phenotype = $genotype->get_column('phenotype_name');
-        push( @phenotypes, $phenotype ) if $phenotype;
-    }
-    return @phenotypes;
-}
+# sub find_phenotypes_2 {
+#     my ( $self, $dbs_id ) = @_;
+#     my @phenotypes;
+#     my $genotype_rs = $self->schema->resultset('Genetic::Genotype')->search(
+#         { 'me.uniquename' => $dbs_id },
+#         {   join =>
+#                 [ { 'phenstatements' => { 'phenotype' => 'observable' } } ],
+#             select => [qw/observable.name/],
+#             as     => [qw/phenotype_name/]
+#         }
+#     );
+#     while ( my $genotype = $genotype_rs->next ) {
+#         my $phenotype = $genotype->get_column('phenotype_name');
+#         push @phenotypes, $phenotype if $phenotype;
+#     }
+#     return @phenotypes;
+# }
 
 =head2 find_phenotypes
 	my @phenotypes = $command->find_phenotypes('dbs_id');
@@ -243,5 +243,8 @@ __END__
 Modware::Role::Stock::Strain - 
 
 =head1 DESCRIPTION
-
+=head1 VERSION
+=head1 SYNOPSIS
+=head1 AUTHOR
+=head1 LICENSE AND COPYRIGHT
 =cut

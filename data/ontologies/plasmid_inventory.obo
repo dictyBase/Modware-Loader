@@ -1,0 +1,67 @@
+format-version: 1.2
+date: 29:03:2013 17:47
+saved-by: pfey
+auto-generated-by: OBO-Edit 2.2
+default-namespace: plasmid_inventory
+
+[Term]
+id: PLASMIDINVENT:0000001
+name: plasmid inventory
+def: "An ontology to hold stock center plasmid inventory information." [DDB:pf]
+created_by: pfey
+creation_date: 2013-03-29T17:04:31Z
+
+[Term]
+id: PLASMIDINVENT:0000002
+name: location
+def: "Physical location of the plasmid in the stock center." [DDB:pf]
+is_a: PLASMIDINVENT:0000001 ! plasmid inventory
+created_by: pfey
+creation_date: 2013-03-29T17:06:33Z
+
+[Term]
+id: PLASMIDINVENT:0000003
+name: color
+def: "Color of stored vial." [DDB:pf]
+is_a: PLASMIDINVENT:0000001 ! plasmid inventory
+created_by: pfey
+creation_date: 2013-03-29T17:08:49Z
+
+[Term]
+id: PLASMIDINVENT:0000004
+name: storage date
+def: "Storage date for plasmid." [DDB:pf]
+is_a: PLASMIDINVENT:0000001 ! plasmid inventory
+created_by: pfey
+creation_date: 2013-03-29T17:09:59Z
+
+[Term]
+id: PLASMIDINVENT:0000005
+name: private comment
+def: "Private comment about the plasmid." [DDB:pf]
+is_a: PLASMIDINVENT:0000001 ! plasmid inventory
+created_by: pfey
+creation_date: 2013-03-29T17:11:08Z
+
+[Term]
+id: PLASMIDINVENT:0000006
+name: public comment
+is_a: PLASMIDINVENT:0000001 ! plasmid inventory
+created_by: pfey
+creation_date: 2013-03-29T17:13:11Z
+
+[Term]
+id: PLASMIDINVENT:0000007
+name: obtained as
+def: "Conditions that the plasmid is obtained in at the stock center." [DDB:pf]
+is_a: PLASMIDINVENT:0000001 ! plasmid inventory
+created_by: pfey
+creation_date: 2013-03-29T17:40:45Z
+
+[Term]
+id: PLASMIDINVENT:0000008
+name: stored as
+def: "Conditions the obtained plasmid is stored in the stock center." [DDB:pf]
+is_a: PLASMIDINVENT:0000001 ! plasmid inventory
+created_by: pfey
+creation_date: 2013-03-29T17:41:48Z
