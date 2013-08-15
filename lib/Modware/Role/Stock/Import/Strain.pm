@@ -45,6 +45,30 @@ has '_inventory' => (
     }
 );
 
+has '_genotype' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_genotype => 'set',
+        get_genotype => 'get',
+        has_genotype => 'defined'
+    }
+);
+
+has '_props' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_props => 'set',
+        get_props => 'get',
+        has_props => 'defined'
+    }
+);
+
 before 'execute' => sub {
     my ($self) = @_;
 
@@ -63,17 +87,20 @@ before 'execute' => sub {
                 if !$self->$has_method( $array[0] );
             if ( $data eq 'inventory' ) {
                 my $inventory;
-                $inventory->{location}     = $array[1];
-                $inventory->{color}        = $array[2];
-                $inventory->{number_of_vials}  = $array[3];
-                $inventory->{obtained_as}  = $array[4];
-                $inventory->{stored_as}    = $array[5];
-                $inventory->{storage_date} = $array[6];
+                $inventory->{location}        = $array[1];
+                $inventory->{color}           = $array[2];
+                $inventory->{number_of_vials} = $array[3];
+                $inventory->{obtained_as}     = $array[4];
+                $inventory->{stored_as}       = $array[5];
+                $inventory->{storage_date}    = $array[6];
                 push $self->$get_method( $array[0] ), $inventory;
                 next;
             }
-			if ($data eq 'props') {
-			}
+            if ( $data eq 'genotype' or $data eq 'props' ) {
+                push $self->$get_method( $array[0] ),
+                    { $array[1] => $array[2] };
+                next;
+            }
             push $self->$get_method( $array[0] ), $array[1];
         }
     }

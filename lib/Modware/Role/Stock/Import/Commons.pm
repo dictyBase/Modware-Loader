@@ -12,8 +12,14 @@ has 'cv' => ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
 before 'execute' => sub {
     my ($self) = @_;
 
+    my @cvterms = (
+        "strain",          "plasmid",
+        "characteristics", "genotype",
+        "synonym",         "mutagenesis method",
+        "mutant type"
+    );
     my $dictystock_rs = $self->schema->resultset('Cv::Cvterm')->search(
-        {   'me.name' => { -in => [qw/strain plasmid characteristics/] },
+        {   'me.name' => { -in => [@cvterms] },
             'cv.name' => $self->cv
         },
         { join => 'cv' }
@@ -24,7 +30,7 @@ before 'execute' => sub {
         my $cv_stock_rs
             = $self->schema->resultset('Cv::Cv')
             ->find_or_create( { name => $self->cv } );
-        foreach my $stock (qw/strain plasmid characteristics/) {
+        foreach my $stock (@cvterms) {
             $cv_stock_rs->create_related(
                 'cvterms',
                 {   name      => $stock,
