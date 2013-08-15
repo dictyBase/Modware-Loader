@@ -1,7 +1,7 @@
 
-use strict;
-
 package Modware::Dump::Command::dictyplasmid;
+
+use strict;
 
 use File::Spec::Functions qw/catfile/;
 use Modware::Legacy::Schema;
@@ -67,8 +67,8 @@ sub execute {
                 = $self->resolve_references( $plasmid->pubmedid,
                 $plasmid->internal_db_id, $plasmid->other_references );
 
-            my @pmids     = @$pmids_ref;
-            my @non_pmids = @$non_pmids_ref;
+            my @pmids     = @{$pmids_ref};
+            my @non_pmids = @{$non_pmids_ref};
 
             if (@pmids) {
                 my $outstr = '';
@@ -104,38 +104,41 @@ sub execute {
             if ($plasmid_invent_rs) {
                 while ( my $plasmid_invent = $plasmid_invent_rs->next ) {
                     my $row;
-                    $row->{1} = $dbp_id;
+                    $row->{0} = $dbp_id;
 
                     if ( $plasmid_invent->location ) {
-                        $row->{2} = $plasmid_invent->location;
+                        $row->{1} = $plasmid_invent->location;
                     }
-                    else { $row->{2} = ''; }
+                    else { $row->{1} = ''; }
 
                     my $color
                         = $self->trim( ucfirst( $plasmid_invent->color ) );
                     if ( length($color) > 1 ) {
-                        $row->{3} = $color;
+                        $row->{2} = $color;
                     }
-                    else { $row->{3} = '' }
+                    else { $row->{2} = '' }
 
                     my $stored_as = $plasmid_invent->stored_as;
                     if ($stored_as) {
                         $stored_as =~ s/\?//g;
                         $stored_as = $self->trim($stored_as);
                         if ( length($stored_as) > 1 ) {
-                            $row->{4} = $stored_as;
+                            $row->{3} = $stored_as;
                         }
-                        else { $row->{4} = '' }
+                        else { $row->{3} = '' }
                     }
-                    else { $row->{4} = '' }
+                    else { $row->{3} = '' }
 
                     if ( $plasmid_invent->storage_date ) {
-                        $row->{5} = $plasmid_invent->storage_date;
+                        $row->{4} = $plasmid_invent->storage_date;
                     }
-                    else { $row->{5} = ''; }
+                    else { $row->{4} = ''; }
 
-                    my $s = join "\t" => map $row->{$_} => sort { $a <=> $b }
-                        keys %$row;
+                    my $s = join(
+                        "\t",
+                        map ( $row->{$_} => sort { $a <=> $b }
+                                keys %{$row} )
+                    );
                     $io->{inventory}->write( $s . "\n" );
                     $stats->{inventory} = $stats->{inventory} + 1;
                 }
@@ -225,6 +228,7 @@ sub execute {
         $self->logger->info(
             "Exported " . $stats->{$key} . " entries for " . $key );
     }
+    return;
 }
 
 sub trim {
@@ -287,5 +291,6 @@ version 0.0.1
 =head1 DESCRIPTION
 
 
-
+=head1 AUTHOR
+=head1 LICENSE AND COPYRIGHT 
 =cut
