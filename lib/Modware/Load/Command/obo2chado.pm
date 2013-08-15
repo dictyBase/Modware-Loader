@@ -5,6 +5,7 @@ use Moose;
 use Modware::Loader::Ontology;
 use OBO::Parser::OBOParser;
 use feature qw/say/;
+use SQL::Library;
 extends qw/Modware::Load::Chado/;
 
 has '+input' => ( documentation => 'Name of the obo file', required => 1 );
@@ -25,12 +26,20 @@ has 'pg_schema' => (
         'Name of postgresql schema where the ontology will be loaded, default is public, obviously ignored for other backend'
 );
 
+has 'sqllib' => (
+    is        => 'rw',
+    isa       => 'Str',
+    predicate => 'has_sqllib',
+    documentation =>
+        'Path to sql library in INI format, by default picked up from the shared lib folder. Mostly a developer option.'
+);
+
 sub execute {
     my ($self) = @_;
     my $logger = $self->logger;
-    my $loader = Modware::Loader::Ontology->new(
-        app_instance => $self
-    );
+    my $loader = Modware::Loader::Ontology->new( app_instance => $self );
+    $loader->sqllib( SQL::Library->new( { lib => $self->sqllib } ) )
+        if $self->has_sqllib;
 
     $logger->info( "start parsing file ", $self->input );
     my $ontology = OBO::Parser::OBOParser->new->work( $self->input );

@@ -28,7 +28,8 @@ sub delete_non_existing_terms {
 
 sub create_dbxrefs {
     my ( $self, $storage, $dbh ) = @_;
-    $dbh->do($self->sqllib->retr('insert_temp_accession'));
+    $dbh->do( $self->sqllib->retr('insert_new_accession') );
+    $dbh->do( $self->sqllib->retr('insert_existing_accession') );
     my $rows = $dbh->do( $self->sqllib->retr('insert_dbxref') );
     return $rows;
 }
@@ -104,24 +105,24 @@ sub create_comments {
 # The logic here to get a list of new cvterms and their comments.
 # A temp table(temp_accession) with all the new cvterms were created which is turn joined
 # with cvterm table to get their cvterm_id
-    my $row = $dbh->do(
-        $self->sqllib->retr('insert_comment')
-    );
+    my $row = $dbh->do( $self->sqllib->retr('insert_comment') );
     $self->logger->debug("created $row comment");
     return $row;
 }
 
 sub update_comments {
     my ( $self, $storage, $dbh ) = @_;
-
-    #First create a temp table with synonym that needs update
+    #DELETE existing comment
+    $dbh->do($self->sqllib->retr('delete_existing_comment'));
+    #INSERT all comments from temp table
+    my $rows = $dbh->do($self->sqllib->retr('upsert_comment'));
+    $self->logger->debug("updated $rows comment");
+    return $rows;
 }
 
 sub create_relations {
     my ( $self, $storage, $dbh ) = @_;
-    my $rows = $dbh->do(
-        $self->sqllib->retr('insert_relationship')
-    );
+    my $rows = $dbh->do( $self->sqllib->retr('insert_relationship') );
     return $rows;
 }
 
@@ -129,9 +130,7 @@ sub create_synonyms {
     my ( $self, $storage, $dbh ) = @_;
 
     # Identical to comment creation logic
-    my $row = $dbh->do(
-        $self->sqllib->retr('insert_synonym')
-    );
+    my $row = $dbh->do( $self->sqllib->retr('insert_synonym') );
     $self->logger->debug("created $row synonyms");
     return $row;
 }
@@ -140,9 +139,7 @@ sub update_synonyms {
     my ( $self, $storage, $dbh ) = @_;
 
     #First create a temp table with synonym that needs update
-    $dbh->do(
-        $self->sqllib->retr('select_updated_synonym')
-    );
+    $dbh->do( $self->sqllib->retr('select_updated_synonym') );
 
     #Now delete all synonyms
     $dbh->do(

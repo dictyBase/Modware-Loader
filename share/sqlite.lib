@@ -44,8 +44,7 @@
 [create_table_temp_cvterm_exist]
            CREATE TEMP TABLE temp_accession_exist (
                accession varchar(256) NOT NULL,
-               cvterm_id integer NOT NULL,
-               db_id integer NOT NULL
+               cvterm_id integer NOT NULL
                )
 
 [create_table_temp_synonym]
@@ -200,7 +199,7 @@
       SELECT cvrel.object_id, cvrel.subject_id, cvrel.type_id
       FROM cvterm_relationship cvrel
 
-[insert_temp_accession]
+[insert_new_accession]
 INSERT INTO temp_accession(accession)
            SELECT tmcv.accession FROM temp_cvterm tmcv
 			LEFT JOIN dbxref ON (
@@ -212,3 +211,26 @@ INSERT INTO temp_accession(accession)
 			AND 
 			dbxref.db_id IS NULL
 
+[insert_existing_accession]
+           INSERT INTO temp_accession_exist(accession,cvterm_id)
+               SELECT dbxref.accession,cvterm.cvterm_id
+                   FROM cvterm
+                   INNER JOIN 
+                   dbxref ON cvterm.dbxref_id = dbxref.dbxref_id
+                   INNER JOIN 
+                   temp_cvterm tmcv ON dbxref.accession = tmcv.accession
+                   AND
+                   dbxref.db_id = tmcv.db_id
+
+[delete_existing_comment]
+           DELETE FROM cvtermprop WHERE cvterm_id IN (
+               SELECT cvterm_id from temp_accession_exist
+           )
+
+
+[upsert_comment]
+    INSERT INTO cvtermprop(cvterm_id, type_id, value)
+		SELECT tmacc.cvterm_id, tcomm.comment_type_id, tcomm.comment
+		FROM temp_cvterm_comment tcomm
+		INNER JOIN temp_accession_exist tmacc ON
+			tmacc.accession = tcomm.accession

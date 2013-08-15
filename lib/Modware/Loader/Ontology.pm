@@ -11,8 +11,6 @@ use File::Spec::Functions qw/catfile/;
 use Modware::Loader;
 use Modware::Loader::Schema::Temporary;
 
-has 'storage_type' => ( is => 'rw', isa => 'Str' );
-
 has 'sqllib' => (
     is      => 'rw',
     isa     => 'SQL::Library',
@@ -22,7 +20,7 @@ has 'sqllib' => (
         my $lib = SQL::Library->new(
             {   lib => catfile(
                     module_dir('Modware::Loader'),
-                    $self->storage_type . '.lib'
+                    lc ($self->schema->storage->sqlt_type) . '.lib'
                 )
             }
         );
@@ -56,7 +54,6 @@ has 'schema' => (
     trigger => sub {
         my ( $self, $schema ) = @_;
         $self->_load_engine($schema);
-        $self->storage_type(lc $schema->storage->sqlt_type);
     }
 );
 
@@ -101,7 +98,7 @@ has 'update_ontology_hooks' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return ['update_synonyms'];
+        return ['update_synonyms', 'update_comments'];
     }
 );
 
@@ -147,7 +144,6 @@ sub is_cvprop_present {
 
 sub _load_engine {
     my ( $self, $schema ) = @_;
-    $self->storage_type( lc $schema->storage->sqlt_type );
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Role::Ontology::Chado::With'
         . ucfirst lc( $schema->storage->sqlt_type );
