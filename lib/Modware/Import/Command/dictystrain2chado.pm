@@ -50,6 +50,7 @@ sub execute {
 
     my $io = IO::File->new( $self->input, 'r' );
     my $hash;
+
     while ( my $line = $io->getline ) {
         my @cols = split( /\t/, $line );
         $hash->{uniquename}  = $cols[0] if $cols[0] =~ /^DBS[0-9]{7}/;
@@ -85,6 +86,11 @@ sub execute {
                     "Strain characteristics cannot be loaded. Required reference missing"
                 );
             }
+        }
+        else {
+            $self->logger->warn(
+                "Strain characteristics cannot be loaded. Required reference missing"
+            );
         }
 
         if ( $self->has_publications( $hash->{uniquename} ) ) {
