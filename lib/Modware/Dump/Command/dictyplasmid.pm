@@ -72,7 +72,7 @@ sub execute {
 
             if (@pmids) {
                 my $outstr = '';
-                foreach my $pmid (@pmids) {
+                for my $pmid (@pmids) {
                     if ($pmid) {
                         $outstr
                             = $outstr
@@ -85,7 +85,7 @@ sub execute {
             }
             if (@non_pmids) {
                 my $outstr = '';
-                foreach my $non_pmid (@non_pmids) {
+                for my $non_pmid (@non_pmids) {
                     if ($non_pmid) {
                         $outstr
                             = $outstr
@@ -103,42 +103,48 @@ sub execute {
                 = $self->find_plasmid_inventory( $plasmid->id );
             if ($plasmid_invent_rs) {
                 while ( my $plasmid_invent = $plasmid_invent_rs->next ) {
-                    my $row;
-                    $row->{0} = $dbp_id;
+                    my @row;
+                    push @row, $dbp_id;
 
                     if ( $plasmid_invent->location ) {
-                        $row->{1} = $plasmid_invent->location;
+                        push @row, $plasmid_invent->location;
                     }
-                    else { $row->{1} = ''; }
+                    else {
+                        push @row, '';
+                    }
 
                     my $color
                         = $self->trim( ucfirst( $plasmid_invent->color ) );
                     if ( length($color) > 1 ) {
-                        $row->{2} = $color;
+                        push @row, $color;
                     }
-                    else { $row->{2} = '' }
+                    else {
+                        push @row, '';
+                    }
 
                     my $stored_as = $plasmid_invent->stored_as;
                     if ($stored_as) {
                         $stored_as =~ s/\?//g;
                         $stored_as = $self->trim($stored_as);
                         if ( length($stored_as) > 1 ) {
-                            $row->{3} = $stored_as;
+                            push @row, $stored_as;
                         }
-                        else { $row->{3} = '' }
+                        else {
+                            push @row, '';
+                        }
                     }
-                    else { $row->{3} = '' }
+                    else {
+                        push @row, '';
+                    }
 
                     if ( $plasmid_invent->storage_date ) {
-                        $row->{4} = $plasmid_invent->storage_date;
+                        push @row, $plasmid_invent->storage_date;
                     }
-                    else { $row->{4} = ''; }
+                    else {
+                        push @row, '';
+                    }
 
-                    my $s = join(
-                        "\t",
-                        map ( $row->{$_} => sort { $a <=> $b }
-                                keys %{$row} )
-                    );
+                    my $s = join( "\t", @row );
                     $io->{inventory}->write( $s . "\n" );
                     $stats->{inventory} = $stats->{inventory} + 1;
                 }
@@ -189,7 +195,7 @@ sub execute {
                 else {
                     $syns[0] = $self->trim( $plasmid->synonymn );
                 }
-                foreach my $syn (@syns) {
+                for my $syn (@syns) {
                     $outstr
                         = $outstr
                         . $dbp_id . "\t"
@@ -206,7 +212,7 @@ sub execute {
                 else {
                     $keywords[0] = $plasmid->keywords;
                 }
-                foreach my $keyword (@keywords) {
+                for my $keyword (@keywords) {
                     $outstr
                         = $outstr
                         . $dbp_id . "\t"
@@ -224,7 +230,7 @@ sub execute {
         $self->export_seq($gb_dbp_hash);
     }
 
-    foreach my $key ( keys $stats ) {
+    for my $key ( keys $stats ) {
         $self->logger->info(
             "Exported " . $stats->{$key} . " entries for " . $key );
     }
@@ -247,20 +253,20 @@ sub _create_files {
     $self->logger->info( "Data for [@{$self->data}] will be exported to "
             . $self->output_dir );
 
-    foreach my $f ( @{ $self->data } ) {
-        my $outfile = "plasmid_" . $f . ".txt";
+    for my $data_type ( @{ $self->data } ) {
+        my $outfile = "plasmid_" . $data_type . ".txt";
         my $file_obj
             = IO::File->new( catfile( $self->output_dir, $outfile ), 'w' );
-        $io->{$f}    = $file_obj;
-        $stats->{$f} = 0;
-        if ( $f eq 'publications' ) {
-            my $f_       = "other_refs";
-            my $outfile_ = "plasmid_publications_no_pubmed.txt";
+        $io->{$data_type}    = $file_obj;
+        $stats->{$data_type} = 0;
+        if ( $data_type eq 'publications' ) {
+            my $data_type_ = "other_refs";
+            my $outfile_   = "plasmid_publications_no_pubmed.txt";
             my $file_obj_
                 = IO::File->new( catfile( $self->output_dir, $outfile_ ),
                 'w' );
-            $io->{$f_}    = $file_obj_;
-            $stats->{$f_} = 0;
+            $io->{$data_type_}    = $file_obj_;
+            $stats->{$data_type_} = 0;
         }
     }
     return ( $io, $stats );
