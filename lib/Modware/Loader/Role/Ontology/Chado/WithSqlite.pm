@@ -28,8 +28,12 @@ sub delete_non_existing_terms {
 
 sub create_dbxrefs {
     my ( $self, $storage, $dbh ) = @_;
-    $dbh->do( $self->sqllib->retr('insert_new_accession') );
-    $dbh->do( $self->sqllib->retr('insert_existing_accession') );
+    $self->logger->debug(
+        "inserted ",
+        $dbh->do( $self->sqllib->retr('insert_new_accession') ),
+        " new accession in temp table"
+    );
+
     my $rows = $dbh->do( $self->sqllib->retr('insert_dbxref') );
     return $rows;
 }
@@ -83,10 +87,15 @@ sub update_cvterm_names {
 sub update_cvterms {
     my ( $self, $storage, $dbh ) = @_;
 
+    $self->logger->debug(
+        "inserted ",
+        $dbh->do( $self->sqllib->retr('insert_existing_accession') ),
+        " existing accession in temp table"
+    );
 # This will update definition and status of all cvterms, as usual it is more work in case
 # of SQLite existing cvterms
     my $data
-        = $dbh->selectall_arrayref( $self->sqllib->retr('select_all_cvterm'),
+        = $dbh->selectall_arrayref( $self->sqllib->retr('select_existing_cvterm'),
         { Slice => {} } );
     for my $trow (@$data) {
         $self->schema->resultset('Cv::Cvterm')->find( $trow->{cvterm_id} )
@@ -112,10 +121,16 @@ sub create_comments {
 
 sub update_comments {
     my ( $self, $storage, $dbh ) = @_;
+
     #DELETE existing comment
-    $dbh->do($self->sqllib->retr('delete_existing_comment'));
+    $self->logger->debug(
+        "deleted ",
+        $dbh->do( $self->sqllib->retr('delete_existing_comment') ),
+        " existing comment"
+    );
+
     #INSERT all comments from temp table
-    my $rows = $dbh->do($self->sqllib->retr('upsert_comment'));
+    my $rows = $dbh->do( $self->sqllib->retr('upsert_comment') );
     $self->logger->debug("updated $rows comment");
     return $rows;
 }

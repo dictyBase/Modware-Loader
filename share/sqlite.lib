@@ -108,15 +108,12 @@
     	) AS fresh
     	WHERE fresh.fname != fresh.oname
 
-[select_all_cvterm]
-		SELECT cvterm.cvterm_id, cvterm.name, tmcv.definition, tmcv.is_obsolete 
-    		 FROM cvterm
-    		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
-    		 INNER JOIN temp_cvterm tmcv ON (
-    		 	dbxref.accession = tmcv.accession
-    		 	AND 
-    		 	dbxref.db_id = tmcv.db_id
-    		 )
+[select_existing_cvterm]
+		SELECT tmacc.cvterm_id, tmcv.definition, tmcv.is_obsolete 
+    		 FROM temp_accession_exist tmacc
+    		 INNER JOIN temp_cvterm tmcv ON 
+    		 	tmacc.accession = tmcv.accession
+    		 
 
 [insert_dbxref]
 			INSERT INTO dbxref(accession, db_id)
