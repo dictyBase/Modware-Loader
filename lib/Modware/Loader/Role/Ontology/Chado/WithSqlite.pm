@@ -154,7 +154,7 @@ sub update_synonyms {
     my ( $self, $storage, $dbh ) = @_;
 
     #First create a temp table with synonym that needs update
-    $dbh->do( $self->sqllib->retr('select_updated_synonym') );
+    $dbh->do( $self->sqllib->retr('insert_updated_synonym_in_temp') );
 
     #Now delete all synonyms
     $dbh->do(

@@ -54,33 +54,6 @@
                syn_scope_id integer NOT NULL 
             )
 
-[select_updated_synonym]
-	       SELECT cvterm.cvterm_id,syn2.syn,syn2.syn_scope_id 
-    		FROM (
-    		 SELECT count(cvsyn.synonym) syncount, dbxref.accession 
-    		 FROM cvterm
-    		 INNER JOIN cvtermsynonym cvsyn ON cvsyn.cvterm_id = cvterm.cvterm_id
-    		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
-    		 WHERE cvterm.is_obsolete = 0
-    		 GROUP BY dbxref.accession
-            ) esyn 
-			INNER JOIN (
-             SELECT count(tsyn.syn) syncount, tsyn.accession
-             FROM temp_cvterm_synonym tsyn
-    		 GROUP BY tsyn.accession 
-    		) nsyn ON
-    		  esyn.accession = nsyn.accession
-    		  INNER JOIN temp_cvterm_synonym syn2 ON 
-    		    syn2.accession = nsyn.accession
-    		  INNER JOIN dbxref ON (
-    		  	dbxref.accession = syn2.accession
-    		  	AND
-    		  	dbxref.db_id = syn2.db_id
-    		  )
-    		  INNER JOIN cvterm ON
-    		    cvterm.dbxref_id = dbxref.dbxref_id
-    		WHERE   	
-    		esyn.syncount < nsyn.syncount
 
 [select_non_existing_cvterm]
 			SELECT cvterm.cvterm_id, dbxref.dbxref_id FROM cvterm
@@ -152,6 +125,35 @@
 		)
 		INNER JOIN cvterm ON
 		    dbxref.dbxref_id = cvterm.dbxref_id
+
+[insert_updated_synonym_in_temp]
+        INSERT INTO temp_synonym_update(cvterm_id,syn,syn_scope_id)
+	       SELECT cvterm.cvterm_id,syn2.syn,syn2.syn_scope_id 
+    		FROM (
+    		 SELECT count(cvsyn.synonym) syncount, dbxref.accession 
+    		 FROM cvterm
+    		 INNER JOIN cvtermsynonym cvsyn ON cvsyn.cvterm_id = cvterm.cvterm_id
+    		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
+    		 WHERE cvterm.is_obsolete = 0
+    		 GROUP BY dbxref.accession
+            ) esyn 
+			INNER JOIN (
+             SELECT count(tsyn.syn) syncount, tsyn.accession
+             FROM temp_cvterm_synonym tsyn
+    		 GROUP BY tsyn.accession 
+    		) nsyn ON
+    		  esyn.accession = nsyn.accession
+    		  INNER JOIN temp_cvterm_synonym syn2 ON 
+    		    syn2.accession = nsyn.accession
+    		  INNER JOIN dbxref ON (
+    		  	dbxref.accession = syn2.accession
+    		  	AND
+    		  	dbxref.db_id = syn2.db_id
+    		  )
+    		  INNER JOIN cvterm ON
+    		    cvterm.dbxref_id = dbxref.dbxref_id
+    		WHERE   	
+    		esyn.syncount < nsyn.syncount
 
 [insert_synonym]
 	INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
