@@ -13,10 +13,9 @@ before 'execute' => sub {
     my ($self) = @_;
 
     my @cvterms = (
-        "strain",          "plasmid",
-        "characteristics", "genotype",
-        "synonym",         "mutagenesis method",
-        "mutant type"
+        "strain",             "plasmid",
+        "genotype",           "synonym",
+        "mutagenesis method", "mutant type"
     );
     my $dictystock_rs = $self->schema->resultset('Cv::Cvterm')->search(
         {   'me.name' => { -in => [@cvterms] },
@@ -140,16 +139,20 @@ has '_cvterm_row' => (
 );
 
 sub find_cvterm {
-    my ( $self, $name ) = @_;
-    if ( $self->has_cvterm_row($name) ) {
-        return $self->get_cvterm_row($name)->cvterm_id;
-    }
-    my $row
-        = $self->schema->resultset('Cv::Cvterm')
-        ->search( { name => $name }, { select => [qw/cvterm_id name/] } );
+    my ( $self, $name, $cv_name ) = @_;
+
+    # if ( $self->has_cvterm_row($name) ) {
+    #     return $self->get_cvterm_row($name)->cvterm_id;
+    # }
+    my $row = $self->schema->resultset('Cv::Cvterm')->search(
+        { 'me.name' => $name, 'cv.name' => $cv_name },
+        { join      => 'cv',  select    => [qw/cvterm_id name/] }
+    );
     if ( $row->count > 0 ) {
-        $self->set_cvterm_row( $name, $row->first );
-        return $self->get_cvterm_row($name)->cvterm_id;
+
+        # $self->set_cvterm_row( $name, $row->first );
+        # return $self->get_cvterm_row($name)->cvterm_id;
+        return $row->first->cvterm_id;
     }
 }
 
