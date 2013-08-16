@@ -8,11 +8,35 @@ use utf8;
 with 'Modware::Role::WithDataStash' =>
     { create_stash_for => [qw/term relationship synonym comment/] };
 
+# these hook to load data that are dependent on cvterm
+has 'cvterm_dependencies' => (
+    is      => 'rw',
+    isa     => 'ArrayRef',
+    lazy    => 1,
+    default => sub {
+        return [ 'load_synonyms_in_staging', 'load_comments_in_staging' ];
+    }
+);
+
+has 'post_cvterm_dependencies' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    lazy    => 1,
+    default => sub {
+        return {
+            term    => 'TempCvterm',
+            synonym => 'TempCvtermsynonym',
+            comment => 'TempCvtermcomment'
+        };
+    }
+);
+
 sub load_cvterms_in_staging {
     my ( $self, $hooks ) = @_;
+    my @dep_hooks     = @{ $self->cvterm_dependencies };
     my $onto          = $self->ontology;
     my $schema        = $self->schema;
-    my $default_cv_id = $self->get_cvrow( $onto->default_namespace )->cv_id;
+    my $default_cv_id = $self->get_cvrow( $self->ontology_namespace )->cv_id;
 
     #Term
     for my $term ( @{ $onto->get_relationship_types }, @{ $onto->get_terms } )
@@ -26,31 +50,15 @@ sub load_cvterms_in_staging {
         $self->load_cache( 'term', 'TempCvterm', 1 );
 
         #hooks to run that depends on cvterms
-        if ( defined $hooks ) {
-            $_->( $term, $insert_hash ) for @$hooks;
-        }
+        $self->$_( $term, $insert_hash ) for @dep_hooks;
+    }
+
+    # to load leftover cache in staging database
+    while ( my ( $tag, $value ) = each %{ $self->post_cvterm_dependencies } )
+    {
+        $self->load_cache( $tag, $value );
     }
 }
-
-# use this hook to load data that is dependent of cvterm
-around 'load_cvterms_in_staging' => sub {
-    my $orig = shift;
-    my $self = shift;
-    $self->$orig(
-        @_,
-        [   sub { $self->load_synonyms_in_staging(@_) },
-            sub { $self->load_comments_in_staging(@_) }
-        ]
-    );
-};
-
-# to load leftover cache in staging database
-after 'load_cvterms_in_staging' => sub {
-    my ($self) = @_;
-    $self->load_cache( 'term',    'TempCvterm' );
-    $self->load_cache( 'synonym', 'TempCvtermsynonym' );
-    $self->load_cache( 'comment', 'TempCvtermcomment' );
-};
 
 sub load_synonyms_in_staging {
     my ( $self, $term, $insert_hash ) = @_;
@@ -68,19 +76,6 @@ sub load_comments_in_staging {
         $self->add_to_comment_cache(@$comment_insert_array);
         $self->load_cache( 'comment', 'TempCvtermcomment', 1 );
     }
-}
-
-sub load_cache {
-    my ( $self, $cache, $result_class, $check_for_threshold ) = @_;
-    if ($check_for_threshold) {
-        my $count = 'count_entries_in_' . $cache . '_cache';
-        return if $self->$count < $self->cache_threshold;
-    }
-
-    my $entries = 'entries_in_' . $cache . '_cache';
-    my $clean   = 'clean_' . $cache . '_cache';
-    $self->schema->resultset($result_class)->populate( [ $self->$entries ] );
-    $self->$clean;
 }
 
 sub load_relationship_in_staging {
@@ -177,6 +172,19 @@ sub get_comment_term_hash {
             };
         return $insert_array;
     }
+}
+
+sub load_cache {
+    my ( $self, $cache, $result_class, $check_for_threshold ) = @_;
+    if ($check_for_threshold) {
+        my $count = 'count_entries_in_' . $cache . '_cache';
+        return if $self->$count < $self->cache_threshold;
+    }
+
+    my $entries = 'entries_in_' . $cache . '_cache';
+    my $clean   = 'clean_' . $cache . '_cache';
+    $self->schema->resultset($result_class)->populate( [ $self->$entries ] );
+    $self->$clean;
 }
 
 1;
