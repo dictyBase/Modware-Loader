@@ -35,7 +35,6 @@ sub create_temp_statements {
     my ( $self, $storage ) = @_;
     for my $elem ( grep {/^create_table_temp/} $self->sqllib->elements ) {
         $storage->dbh->do( $self->sqllib->retr($elem) );
-
     }
 }
 

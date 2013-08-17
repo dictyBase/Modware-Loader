@@ -28,11 +28,7 @@ sub delete_non_existing_terms {
 
 sub create_dbxrefs {
     my ( $self, $storage, $dbh ) = @_;
-    $self->logger->debug(
-        "inserted ",
-        $dbh->do( $self->sqllib->retr('insert_new_accession') ),
-        " new accession in temp table"
-    );
+    $dbh->do( $self->sqllib->retr('insert_new_accession') );
 
     my $rows = $dbh->do( $self->sqllib->retr('insert_dbxref') );
     return $rows;
@@ -87,15 +83,13 @@ sub update_cvterm_names {
 sub update_cvterms {
     my ( $self, $storage, $dbh ) = @_;
 
-    $self->logger->debug(
-        "inserted ",
-        $dbh->do( $self->sqllib->retr('insert_existing_accession') ),
-        " existing accession in temp table"
-    );
+    $dbh->do( $self->sqllib->retr('insert_existing_accession') );
+
 # This will update definition and status of all cvterms, as usual it is more work in case
 # of SQLite existing cvterms
     my $data
-        = $dbh->selectall_arrayref( $self->sqllib->retr('select_existing_cvterm'),
+        = $dbh->selectall_arrayref(
+        $self->sqllib->retr('select_existing_cvterm'),
         { Slice => {} } );
     for my $trow (@$data) {
         $self->schema->resultset('Cv::Cvterm')->find( $trow->{cvterm_id} )
@@ -123,14 +117,10 @@ sub update_comments {
     my ( $self, $storage, $dbh ) = @_;
 
     #DELETE existing comment
-    $self->logger->debug(
-        "deleted ",
-        $dbh->do( $self->sqllib->retr('delete_existing_comment') ),
-        " existing comment"
-    );
+    $dbh->do( $self->sqllib->retr('delete_updatable_comment') );
 
     #INSERT all comments from temp table
-    my $rows = $dbh->do( $self->sqllib->retr('upsert_comment') );
+    my $rows = $dbh->do( $self->sqllib->retr('insert_updatable_comment') );
     $self->logger->debug("updated $rows comment");
     return $rows;
 }
@@ -153,21 +143,16 @@ sub create_synonyms {
 sub update_synonyms {
     my ( $self, $storage, $dbh ) = @_;
 
+    my $sqllib = $self->sqllib;
+
     #First create a temp table with synonym that needs update
-    $dbh->do( $self->sqllib->retr('insert_updated_synonym_in_temp') );
+    $dbh->do( $sqllib->retr('insert_updated_synonym_in_temp') );
 
     #Now delete all synonyms
-    $dbh->do(
-        q{ DELETE FROM cvtermsynonym WHERE cvterm_id IN (SELECT cvterm_id FROM temp_synonym_update)}
-    );
+    $dbh->do( $sqllib->retr('delete_updatable_synonym') );
 
     #Now insert the new batch
-    my $rows = $dbh->do(
-        q{
-	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
-	    SELECT syn,syn_scope_id,cvterm_id FROM temp_synonym_update 
-    }
-    );
+    my $rows = $dbh->do( $sqllib->retr('insert_updatable_synonym') );
     $self->logger->debug("updated $rows synonyms");
     return $rows;
 }

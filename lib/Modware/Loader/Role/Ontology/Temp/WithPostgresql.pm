@@ -17,54 +17,12 @@ sub create_temp_statements {
         my $schema = $self->app_instance->pg_schema;
         $storage->dbh->do(qq{SET SCHEMA '$schema'});
     }
+    for my $elem ( grep {/^create_table_temp/} $self->sqllib->elements ) {
+        $storage->dbh->do( $self->sqllib->retr($elem) );
+    }
 
-    $storage->dbh->do(
-        qq{
-	        CREATE TEMP TABLE temp_cvterm (
-               name varchar(1024) NOT NULL, 
-               accession varchar(256) NOT NULL, 
-               is_obsolete integer NOT NULL DEFAULT 0, 
-               is_relationshiptype integer NOT NULL DEFAULT 0, 
-               definition varchar(4000), 
-               cmmnt varchar(4000), 
-               cv_id integer NOT NULL, 
-               db_id integer NOT NULL
-    )}
-    );
-    $storage->dbh->do(
-        qq{
-	        CREATE TEMP TABLE temp_cvterm_relationship (
-               subject varchar(256) NOT NULL, 
-               object varchar(256) NOT NULL, 
-               type varchar(256) NOT NULL, 
-               subject_db_id integer NOT NULL, 
-               object_db_id integer NOT NULL, 
-               type_db_id integer NOT NULL
-    )}
-    );
-   $storage->dbh->do(qq{
-	        CREATE TEMP TABLE temp_cvterm_synonym (
-               accession varchar(256) NOT NULL, 
-               syn varchar(1024) NOT NULL, 
-               syn_scope_id integer NOT NULL, 
-               db_id integer NOT NULL
-    )}
-    );
-
-    # temp table for holding comments
-    $storage->dbh->do(
-        qq{
-	        CREATE TEMP TABLE temp_cvterm_comment (
-               accession varchar(256) NOT NULL, 
-               comment varchar(1024) NOT NULL, 
-               comment_type_id integer NOT NULL, 
-               db_id integer NOT NULL
-    )}
-    );
-
-
-    $storage->dbh->do(qq{ANALYZE  cvterm});
-    $storage->dbh->do(qq{ANALYZE dbxref});
+    #$storage->dbh->do(qq{ANALYZE  cvterm});
+    #$storage->dbh->do(qq{ANALYZE dbxref});
 }
 
 
