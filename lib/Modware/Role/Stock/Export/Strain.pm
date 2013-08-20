@@ -213,11 +213,21 @@ sub find_phenotypes {
     my ( $self, $dbs_id ) = @_;
     my $phenotypes = $self->schema->storage->dbh->selectall_arrayref(
         qq{
-	SELECT ct.name
-	FROM genotype g
-	JOIN phenstatement pst ON pst.genotype_id = g.genotype_id
-	JOIN phenotype p ON p.phenotype_id = pst.phenotype_id
-	JOIN cvterm ct ON ct.cvterm_id = p.observable_id
+	SELECT phen.name, env.name, assay.name, pub.uniquename
+	FROM phenstatement pst
+
+	LEFT JOIN genotype g on g.genotype_id = pst.genotype_id
+	
+	LEFT JOIN cvterm env on env.cvterm_id = pst.environment_id
+	LEFT JOIN cv env_cv on env_cv.cv_id = env.cv_id
+	
+	LEFT JOIN phenotype p on p.phenotype_id = pst.phenotype_id
+	LEFT JOIN cvterm phen on phen.cvterm_id = p.observable_id
+	
+	LEFT JOIN cvterm assay on assay.cvterm_id = p.assay_id
+	LEFT JOIN cv assay_cv on assay_cv.cv_id = assay.cv_id
+	
+	LEFT JOIN pub on pub.pub_id = pst.pub_id
 	WHERE g.uniquename = '$dbs_id'
 	}
     );
