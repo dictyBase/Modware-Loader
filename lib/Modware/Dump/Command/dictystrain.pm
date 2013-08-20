@@ -197,25 +197,27 @@ sub execute {
 
         if ( exists $io->{phenotype} ) {
             my @phenotypes = $self->find_phenotypes($dbs_id);
+            no warnings 'uninitialized';
             for my $phenotype (@phenotypes) {
-                $io->{phenotype}
-                    ->write( $dbs_id . "\t" . $phenotype->[0] . "\n" );
+                $io->{phenotype}->write( sprintf "%s\t%s\t%s\t%s\t%s\n",
+                    $dbs_id, $phenotype->[0], $phenotype->[1],
+                    $phenotype->[2], $phenotype->[3] );
                 $stats->{phenotype} = $stats->{phenotype} + 1;
             }
 
-            if ( $strain->phenotype ) {
-                my @phenotypes_jakob = split( /[,;]/, $strain->phenotype );
-                for my $phenotype (@phenotypes_jakob) {
-                    $phenotype = $self->trim($phenotype);
-                    if (   !$self->is_strain_genotype($phenotype)
-                        && !$self->is_strain_characteristic($phenotype) )
-                    {
-                        $io->{phenotype_jakob}
-                            ->write( $dbs_id . "\t" . $phenotype . "\n" )
-                            if ($phenotype);
-                    }
-                }
-            }
+            # if ( $strain->phenotype ) {
+            #     my @phenotypes_jakob = split( /[,;]/, $strain->phenotype );
+            #     for my $phenotype (@phenotypes_jakob) {
+            #         $phenotype = $self->trim($phenotype);
+            #         if (   !$self->is_strain_genotype($phenotype)
+            #             && !$self->is_strain_characteristic($phenotype) )
+            #         {
+            #             $io->{phenotype_jakob}
+            #                 ->write( $dbs_id . "\t" . $phenotype . "\n" )
+            #                 if ($phenotype);
+            #         }
+            #     }
+            # }
         }
 
         if ( exists $io->{genes} ) {
@@ -375,13 +377,14 @@ sub _create_files {
             $io->{$data_type_}    = $file_obj_;
             $stats->{$data_type_} = 0;
         }
-        if ( $data_type eq 'phenotype' ) {
-            my $data_type_ = "phenotype_jakob";
-            my $file_obj_
-                = IO::File->new(
-                $self->output_dir . "/strain_phenotype_jakob.txt", 'w' );
-            $io->{$data_type_} = $file_obj_;
-        }
+
+        # if ( $data_type eq 'phenotype' ) {
+        #     my $data_type_ = "phenotype_jakob";
+        #     my $file_obj_
+        #         = IO::File->new(
+        #         $self->output_dir . "/strain_phenotype_jakob.txt", 'w' );
+        #     $io->{$data_type_} = $file_obj_;
+        # }
     }
     return ( $io, $stats );
 }
