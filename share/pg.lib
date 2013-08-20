@@ -37,7 +37,7 @@
 [create_table_temp_cvterm_comment]
 	        CREATE TEMP TABLE temp_cvterm_comment (
                accession varchar(256) NOT NULL, 
-               comment varchar(1024) NOT NULL, 
+               comment text NOT NULL, 
                comment_type_id integer NOT NULL, 
                db_id integer NOT NULL
             )
@@ -238,6 +238,20 @@ INSERT INTO temp_accession(accession)
 		FROM temp_cvterm_comment tcomm
 		INNER JOIN temp_accession_exist tmacc ON
 			tmacc.accession = tcomm.accession
+
+[insert_synonym]
+	INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
+		SELECT tsyn.syn, tsyn.syn_scope_id, cvterm.cvterm_id
+		FROM temp_cvterm_synonym tsyn
+		INNER JOIN temp_accession tmacc ON
+		    tsyn.accession = tmacc.accession
+		INNER JOIN dbxref ON (
+			dbxref.accession = tsyn.accession
+			AND dbxref.db_id = tsyn.db_id
+		)
+		INNER JOIN cvterm ON
+		    dbxref.dbxref_id = cvterm.dbxref_id
+
 
 [delete_non_existing_cvterm]
            DELETE FROM cvterm USING temp_term_delete td 

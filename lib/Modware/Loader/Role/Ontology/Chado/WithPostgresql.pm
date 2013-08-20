@@ -93,10 +93,10 @@ sub update_synonyms {
     $dbh->do( $sqllib->retr('insert_updated_synonym_in_temp') );
 
     #Delete all existing synonyms that needs update
-    $dbh->do($sqllib->retr('delete_updatable_synonym'));
+    $dbh->do( $sqllib->retr('delete_updatable_synonym') );
 
     #Now insert the new batch
-    my $rows = $dbh->do( $self->sqllib->retr('insert_updatable_synonym) );
+    my $rows = $dbh->do( $self->sqllib->retr('insert_updatable_synonym') );
     $self->logger->debug("updated $rows synonyms");
     return $rows;
 }
@@ -108,7 +108,7 @@ sub create_comments {
 # A temp table(temp_accession) with all the new cvterms were created which is turn joined
 # with cvterm table to get their cvterm_id
     my $row = $dbh->do( $self->sqllib->retr('insert_comment') );
-    $self->logger->debug("created $row comment");
+    $self->logger->debug("created $row comments");
     return $row;
 }
 
@@ -116,14 +116,13 @@ sub update_comments {
     my ( $self, $storage, $dbh ) = @_;
 
     #DELETE existing comment
-        $dbh->do( $self->sqllib->retr('delete_updatable_comment') );
+    $dbh->do( $self->sqllib->retr('delete_updatable_comment') );
 
     #INSERT all comments from temp table
     my $rows = $dbh->do( $self->sqllib->retr('insert_updatable_comment') );
-    $self->logger->debug("updated $rows comment");
+    $self->logger->debug("updated $rows comments");
     return $rows;
 }
-
 
 1;    # Magic true value required at end of module
 
