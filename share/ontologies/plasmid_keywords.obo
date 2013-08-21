@@ -1,0 +1,304 @@
+format-version: 1.2
+date: 18:03:2013 13:02
+saved-by: pfey
+auto-generated-by: OBO-Edit 2.2
+
+[Term]
+id: DDPLASMIDKEY:0000001
+name: plasmid keyword
+namespace: plasmid_keywords
+
+[Term]
+id: DDPLASMIDKEY:0000002
+name: auxotrophy selection
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000001 ! plasmid keyword
+
+[Term]
+id: DDPLASMIDKEY:0000003
+name: random chimeragenesis
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000001 ! plasmid keyword
+
+[Term]
+id: DDPLASMIDKEY:0000004
+name: blasticidin resistance
+namespace: plasmid_keywords
+synonym: "bsR" EXACT []
+is_a: DDPLASMIDKEY:0000008 ! drug selection
+
+[Term]
+id: DDPLASMIDKEY:0000005
+name: bleomycin resistance
+namespace: plasmid_keywords
+synonym: "bleR" EXACT []
+is_a: DDPLASMIDKEY:0000008 ! drug selection
+
+[Term]
+id: DDPLASMIDKEY:0000006
+name: hygromycin resistance
+namespace: plasmid_keywords
+synonym: "hygR" EXACT []
+is_a: DDPLASMIDKEY:0000008 ! drug selection
+
+[Term]
+id: DDPLASMIDKEY:0000007
+name: neomycin resistance
+namespace: plasmid_keywords
+synonym: "neoR" EXACT []
+is_a: DDPLASMIDKEY:0000008 ! drug selection
+
+[Term]
+id: DDPLASMIDKEY:0000008
+name: drug selection
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000001 ! plasmid keyword
+
+[Term]
+id: DDPLASMIDKEY:0000009
+name: discoidin promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000010
+name: dominant negative mutant
+namespace: plasmid_keywords
+synonym: "dominant-negative mutant" RELATED []
+synonym: "dominant/negative mutant" RELATED []
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000011
+name: act15 promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000012
+name: vector
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000001 ! plasmid keyword
+
+[Term]
+id: DDPLASMIDKEY:0000013
+name: ecmA0 promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000014
+name: GST tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000037 ! biological tag
+
+[Term]
+id: DDPLASMIDKEY:0000015
+name: REMI vector
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000012 ! vector
+created_by: pfey
+creation_date: 2013-03-12T12:09:47Z
+
+[Term]
+id: DDPLASMIDKEY:0000016
+name: cotB promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000017
+name: FLAG tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000037 ! biological tag
+
+[Term]
+id: DDPLASMIDKEY:0000018
+name: expression vector
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000012 ! vector
+
+[Term]
+id: DDPLASMIDKEY:0000019
+name: knockout vector
+namespace: plasmid_keywords
+synonym: "knock-out vector" EXACT []
+is_a: DDPLASMIDKEY:0000012 ! vector
+
+[Term]
+id: DDPLASMIDKEY:0000020
+name: phleomycin resistance
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000008 ! drug selection
+
+[Term]
+id: DDPLASMIDKEY:0000021
+name: tet on/off vector
+namespace: plasmid_keywords
+synonym: "tet on/off system" BROAD []
+is_a: DDPLASMIDKEY:0000012 ! vector
+
+[Term]
+id: DDPLASMIDKEY:0000022
+name: uracil selection
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000002 ! auxotrophy selection
+
+[Term]
+id: DDPLASMIDKEY:0000023
+name: ecm0 promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000024
+name: thymidine selection
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000002 ! auxotrophy selection
+
+[Term]
+id: DDPLASMIDKEY:0000025
+name: GFP marker
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000035 ! marker gene
+
+[Term]
+id: DDPLASMIDKEY:0000026
+name: RFP marker
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000035 ! marker gene
+
+[Term]
+id: DDPLASMIDKEY:0000027
+name: YFP marker
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000035 ! marker gene
+
+[Term]
+id: DDPLASMIDKEY:0000028
+name: galactosidase marker
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000035 ! marker gene
+
+[Term]
+id: DDPLASMIDKEY:0000029
+name: luciferase marker
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000035 ! marker gene
+
+[Term]
+id: DDPLASMIDKEY:0000030
+name: His tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000037 ! biological tag
+
+[Term]
+id: DDPLASMIDKEY:0000031
+name: Myc tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000037 ! biological tag
+
+[Term]
+id: DDPLASMIDKEY:0000032
+name: HA tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000037 ! biological tag
+
+[Term]
+id: DDPLASMIDKEY:0000033
+name: psA promoter
+namespace: plasmid_keywords
+synonym: "pspA promoter" EXACT []
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000034
+name: extrachromosomal vector
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000012 ! vector
+created_by: pfey
+creation_date: 2013-03-12T12:10:05Z
+
+[Term]
+id: DDPLASMIDKEY:0000035
+name: marker gene
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000001 ! plasmid keyword
+
+[Term]
+id: DDPLASMIDKEY:0000036
+name: CFP marker
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000035 ! marker gene
+
+[Term]
+id: DDPLASMIDKEY:0000037
+name: biological tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000001 ! plasmid keyword
+
+[Term]
+id: DDPLASMIDKEY:0000038
+name: promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000001 ! plasmid keyword
+
+[Term]
+id: DDPLASMIDKEY:0000039
+name: ecmB promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000040
+name: ecmA promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000041
+name: glucoronidase marker
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000035 ! marker gene
+
+[Term]
+id: DDPLASMIDKEY:0000042
+name: act6 promoter
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000038 ! promoter
+
+[Term]
+id: DDPLASMIDKEY:0000043
+name: TAP tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000037 ! biological tag
+
+[Term]
+id: DDPLASMIDKEY:0000044
+name: V5 tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000037 ! biological tag
+
+[Term]
+id: DDPLASMIDKEY:0000045
+name: T7 tag
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000037 ! biological tag
+
+[Term]
+id: DDPLASMIDKEY:0000046
+name: gateway vector
+namespace: plasmid_keywords
+is_a: DDPLASMIDKEY:0000012 ! vector
+created_by: pfey
+creation_date: 2013-03-12T12:18:31Z
+
+[Term]
+id: DDPLASMIDKEY:0000047
+name: cre-loxP vector
+namespace: plasmid_keywords
+synonym: "cre-lox vector" EXACT []
+is_a: DDPLASMIDKEY:0000012 ! vector
+created_by: pfey
+creation_date: 2013-03-12T12:33:50Z
+
