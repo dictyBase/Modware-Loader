@@ -197,11 +197,26 @@ sub execute {
 
         if ( exists $io->{phenotype} ) {
             my @phenotypes = $self->find_phenotypes($dbs_id);
-            no warnings 'uninitialized';
             for my $phenotype (@phenotypes) {
-                $io->{phenotype}->write( sprintf "%s\t%s\t%s\t%s\t%s\n",
-                    $dbs_id, $phenotype->[0], $phenotype->[1],
-                    $phenotype->[2], $phenotype->[3] );
+                my @row;
+                push @row, $dbs_id;
+                push @row, $phenotype->[0];
+                if ( $phenotype->[1] ) {
+                    push @row, $phenotype->[1];
+                }
+                else {
+                    push @row, '';
+                }
+                if ( $phenotype->[2] ) {
+                    push @row, $phenotype->[2];
+                }
+                else {
+                    push @row, '';
+                }
+                push @row, $phenotype->[3];
+
+                my $s = join( "\t", @row );
+                $io->{phenotype}->write( sprintf "%s\n", $s );
                 $stats->{phenotype} = $stats->{phenotype} + 1;
             }
 
