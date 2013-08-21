@@ -17,7 +17,9 @@ has data => (
     is  => 'rw',
     isa => 'ArrayRef',
     default =>
-        sub { [qw/characteristics publications inventory genotype props/] }
+
+        # sub { [qw/characteristics publications inventory genotype props/] }
+        sub { [qw/phenotype genotype/] }
 );
 
 sub execute {
@@ -64,8 +66,8 @@ sub execute {
         my $strain_char_pub_uniquename = '';
         my $char_pub_id = $self->find_pub($strain_char_pub_uniquename);
 
-        if ($char_pub_id) {
-            if ( $self->has_characteristics( $hash->{uniquename} ) ) {
+        if ( $self->has_characteristics( $hash->{uniquename} ) ) {
+            if ($char_pub_id) {
                 foreach my $characteristics (
                     @{ $self->get_characteristics( $hash->{uniquename} ) } )
                 {
@@ -79,11 +81,11 @@ sub execute {
                     );
                 }
             }
-        }
-        else {
-            $self->logger->warn(
-                "Strain characteristics cannot be loaded. Required reference missing"
-            );
+            else {
+                $self->logger->warn(
+                    "Strain characteristics cannot be loaded. Required reference missing"
+                );
+            }
         }
 
         if ( $self->has_publications( $hash->{uniquename} ) ) {
@@ -113,9 +115,11 @@ sub execute {
 
                     $stock_rs->create_related(
                         'stockprops',
-                        {   type_id => $self->find_cvterm($type, 'strain_inventory'),
-                            value   => $self->trim( $inventory->{$key} ),
-                            rank    => $rank
+                        {   type_id => $self->find_cvterm(
+                                $type, 'strain_inventory'
+                            ),
+                            value => $self->trim( $inventory->{$key} ),
+                            rank  => $rank
                         }
                     ) if $inventory->{$key};
                 }
@@ -158,10 +162,34 @@ sub execute {
             }
         }
 
+        if ( $self->has_phenotype( $hash->{uniquename} ) ) {
+            my @phenotype_data = $self->get_phenotype( $hash->{uniquename} );
+            for my $i ( 0 .. scalar(@phenotype_data) - 1 ) {
+                my $phenotype_term  = $phenotype_data[$i][0];
+                my $phenotype_env   = $phenotype_data[$i][1];
+                my $phenotype_assay = $phenotype_data[$i][2];
+                my $phenotype_pmid  = $self->trim( $phenotype_data[$i][3] );
+
+                my $env_id = $self->find_or_create_environment($phenotype_env)
+                    if $phenotype_env;
+
+                my $phenotype_id
+                    = $self->find_or_create_phenotype( $phenotype_term,
+                    $phenotype_assay )
+                    if $phenotype_term;
+
+                my $genotype_id = $self->find_genotype( $hash->{uniquename} );
+                if ( !$genotype_id ) {
+                    $self->logger->logdie("Please load genotype data!");
+                }
+            }
+        }
+
     }
 
     $guard->commit;
-    $self->schema->storage->disconnect;
+
+    # $self->schema->storage->disconnect;
 
     return;
 }

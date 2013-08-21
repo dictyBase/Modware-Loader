@@ -8,6 +8,7 @@ use Moose::Role;
 use namespace::autoclean;
 
 with 'Modware::Role::Stock::Import::Commons';
+with 'Modware::Role::Stock::Import::Strain::Phenotype';
 
 has '_characteristics' => (
     is      => 'rw',
@@ -69,6 +70,18 @@ has '_props' => (
     }
 );
 
+has '_phenotype' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_phenotype => 'set',
+        get_phenotype => 'get',
+        has_phenotype => 'defined'
+    }
+);
+
 before 'execute' => sub {
     my ($self) = @_;
 
@@ -101,10 +114,45 @@ before 'execute' => sub {
                     { $array[1] => $array[2] };
                 next;
             }
+            if ( $data eq 'phenotype' ) {
+                my @row;
+                for my $position ( 1, 2, 3, 4 ) {
+                    push @row, $array[$position];
+                }
+                push $self->$get_method( $array[0] ), @row;
+                next;
+            }
             push $self->$get_method( $array[0] ), $array[1];
         }
     }
 };
+
+has '_strain_genotype' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_strain_genotype => 'set',
+        get_strain_genotype => 'get',
+        has_strain_genotype => 'defined'
+    }
+);
+
+sub find_genotype {
+    my ( $self, $dbs_id ) = @_;
+    if ( $self->has_strain_genotype($dbs_id) ) {
+        return $self->get_strain_genotype($dbs_id)->genotype_id;
+    }
+    my $row
+        = $self->schema->resultset('Stock::StockGenotype')
+        ->search( { 'stock.uniquename' => $dbs_id },
+        { select => 'me.genotype_id', join => 'stock' } );
+    if ($row) {
+        $self->set_strain_genotype( $dbs_id, $row->first );
+        return $self->get_strain_genotype($dbs_id);
+    }
+}
 
 1;
 
