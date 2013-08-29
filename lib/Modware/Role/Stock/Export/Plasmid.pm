@@ -84,30 +84,69 @@ sub export_seq {
 Writes files in GenBank format for each DBP_ID in the C<output_dir> folder
 =cut
 
-sub get_genbank {
-    my ( $self, @genbank_ids ) = @_;
-    my $factory = Bio::DB::EUtilities->new(
-        -eutil   => 'efetch',
-        -db      => 'protein',
-        -rettype => 'gb',
-        -email   => 'mymail@foo.bar',
-        -id      => \@genbank_ids
-    );
+sub _get_genbank {
+    my ( $self, $gb_dbp_hash ) = @_;
 
-    my $file = $self->output_dir . "/plasmid_genbank.gb";
-    $factory->get_Response( -file => $file );
+    my $seq_dir = Path::Class::Dir->new( $self->output_dir, 'sequence' );
+    if ( !-d $seq_dir ) {
+        make_path( $seq_dir->stringify );
+    }
 
-    # my $response = $factory->get_Response();
-    #if ( $response->is_success ) {
-    #my $str     = IO::String->new( $response->decoded_content );
-    #my $gb_seqs = Bio::SeqIO->new(
-    #-fh     => $str,
-    #-format => 'genbank'
-    #);
-    #while ( my $seq = $gb_seqs->next_seq ) {
-    #print $seq->accession . "\n";
-    #}
-    # }
+    my $gb  = Bio::DB::GenBank->new();
+    my @ids = keys %$gb_dbp_hash;
+
+    my $seqio = $gb->get_Stream_by_acc("@ids");
+    while ( my $seq = $seqio->next_seq ) {
+        my $outfile
+            = $seq_dir->file(
+            $gb_dbp_hash->{ $seq->accession_number } . ".genbank" )
+            ->stringify;
+        my $seqout = Bio::SeqIO->new(
+            -file   => ">$outfile",
+            -format => "genbank"
+        );
+        $seqout->write_seq($seq);
+    }
+}
+
+=head2 _export_existing_seq
+
+Parses dirty sequences in either FastA or GenBank formats and writes to files by DBP_ID
+
+=cut
+
+sub _export_existing_seq {
+    my ($self) = @_;
+    my @formats = qw(genbank fasta);
+
+    my $seq_dir = Path::Class::Dir->new( $self->output_dir, 'sequence' );
+    if ( !-d $seq_dir ) {
+        make_path( $seq_dir->stringify );
+    }
+    foreach my $format (@formats) {
+        my $d = Path::Class::Dir->new( 'data', 'plasmid', $format );
+        while ( my $input = $d->next ) {
+            if ( ref($input) ne 'Path::Class::Dir' ) {
+                my $dbp_id = sprintf( "DBP%07d", $input->basename );
+                my $seqin = Bio::SeqIO->new(
+                    -file   => $input,
+                    -format => $format
+                );
+                my $outfile
+                    = $seq_dir->file( $dbp_id . "." . $format )->stringify;
+                my $seqout = Bio::SeqIO->new(
+                    -file   => ">$outfile",
+                    -format => $format
+                );
+                while ( my $seq = $seqin->next_seq ) {
+                    if ($seq) {
+                        $seq->id($dbp_id);
+                        $seqout->write_seq($seq);
+                    }
+                }
+            }
+        }
+    }
 }
 
 1;

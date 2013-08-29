@@ -21,14 +21,6 @@ has data => (
         'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes, props)'
 );
 
-has 'genbank_file' => (
-    is      => 'rw',
-    isa     => 'Bool',
-    default => 0,
-    documentation =>
-        'Option to fetch sequence in Genbank format and write to file'
-);
-
 has 'sequence' => (
     is      => 'rw',
     isa     => 'Bool',

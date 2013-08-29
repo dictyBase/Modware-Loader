@@ -220,19 +220,19 @@ sub execute {
                 $stats->{phenotype} = $stats->{phenotype} + 1;
             }
 
-            if ( $strain->phenotype ) {
-                my @phenotypes_jakob = split( /[,;]/, $strain->phenotype );
-                for my $phenotype (@phenotypes_jakob) {
-                    $phenotype = $self->trim($phenotype);
-                    if (   !$self->is_strain_genotype($phenotype)
-                        && !$self->is_strain_characteristic($phenotype) )
-                    {
-                        $io->{phenotype_jakob}
-                            ->write( $dbs_id . "\t" . $phenotype . "\n" )
-                            if ($phenotype);
-                    }
-                }
-            }
+            # if ( $strain->phenotype ) {
+            #     my @phenotypes_jakob = split( /[,;]/, $strain->phenotype );
+            #     for my $phenotype (@phenotypes_jakob) {
+            #         $phenotype = $self->trim($phenotype);
+            #         if (   !$self->is_strain_genotype($phenotype)
+            #             && !$self->is_strain_characteristic($phenotype) )
+            #         {
+            #             $io->{phenotype_jakob}
+            #                 ->write( $dbs_id . "\t" . $phenotype . "\n" )
+            #                 if ($phenotype);
+            #         }
+            #     }
+            # }
         }
 
         if ( exists $io->{genes} ) {
@@ -395,13 +395,14 @@ sub _create_files {
             $io->{$data_type_}    = $file_obj_;
             $stats->{$data_type_} = 0;
         }
-        if ( $data_type eq 'phenotype' ) {
-            my $data_type_ = "phenotype_jakob";
-            my $file_obj_
-                = IO::File->new(
-                $self->output_dir . "/strain_phenotype_jakob.txt", 'w' );
-            $io->{$data_type_} = $file_obj_;
-        }
+
+        # if ( $data_type eq 'phenotype' ) {
+        #     my $data_type_ = "phenotype_jakob";
+        #     my $file_obj_
+        #         = IO::File->new(
+        #         $self->output_dir . "/strain_phenotype_jakob.txt", 'w' );
+        #     $io->{$data_type_} = $file_obj_;
+        # }
     }
     return ( $io, $stats );
 }
