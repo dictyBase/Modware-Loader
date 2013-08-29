@@ -1,0 +1,299 @@
+format-version: 1.2
+date: 28:01:2013 18:03
+saved-by: pfey
+auto-generated-by: OBO-Edit 2.2
+default-namespace: Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000001
+name: Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000002
+name: attachment to glass
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000003
+name: biochemical assay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000004
+name: germination assay
+synonym: "plaque formation" BROAD []
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000005
+name: cell count
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000006
+name: plaque count
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000007
+name: nuclei count
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000008
+name: immunofluorescence
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000009
+name: motility assay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000010
+name: growth curve
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000011
+name: radio immune assay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000012
+name: uptake of latex beads
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000013
+name: uptake of yeast particles
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000014
+name: Northern blot
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000015
+name: viability assay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000017
+name: observation of a marker gene
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000018
+name: measurement of surface area
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000019
+name: attachment to plastic
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000020
+name: agglutination assay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000021
+name: phalloidin staining
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000022
+name: developmental time course
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000023
+name: micropipette chemotaxis assay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000024
+name: size measurement
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000025
+name: electron microscopy
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000026
+name: relative diameter measurement
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000027
+name: real time PCR
+synonym: "q-PCR" NARROW []
+synonym: "quantitative PCR" NARROW []
+synonym: "quantitative real time PCR" NARROW []
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000028
+name: fluorescence microscopy
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000029
+name: staining
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000030
+name: Western blot
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000031
+name: dark field microscopy
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000032
+name: bright field microscopy
+alt_id: DDASSAY:0000016
+synonym: "light microscopy" EXACT []
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000034
+name: high throughput bright field microscopy
+alt_id: DDASSAY:0000033
+synonym: "high throughput light microscopy" EXACT []
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000035
+name: high throughput dark field microscopy
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000036
+name: in situ hybridization
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000037
+name: fluorescence activated cell sorting (FACS)
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000038
+name: immunoblotting
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000039
+name: agarose overlay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000040
+name: reflection interference contrast microscopy (RICM)
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000041
+name: confocal microscopy
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000042
+name: biochemical fractionation
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000043
+name: SDS protein gel electrophoresis
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000044
+name: 2D gel electrophoresis
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000045
+name: immune precipitation
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000046
+name: slug grafting
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000047
+name: grafting experiment
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000048
+name: gradient chemotaxis assay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000049
+name: chemotaxis chamber assay
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000050
+name: uptake of polystyrene particles
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000051
+name: phase contrast microscopy
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000052
+name: uptake of FITC-dextran
+synonym: "fluid-phase marker incubation" RELATED []
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+
+[Term]
+id: DDASSAY:0000053
+name: monolayer culture
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+created_by: pfey
+creation_date: 2012-10-02T12:23:38Z
+
+[Term]
+id: DDASSAY:0000054
+name: total internal reflection fluorescence microscopy (TIRF)
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+created_by: pfey
+creation_date: 2012-10-02T12:24:20Z
+
+[Term]
+id: DDASSAY:0000055
+name: reverse transcriptase PCR
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+created_by: pfey
+creation_date: 2012-10-02T12:31:35Z
+
+[Term]
+id: DDASSAY:0000056
+name: beta-galactosidase staining
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+created_by: pfey
+creation_date: 2012-10-02T12:41:37Z
+
+[Term]
+id: DDASSAY:0000057
+name: uptake of TRITC-dextran
+is_a: DDASSAY:0000001 ! Dictyostelium Assay
+created_by: pfey
+creation_date: 2013-01-28T17:53:39Z
+

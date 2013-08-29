@@ -5,13 +5,11 @@ Modware-*
 !modware-transform
 !modware-load
 locallib/
-data/
 config/
 log/
 sqlnet.log
 tmp/
 perltidy.LOG
-*.gaf
 nytprof*
 gaf_check/
 local/
