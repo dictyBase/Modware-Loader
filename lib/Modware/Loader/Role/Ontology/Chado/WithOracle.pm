@@ -24,15 +24,6 @@ after 'merge_ontology' => sub {
 };
 
 
-around 'merge_ontology' => sub {
-    my $orig = shift;
-    my $self = shift;
-    $self->$orig(
-        create_hooks => [ sub { $self->create_synonyms(@_) } ],
-        update_hooks => [ sub { $self->update_synonyms(@_) } ]
-    );
-};
-
 sub transform_schema {
     my ( $self, $schema ) = @_;
     my $source = $schema->source('Cv::Cvtermsynonym');
@@ -262,51 +253,6 @@ sub create_relations {
     }
     );
     return $rows;
-}
-
-sub create_on_delete_statements {
-    my ( $self, $storage ) = @_;
-    $storage->dbh->do(
-        q{
-		CREATE GLOBAL TEMPORARY TABLE temp_dbid (
-			db_id number NOT NULL
-		) ON COMMIT PRESERVE ROWS
-	}
-    );
-}
-
-sub drop_on_delete_statements {
-    my ( $self, $storage ) = @_;
-    $storage->dbh->do(q{TRUNCATE TABLE temp_dbid});
-    $storage->dbh->do(q{DROP TABLE temp_dbid});
-}
-
-sub delete_dbxrefs {
-    my ( $self, $storage, $dbh ) = @_;
-    my $rows = $dbh->do(
-        q{
-    	DELETE FROM dbxref WHERE db_id IN (
-    		SELECT db_id FROM temp_dbid
-    	)
-    }
-    );
-    $storage->dbh->do(q{TRUNCATE TABLE temp_dbid});
-    return $rows;
-}
-
-sub delete_cvterms {
-    my ( $self, $storage, $dbh, $cv_id ) = @_;
-    my $sth = $dbh->prepare(
-        q{ INSERT INTO temp_dbid(db_id) 
-        SELECT namespace.db_id FROM (
-        SELECT count(dbxref.dbxref_id) ,  dbxref.db_id FROM dbxref
-        JOIN cvterm ON dbxref.dbxref_id = cvterm.dbxref_id
-        WHERE cvterm.cv_id = ?
-        group by dbxref.db_id ) namespace }
-    );
-    $sth->execute($cv_id);
-    $sth = $dbh->prepare(q{ DELETE FROM cv where cv_id = ?});
-    $sth->execute($cv_id);
 }
 
 sub create_synonyms {
