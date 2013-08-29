@@ -1,0 +1,248 @@
+format-version: 1.2
+date: 14:02:2013 16:03
+saved-by: pfey
+auto-generated-by: OBO-Edit 2.2
+default-namespace: Dicty Environment
+
+[Term]
+id: DDENVIR:0000001
+name: environmental condition
+
+[Term]
+id: DDENVIR:0000002
+name: in suspension
+def: "Cells shaking in a medium." [DDB:PF]
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000003
+name: in axenic medium
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000004
+name: on bacterial plates
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000005
+name: in acidic medium
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000006
+name: at low cell density
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000007
+name: at low temperature
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000008
+name: on solid surfaces
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000009
+name: in the presence of an ion chelator
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000010
+name: in the presence of lithium
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000011
+name: in the presence of high Ca2+
+synonym: "in the presence of high calcium" RELATED []
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000012
+name: at high temperature
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000013
+name: at high cell density
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000014
+name: in the presence of gossypol
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000015
+name: in the presence of tetracycline
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000016
+name: cAMP stimulation
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000017
+name: in the presence of thiabendazole
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000018
+name: in the presence of miconazole
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000019
+name: in the presence of clotrimazole
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000020
+name: in the presence of econazole
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000021
+name: in the presence of cycloheximide
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000022
+name: in the presence of actinomycin D
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000023
+name: in the presence of G418
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000024
+name: in the presence of zearalenone
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000025
+name: in the presence of the PI3K inhibitor LY294002
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000026
+name: during starvation
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000027
+name: in buffer
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000028
+name: in water
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000029
+name: on non-nutrient agar
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000030
+name: on filter
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000031
+name: in the presence of DIF-1
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000032
+name: in the presence of EGTA
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000033
+name: in the presence of EDTA
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000034
+name: in the absence of EDTA
+alt_id: DDASSAY:0000002
+synonym: "in the absense of EDTA" NARROW []
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000035
+name: in bacterial suspension
+alt_id: DDASSAY:0000001
+synonym: "in bacterial susppension" NARROW []
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000036
+name: in the absence of tetracycline
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000037
+name: during vegetative growth
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000038
+name: in the presence of 8-Br-cAMP
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000039
+name: submerged in buffer
+alt_id: DDENVIR:0000046
+synonym: "in non-nutrient buffer" EXACT []
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000040
+name: during development
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000041
+name: during aggregation
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000042
+name: during slug stage
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000043
+name: during culmination
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000044
+name: in the presence of DIF-2
+is_a: DDENVIR:0000001 ! environmental condition
+
+[Term]
+id: DDENVIR:0000045
+name: in the presence of Ca2+
+synonym: "in the presence of calcium" RELATED []
+is_a: DDENVIR:0000001 ! environmental condition
+created_by: pfey
+creation_date: 2012-10-03T16:59:59Z
+
+[Term]
+id: DDENVIR:0000047
+name: in conditioned medium
+is_a: DDENVIR:0000001 ! environmental condition
+created_by: pfey
+creation_date: 2013-02-14T16:00:42Z
+
