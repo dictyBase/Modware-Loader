@@ -156,6 +156,33 @@ sub find_cvterm {
     }
 }
 
+sub find_or_create_cvterm {
+    my ( $self, $cvterm, $cv ) = @_;
+    my $cvterm_id = $self->find_cvterm( $cvterm, $cv );
+    if ( !$cvterm_id ) {
+        my $row = $self->schema->resultset('Cv::Cvterm')->find_or_create(
+            {   name      => $cvterm,
+                dbxref_id => $self->find_or_create_dbxref($cvterm),
+                cv_id     => $self->find_cv($cv)
+            }
+        );
+        $self->set_cvterm_row( $cvterm, $row );
+        $cvterm_id = $row->cvterm_id;
+    }
+    return $cvterm_id;
+}
+
+sub find_cv {
+    my ( $self, $cv ) = @_;
+    my $row = $self->schema->resultset('Cv::Cv')
+        ->search( { name => $cv }, { select => 'cv_id' } );
+    my $cv_id;
+    if ($row) {
+        $cv_id = $row->first->cv_id;
+    }
+    return $cv_id;
+}
+
 sub trim {
     my ( $self, $s ) = @_;
     $s =~ s/^\s+//;
