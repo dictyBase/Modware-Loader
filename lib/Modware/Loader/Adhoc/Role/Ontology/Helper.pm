@@ -6,18 +6,162 @@ use Carp;
 
 requires 'chado';
 
-has 'dbrow' => (
+has '_dbrow' => (
     is      => 'rw',
     isa     => 'HashRef',
     traits  => [qw/Hash/],
     default => sub { {} },
     handles => {
-        add_dbrow    => 'set',
+        set_dbrow    => 'set',
         get_dbrow    => 'get',
         delete_dbrow => 'delete',
         has_dbrow    => 'defined'
     }
 );
+
+has 'cvterm_row' => (
+    is        => 'rw',
+    isa       => 'HashRef',
+    traits    => ['Hash'],
+    predicate => 'has_cvterm_row',
+    default   => sub { {} },
+    handles   => {
+        get_cvterm_row   => 'get',
+        set_cvterm_row   => 'set',
+        exist_cvterm_row => 'defined',
+        has_cvterm_row => 'defined'
+    }
+);
+
+has '_cvrow' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => ['Hash'],
+    default => sub { {} },
+    handles => {
+        get_cvrow   => 'get',
+        set_cvrow   => 'set',
+        has_cvrow => 'defined',
+        exist_cvrow => 'defined'
+    }
+);
+
+sub find_or_create_dbrow {
+    my ( $self, $db ) = @_;
+    if ( $self->has_dbrow($db) ) {
+        return $self->get_dbrow($db);
+    }
+    my $dbrow = $self->chado->resultset('General::Db')
+        ->find_or_create( { name => $db } );
+    $self->set_dbrow( $db, $dbrow );
+    return $dbrow;
+}
+
+sub find_or_create_cvrow {
+    my ( $self, $cv ) = @_;
+    if ( $self->has_cvrow($cv) ) {
+        return $self->get_cvrow($cv);
+    }
+    my $cvrow
+        = $self->chado->resultset('Cv::Cv')
+        ->find_or_create( { name => $cv } );
+    $self->set_cvrow( $cv, $cvrow );
+    return $cvrow;
+}
+
+sub find_or_create_cvterm_namespace {
+    my ( $self, $cvterm, $cv, $db ) = @_;
+    $cv ||= 'cvterm_property_type';
+    $db ||= 'internal';
+    my $schema = $self->chado;
+
+    if ( $self->has_cvterm_row($cvterm) ) {
+        return $self->get_cvterm_row($cvterm);
+    }
+    my $cvterm_row
+        = $schema->resultset('Cv::Cvterm')
+        ->find( { name => $cvterm, 'cv.name' => $cv }, { join => 'cv' } );
+    if ($cvterm_row) {
+        $self->set_cvterm_row( $cvterm, $cvterm_row );
+    }
+    else {
+        my $dbxref_row
+            = $schema->resultset('General::Dbxref')->find_or_create(
+            {   accession => $cvterm,
+                db_id     => $self->get_dbrow($db)->db_id
+            }
+            );
+        $cvterm_row = $schema->resultset('Cv::Cvterm')->create(
+            {   name      => $cvterm,
+                cv_id     => $self->get_cvrow($cv)->cv_id,
+                dbxref_id => $dbxref_row->dbxref_id
+            }
+        );
+        $self->set_cvterm_row( $cvterm, $cvterm_row );
+    }
+    return $cvterm_row;
+}
+
+sub find_cvterm_by_id {
+    my ( $self, $identifier, $cv ) = @_;
+    my $row;
+    if ( $self->has_idspace($identifier) ) {
+        my ( $db, $id ) = $self->parse_id($identifier);
+        $row = $self->chado->resultset('Cv::Cvterm')->search(
+            {   'dbxref.accession' => $id,
+                'cv.name'          => $cv,
+                'db.name'          => $db
+            },
+            { join => [ 'cv', { 'dbxref' => 'db' } ], rows => 1 }
+        )->single;
+        return $row if $row;
+    }
+
+    $row
+        = $self->chado->resultset('Cv::Cvterm')
+        ->search( { 'dbxref.accession' => $identifier, 'cv.name' => $cv },
+        { join => [qw/cv dbxref/], rows => 1 } )->single;
+
+    return $row if $row;
+
+}
+
+sub find_or_create_db_id {
+    my ( $self, $name ) = @_;
+    if ( $self->has_dbrow($name) ) {
+        return $self->get_dbrow($name)->db_id;
+    }
+    my $row = $self->chado->resultset('General::Db')
+                ->find_or_create( { name => $name } );
+    $self->add_dbrow( $name, $row );
+    $row->db_id;
+}
+
+sub find_relation_term {
+    my ( $self, $cvterm, $cv ) = @_;
+
+    ## -- extremely redundant call have to cache later ontology
+    my $rs = $self->chado->resultset('Cv::Cvterm')->search(
+        {   'me.name' => $cvterm,
+            'cv.name' => $cv
+        },
+        { join => 'cv' }
+    );
+
+    if ( $rs->count ) {
+        return $rs->first;
+    }
+}
+
+sub has_idspace {
+    my ( $self, $id ) = @_;
+    return 1 if $id =~ /:/;
+}
+
+sub parse_id {
+    my ( $self, $id ) = @_;
+    return split /:/, $id;
+}
 
 sub find_dbxref_id {
     my ( $self, $dbxref, $db ) = @_;
@@ -43,22 +187,6 @@ sub find_dbxref_id_by_cvterm {
     );
     if ( $rs->count ) {
         return $rs->first->dbxref_id;
-    }
-}
-
-sub find_relation_term {
-    my ( $self, $cvterm, $cv ) = @_;
-
-    ## -- extremely redundant call have to cache later ontology
-    my $rs = $self->chado->resultset('Cv::Cvterm')->search(
-        {   'me.name' => $cvterm,
-            'cv.name' => $cv
-        },
-        { join => 'cv' }
-    );
-
-    if ( $rs->count ) {
-        return $rs->first;
     }
 }
 
@@ -99,93 +227,6 @@ sub find_cvterm_id_by_term_id {
     if ( $rs->count ) {
         return $rs->first->cvterm_id;
     }
-}
-
-sub find_cvterm_by_id {
-    my ( $self, $identifier, $cv ) = @_;
-    my $row;
-    if ( $self->has_idspace($identifier) ) {
-        my ( $db, $id ) = $self->parse_id($identifier);
-        $row = $self->chado->resultset('Cv::Cvterm')->search(
-            {   'dbxref.accession' => $id,
-                'cv.name'          => $cv,
-                'db.name'          => $db
-            },
-            { join => [ 'cv', { 'dbxref' => 'db' } ], rows => 1 }
-        )->single;
-        return $row if $row;
-    }
-
-    $row
-        = $self->chado->resultset('Cv::Cvterm')
-        ->search( { 'dbxref.accession' => $identifier, 'cv.name' => $cv },
-        { join => [qw/cv dbxref/], rows => 1 } )->single;
-
-    return $row if $row;
-
-}
-
-sub find_or_create_db_id {
-    my ( $self, $name ) = @_;
-    if ( $self->has_dbrow($name) ) {
-        return $self->get_dbrow($name)->db_id;
-    }
-    my $chado = $self->chado;
-    my $row   = $chado->txn_do(
-        sub {
-            $chado->resultset('General::Db')
-                ->find_or_create( { name => $name } );
-        }
-    );
-    $self->add_dbrow( $name, $row );
-    $row->db_id;
-}
-
-sub get_term_identifier {
-    my ($self) = @_;
-}
-
-sub has_idspace {
-    my ( $self, $id ) = @_;
-    return 1 if $id =~ /:/;
-}
-
-sub parse_id {
-    my ( $self, $id ) = @_;
-    return split /:/, $id;
-}
-
-has 'cvterm_row' => (
-    is        => 'rw',
-    isa       => 'HashRef',
-    traits    => ['Hash'],
-    predicate => 'has_cvterm_row',
-    default   => sub { {} },
-    handles   => {
-        get_cvterm_row   => 'get',
-        set_cvterm_row   => 'set',
-        exist_cvterm_row => 'defined'
-    }
-);
-
-has 'cvrow' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => ['Hash'],
-    default => sub { {} },
-    handles => {
-        get_cvrow   => 'get',
-        set_cvrow   => 'set',
-        exist_cvrow => 'defined'
-    }
-);
-
-sub _build_cvrow {
-    my ($self) = @_;
-    my $name   = $self->cv;
-    my $cvrow  = $self->chado->resultset('Cv::Cv')
-        ->find_or_create( { name => $name } );
-    return { $name => $cvrow };
 }
 
 sub find_or_create_cvterm_id {
