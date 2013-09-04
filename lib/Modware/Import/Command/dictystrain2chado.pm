@@ -19,7 +19,7 @@ has data => (
     default =>
 
         # sub { [qw/characteristics publications inventory genotype props/] }
-        sub { [qw/phenotype genotype/] }
+        sub { [qw/phenotype/] }
 );
 
 sub execute {
@@ -32,15 +32,16 @@ sub execute {
         $self->schema->storage->dbh_do(
             sub {
                 my ( $storage, $dbh ) = @_;
-                my $sth = $dbh->prepare(qq{DELETE FROM stock});
-                $sth->execute;
-                $sth = $dbh->prepare(qq{DELETE FROM stockprop});
-                $sth->execute;
-                $sth = $dbh->prepare(qq{DELETE FROM stock_genotype});
-                $sth->execute;
-                $sth = $dbh->prepare(qq{DELETE FROM genotype});
-                $sth->execute;
-                $sth->finish();
+
+                # my $sth = $dbh->prepare(qq{DELETE FROM stock});
+                # $sth->execute;
+                # $sth = $dbh->prepare(qq{DELETE FROM stockprop});
+                # $sth->execute;
+                # $sth = $dbh->prepare(qq{DELETE FROM stock_genotype});
+                # $sth->execute;
+                # $sth = $dbh->prepare(qq{DELETE FROM genotype});
+                # $sth->execute;
+                # $sth->finish();
             }
         );
     }
@@ -61,7 +62,7 @@ sub execute {
         $hash->{type_id}     = $type_id;
 
         my $stock_rs
-            = $self->schema->resultset('Stock::Stock')->create($hash);
+            = $self->schema->resultset('Stock::Stock')->find_or_create($hash);
 
         my $strain_char_pub_uniquename = '';
         my $char_pub_id = $self->find_pub($strain_char_pub_uniquename);
@@ -135,9 +136,11 @@ sub execute {
         if ( $self->has_genotype( $hash->{uniquename} ) ) {
             my $genotype = @{ $self->get_genotype( $hash->{uniquename} ) }[0];
             my ( $key, $value ) = each %{$genotype};
-            my $genotype_type_id = $self->find_cvterm('genotype');
+            my $genotype_type_id
+                = $self->find_cvterm( 'genotype', 'dicty_stockcenter' );
             my $genotype_rs
-                = $self->schema->resultset('Genetic::Genotype')->create(
+                = $self->schema->resultset('Genetic::Genotype')
+                ->find_or_create(
                 {   name       => $self->trim($value),
                     uniquename => $self->trim($key),
                     type_id    => $genotype_type_id
@@ -185,7 +188,24 @@ sub execute {
 
                 my $genotype_id = $self->find_genotype( $hash->{uniquename} );
                 if ( !$genotype_id ) {
-                    $self->logger->logdie("Please load genotype data!");
+                    $self->logger->warn(
+                        "Genotype NOT found for $hash->{uniquename}");
+                }
+
+                my $type_id = $self->find_or_create_cvterm("unspecified", "Dicty Phenotypes") ;
+                # my $pub_id  =;
+
+                if ( $genotype_id and $phenotype_id and $env_id and $type_id )
+                {
+                    $self->schema->resultset('Genetic::Phenstatement')
+                        ->find_or_create(
+                        {   genotype_id    => $genotype_id,
+                            phenotype_id   => $phenotype_id,
+                            environment_id => $env_id,
+                            type_id        => $type_id,
+                            # pub_id         => $pub_id
+                        }
+                        );
                 }
             }
         }
@@ -193,8 +213,7 @@ sub execute {
     }
 
     $guard->commit;
-
-    # $self->schema->storage->disconnect;
+    $self->schema->storage->disconnect;
 
     return;
 }

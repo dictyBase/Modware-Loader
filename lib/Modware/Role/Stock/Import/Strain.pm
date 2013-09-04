@@ -144,13 +144,15 @@ sub find_genotype {
     if ( $self->has_strain_genotype($dbs_id) ) {
         return $self->get_strain_genotype($dbs_id)->genotype_id;
     }
-    my $row
-        = $self->schema->resultset('Stock::StockGenotype')
-        ->search( { 'stock.uniquename' => $dbs_id },
-        { select => 'me.genotype_id', join => 'stock' } );
-    if ($row) {
+
+    # Stock::StockGenotype query is returning 0
+    my $stock_rs
+        = $self->schema->resultset('Stock::Stock')
+        ->search( { uniquename => $dbs_id }, {} );
+    my $row = $stock_rs->related_resultset('stock_genotypes');
+    if ( $row->count > 0 ) {
         $self->set_strain_genotype( $dbs_id, $row->first );
-        return $self->get_strain_genotype($dbs_id);
+        return $self->get_strain_genotype($dbs_id)->genotype_id;
     }
 }
 

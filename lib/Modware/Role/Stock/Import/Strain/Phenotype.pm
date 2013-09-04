@@ -31,6 +31,10 @@ has '_phenotype' => (
     }
 );
 
+=head2 find_or_create_environment
+
+=cut
+
 sub find_or_create_environment {
     my ( $self, $env_term ) = @_;
     if ( $self->has_env_row($env_term) ) {
@@ -38,8 +42,10 @@ sub find_or_create_environment {
     }
     my $cvterm_env = $self->find_cvterm( $env_term, "Dicty Environment" );
     if ( !$cvterm_env ) {
-        $self->logger->warn("Dicty environment ontology not loaded!");
-        croak "Dicty environment ontology not loaded";
+        $self->logger->warn(
+            "$env_term does NOT exist in Dicty environment ontology");
+        $cvterm_env = $self->find_or_create_cvterm( "Dicty Environment",
+            "Dicty Environment" );
     }
     my $env_rs = $self->schema->resultset('Genetic::Environment')
         ->find_or_create( { uniquename => $env_term } );
@@ -50,6 +56,10 @@ sub find_or_create_environment {
     return $self->get_env_row($env_term)->environment_id;
 }
 
+=head2 find_or_create_phenotype
+
+=cut
+
 sub find_or_create_phenotype {
     my ( $self, $phenotype_term, $assay ) = @_;
     if ( $self->has_phenotype($phenotype_term) ) {
@@ -58,8 +68,8 @@ sub find_or_create_phenotype {
     my $cvterm_phenotype
         = $self->find_cvterm( $phenotype_term, "Dicty Phenotypes" );
     if ( !$cvterm_phenotype ) {
-		#$self->logger->logdie(
-		#    "Couldn't find \"$phenotype_term\" in Dicty phenotype ontology");
+        $self->logger->warn(
+            "Couldn't find \"$phenotype_term\" in Dicty phenotype ontology");
         return;
     }
     my $cvterm_assay = $self->find_cvterm( $assay, "Dictyostelium Assay" )
