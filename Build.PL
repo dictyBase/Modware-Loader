@@ -23,6 +23,11 @@ my %module_build_args = (
   "recommends" => {
     "BibTeX::Parser" => "0.64",
     "Child" => "0.009",
+    "DBD::Oracle" => "1.52",
+    "Email::Sender::Simple" => "0.102370",
+    "Email::Simple" => "2.10",
+    "Email::Valid" => "0.184",
+    "Math::Base36" => "0.10",
     "Text::CSV" => "1.32",
     "Text::TablularDisplay" => "1.33",
     "XML::LibXML" => "1.70",
@@ -34,13 +39,8 @@ my %module_build_args = (
     "Bio::Chado::Schema" => "0.20000",
     "Bio::GFF3::LowLevel" => "1.5",
     "BioPortal::WebService" => "v1.0.0",
-    "DBD::Oracle" => "1.52",
-    "Email::Sender::Simple" => "0.102370",
-    "Email::Simple" => "2.10",
-    "Email::Valid" => "0.184",
     "File::Find::Rule" => "0.32",
     "Log::Log4perl" => "1.40",
-    "Math::Base36" => "0.10",
     "MooseX::App::Cmd" => "0.09",
     "MooseX::Attribute::Dependent" => "v1.1.2",
     "MooseX::ConfigFromFile" => "0.10",
@@ -48,6 +48,7 @@ my %module_build_args = (
     "MooseX::Getopt" => "0.56",
     "MooseX::Types::Path::Class" => "0.06",
     "Regexp::Common" => "2013030901",
+    "SQL::Library" => "v0.0.5",
     "Spreadsheet::WriteExcel" => "2.37",
     "Tie::Cache" => "0.17",
     "perl" => "5.010"
@@ -77,7 +78,11 @@ my %module_build_args = (
     }
   },
   "test_requires" => {
-    "Test::More" => "0.88"
+    "Test::Chado" => "v1.1.0",
+    "Test::File" => "1.34",
+    "Test::Moose::More" => "0.0019",
+    "Test::More" => "0.88",
+    "Test::Spec" => "0.46"
   }
 );
 
