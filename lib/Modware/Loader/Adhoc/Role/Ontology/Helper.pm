@@ -20,16 +20,15 @@ has '_dbrow' => (
 );
 
 has 'cvterm_row' => (
-    is        => 'rw',
-    isa       => 'HashRef',
-    traits    => ['Hash'],
-    predicate => 'has_cvterm_row',
-    default   => sub { {} },
-    handles   => {
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => ['Hash'],
+    default => sub { {} },
+    handles => {
         get_cvterm_row   => 'get',
         set_cvterm_row   => 'set',
         exist_cvterm_row => 'defined',
-        has_cvterm_row => 'defined'
+        has_cvterm_row   => 'defined'
     }
 );
 
@@ -41,7 +40,7 @@ has '_cvrow' => (
     handles => {
         get_cvrow   => 'get',
         set_cvrow   => 'set',
-        has_cvrow => 'defined',
+        has_cvrow   => 'defined',
         exist_cvrow => 'defined'
     }
 );
@@ -62,8 +61,7 @@ sub find_or_create_cvrow {
     if ( $self->has_cvrow($cv) ) {
         return $self->get_cvrow($cv);
     }
-    my $cvrow
-        = $self->chado->resultset('Cv::Cv')
+    my $cvrow = $self->chado->resultset('Cv::Cv')
         ->find_or_create( { name => $cv } );
     $self->set_cvrow( $cv, $cvrow );
     return $cvrow;
@@ -78,8 +76,7 @@ sub find_or_create_cvterm_namespace {
     if ( $self->has_cvterm_row($cvterm) ) {
         return $self->get_cvterm_row($cvterm);
     }
-    my $cvterm_row
-        = $schema->resultset('Cv::Cvterm')
+    my $cvterm_row = $schema->resultset('Cv::Cvterm')
         ->find( { name => $cvterm, 'cv.name' => $cv }, { join => 'cv' } );
     if ($cvterm_row) {
         $self->set_cvterm_row( $cvterm, $cvterm_row );
@@ -132,8 +129,8 @@ sub find_or_create_db_id {
         return $self->get_dbrow($name)->db_id;
     }
     my $row = $self->chado->resultset('General::Db')
-                ->find_or_create( { name => $name } );
-    $self->add_dbrow( $name, $row );
+        ->find_or_create( { name => $name } );
+    $self->set_dbrow( $name, $row );
     $row->db_id;
 }
 
@@ -160,7 +157,7 @@ sub has_idspace {
 
 sub parse_id {
     my ( $self, $id ) = @_;
-    return split /:/, $id;
+    return split( /:/, $id, 2 );
 }
 
 sub find_dbxref_id {
