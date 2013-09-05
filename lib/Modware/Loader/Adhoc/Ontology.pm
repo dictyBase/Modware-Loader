@@ -44,12 +44,12 @@ sub update_or_create_term {
     if ($term_from_db) {
         $self->_update_term( $term_from_db, $term );
         $self->logger->debug( 'update term ', $term->id );
-        return 'update';
+        return [ 'update', $term ];
     }
     else {
-        $self->_insert_term($term);
+        $term_from_db = $self->_insert_term($term);
         $self->logger->debug( 'insert term ', $term->id );
-        return 'insert';
+        return [ 'insert', $term_from_db ];
     }
 }
 
@@ -98,7 +98,7 @@ sub load_namespaces {
         ->find_or_create( { name => '_global' } );
     $self->cv_namespace($global_cv);
     $self->db_namespace($global_db);
-    $self->find_or_create_cvterm_namespace;
+    $self->find_or_create_namespaces;
 }
 
 sub find_or_create_namespaces {
@@ -112,7 +112,6 @@ sub find_or_create_namespaces {
         for qw/EXACT BROAD NARROW RELATED/;
 
 }
-
 
 sub create_relationship {
     my ( $self, $relation ) = @_;
@@ -169,13 +168,15 @@ sub delete_comment {
 
 sub create_comment {
     my ( $self, $term, $term_from_db ) = @_;
-    $term_from_db->create_related(
-        'cvtermprops',
-        {   value   => $term->comment,
-            type_id => $self->find_or_create_cvterm_namespace( 'comment',
-                'cvterm_property_type' )->cvterm_id
-        }
-    );
+    if ( my $comment = $term->comment ) {
+        $term_from_db->create_related(
+            'cvtermprops',
+            {   value   => $comment,
+                type_id => $self->find_or_create_cvterm_namespace( 'comment',
+                    'cvterm_property_type' )->cvterm_id
+            }
+        );
+    }
 }
 
 sub delete_alt_ids {
@@ -241,10 +242,10 @@ sub create_synonyms {
     for my $syn ( $term->synonym_set ) {
         $term_from_db->create_related(
             'cvtermsynonyms',
-            {   value   => $syn->def->text,
+            {   synonym   => $syn->def->text,
                 type_id => $self->find_or_create_cvterm_namespace(
                     $syn->scope, 'synonym_type'
-                )
+                )->cvterm_id
             }
         );
     }
@@ -271,8 +272,8 @@ sub create_xrefs {
     my ( $self, $term, $term_from_db ) = @_;
     my $set = $term->xref_set;
     for my $xref ( $set->get_set ) {
-        if ( $self->has_idspace($xref->name) ) {
-            my ( $db, $id ) = $self->parse_id($xref->name);
+        if ( $self->has_idspace( $xref->name ) ) {
+            my ( $db, $id ) = $self->parse_id( $xref->name );
             $term_from_db->create_related(
                 'cvterm_dbxrefs',
                 {   dbxref => {
