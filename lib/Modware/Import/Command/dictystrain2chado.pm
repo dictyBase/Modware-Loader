@@ -19,7 +19,13 @@ has data => (
     default =>
 
         # sub { [qw/characteristics publications inventory genotype props/] }
-        sub { [qw/phenotype/] }
+        sub { [qw/genotype phenotype/] }
+);
+
+has mock_pub => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
 );
 
 sub execute {
@@ -28,20 +34,23 @@ sub execute {
 
     my $guard = $self->schema->txn_scope_guard;
 
+    if ( $self->mock_pub ) {
+        $self->_mock_publications();
+    }
+
     if ( $self->prune ) {
         $self->schema->storage->dbh_do(
             sub {
                 my ( $storage, $dbh ) = @_;
-
-                # my $sth = $dbh->prepare(qq{DELETE FROM stock});
-                # $sth->execute;
-                # $sth = $dbh->prepare(qq{DELETE FROM stockprop});
-                # $sth->execute;
-                # $sth = $dbh->prepare(qq{DELETE FROM stock_genotype});
-                # $sth->execute;
-                # $sth = $dbh->prepare(qq{DELETE FROM genotype});
-                # $sth->execute;
-                # $sth->finish();
+                my $sth;
+                for my $table (
+                    qw/stock stockprop stock_cvterm stock_pub stock_genotype genotype phenotype environment/
+                    )
+                {
+                    $sth = $dbh->prepare(qq{DELETE FROM $table});
+                    $sth->execute;
+                }
+                $sth->finish;
             }
         );
     }
@@ -64,19 +73,21 @@ sub execute {
         my $stock_rs
             = $self->schema->resultset('Stock::Stock')->find_or_create($hash);
 
-        my $strain_char_pub_uniquename = '';
-        my $char_pub_id = $self->find_pub($strain_char_pub_uniquename);
+        my $strain_char_pub_title = 'Dicty Strain Characteristics';
+        my $char_pub_id = $self->find_pub_by_title($strain_char_pub_title);
 
         if ( $self->has_characteristics( $hash->{uniquename} ) ) {
             if ($char_pub_id) {
                 foreach my $characteristics (
                     @{ $self->get_characteristics( $hash->{uniquename} ) } )
                 {
-                    my $char_type_id
-                        = $self->find_cvterm( $self->trim($characteristics) );
+                    my $char_cvterm_id = $self->find_cvterm(
+                        $self->trim($characteristics),
+                        "strain_characteristics"
+                    );
                     $stock_rs->create_related(
                         'stock_cvterms',
-                        {   type_id => $char_type_id,
+                        {   cvterm_id => $char_cvterm_id,
                             pub_id  => $char_pub_id
                         }
                     );
@@ -157,7 +168,8 @@ sub execute {
             foreach my $prop (@props) {
                 my ( $key, $value ) = each %{$prop};
                 $rank = 0 if $previous_type ne $key;
-                my $props_type_id = $self->find_cvterm($key);
+                my $props_type_id
+                    = $self->find_cvterm( $key, "dicty_stockcenter" );
                 $stock_rs->create_related(
                     'stockprops',
                     {   type_id => $props_type_id,
@@ -182,8 +194,8 @@ sub execute {
                     if $phenotype_env;
 
                 my $phenotype_id
-                    = $self->find_or_create_phenotype( $phenotype_term,
-                    $phenotype_assay )
+                    = $self->find_or_create_phenotype( $hash->{uniquename},
+                    $phenotype_term, $phenotype_assay )
                     if $phenotype_term;
 
                 my $genotype_id = $self->find_genotype( $hash->{uniquename} );
@@ -192,8 +204,11 @@ sub execute {
                         "Genotype NOT found for $hash->{uniquename}");
                 }
 
-                my $type_id = $self->find_or_create_cvterm("unspecified", "Dicty Phenotypes") ;
-                # my $pub_id  =;
+                my $type_id = $self->find_or_create_cvterm( "unspecified",
+                    "Dicty Phenotypes" );
+
+                my $pub_id = $self->find_pub_by_title(
+                    "Dicty Stock Center Phenotyping 2003-2008");
 
                 if ( $genotype_id and $phenotype_id and $env_id and $type_id )
                 {
@@ -203,7 +218,7 @@ sub execute {
                             phenotype_id   => $phenotype_id,
                             environment_id => $env_id,
                             type_id        => $type_id,
-                            # pub_id         => $pub_id
+                            pub_id         => $pub_id
                         }
                         );
                 }

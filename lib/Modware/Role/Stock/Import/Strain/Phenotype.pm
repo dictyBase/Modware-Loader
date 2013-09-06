@@ -40,7 +40,8 @@ sub find_or_create_environment {
     if ( $self->has_env_row($env_term) ) {
         return $self->get_env_row($env_term)->environment_id;
     }
-    my $cvterm_env = $self->find_cvterm( $env_term, "Dicty Environment" );
+    my $cvterm_env;
+    $cvterm_env = $self->find_cvterm( $env_term, "Dicty Environment" );
     if ( !$cvterm_env ) {
         $self->logger->warn(
             "$env_term does NOT exist in Dicty environment ontology");

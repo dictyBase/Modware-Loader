@@ -126,6 +126,17 @@ sub find_pub {
     }
 }
 
+sub find_pub_by_title {
+    my ( $self, $title ) = @_;
+    my $row
+        = $self->schema->resultset('Pub::Pub')->search( { title => $title },
+        { select => [qw/title uniquename pub_id/] } );
+    if ($row) {
+        $self->set_pub_row( $row->first->uniquename, $row->first );
+        return $self->get_pub_row( $row->first->uniquename )->pub_id;
+    }
+}
+
 has '_cvterm_row' => (
     is      => 'rw',
     isa     => 'HashRef',
@@ -163,7 +174,7 @@ sub find_or_create_cvterm {
         my $row = $self->schema->resultset('Cv::Cvterm')->find_or_create(
             {   name      => $cvterm,
                 dbxref_id => $self->find_or_create_dbxref($cvterm),
-                cv_id     => $self->find_cv($cv)
+                cv_id     => $self->find_or_create_cv($cv)
             }
         );
         $self->set_cvterm_row( $cvterm, $row );
@@ -172,15 +183,32 @@ sub find_or_create_cvterm {
     return $cvterm_id;
 }
 
-sub find_cv {
+sub find_or_create_cv {
     my ( $self, $cv ) = @_;
     my $row = $self->schema->resultset('Cv::Cv')
-        ->search( { name => $cv }, { select => 'cv_id' } );
+        ->find_or_create( { name => $cv } );
     my $cv_id;
     if ($row) {
-        $cv_id = $row->first->cv_id;
+        $cv_id = $row->cv_id;
     }
     return $cv_id;
+}
+
+sub _mock_publications {
+    my ($self) = @_;
+    my $dicty_phen_pub;
+    $dicty_phen_pub->{title} = "Dicty Stock Center Phenotyping 2003-2008";
+    $dicty_phen_pub->{type_id}
+        = $self->find_or_create_cvterm( "ontology", "pub type" );
+    $dicty_phen_pub->{uniquename} = '11223344';
+    $self->schema->resultset('Pub::Pub')->find_or_create($dicty_phen_pub);
+
+    my $dicty_char_pub;
+    $dicty_char_pub->{title} = "Dicty Strain Characteristics";
+    $dicty_char_pub->{type_id}
+        = $self->find_or_create_cvterm( "ontology", "pub type" );
+    $dicty_char_pub->{uniquename} = '11223345';
+    $self->schema->resultset('Pub::Pub')->find_or_create($dicty_char_pub);
 }
 
 sub trim {
