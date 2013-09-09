@@ -15,7 +15,8 @@ before 'execute' => sub {
     my @cvterms = (
         "strain",             "plasmid",
         "genotype",           "synonym",
-        "mutagenesis method", "mutant type"
+        "mutagenesis method", "mutant type",
+        "keyword",            "depositor"
     );
     my $dictystock_rs = $self->schema->resultset('Cv::Cvterm')->search(
         {   'me.name' => { -in => [@cvterms] },
@@ -23,14 +24,14 @@ before 'execute' => sub {
         },
         { join => 'cv' }
     );
-    if ( $dictystock_rs->count == 0 ) {
+    if ( $dictystock_rs->count != scalar @cvterms ) {
         $self->logger->info(
             'Creating dicty_stockcenter namespace in cv & cvterm');
         my $cv_stock_rs
             = $self->schema->resultset('Cv::Cv')
             ->find_or_create( { name => $self->cv } );
         foreach my $stock (@cvterms) {
-            $cv_stock_rs->create_related(
+            $cv_stock_rs->find_or_create_related(
                 'cvterms',
                 {   name      => $stock,
                     dbxref_id => $self->find_or_create_dbxref($stock)

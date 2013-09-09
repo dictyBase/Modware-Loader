@@ -83,13 +83,37 @@ sub execute {
 
                     $stock_rs->create_related(
                         'stockprops',
-                        {   type_id => $self->find_cvterm($type, 'plasmid_inventory'),
-                            value   => $self->trim( $inventory->{$key} ),
-                            rank    => $rank
+                        {   type_id => $self->find_cvterm(
+                                $type, 'plasmid_inventory'
+                            ),
+                            value => $self->trim( $inventory->{$key} ),
+                            rank  => $rank
                         }
                     ) if $inventory->{$key};
                 }
                 $rank = $rank + 1;
+            }
+        }
+
+        if ( $self->has_props( $hash->{uniquename} ) ) {
+
+            my $rank;
+            my $previous_type = '';
+            my @props         = @{ $self->get_props( $hash->{uniquename} ) };
+            foreach my $prop (@props) {
+                my ( $key, $value ) = each %{$prop};
+                $rank = 0 if $previous_type ne $key;
+                my $props_type_id
+                    = $self->find_cvterm( $key, "dicty_stockcenter" );
+                $stock_rs->create_related(
+                    'stockprops',
+                    {   type_id => $props_type_id,
+                        value   => $self->trim($value),
+                        rank    => $rank
+                    }
+                );
+                $rank          = $rank + 1;
+                $previous_type = $key;
             }
         }
     }

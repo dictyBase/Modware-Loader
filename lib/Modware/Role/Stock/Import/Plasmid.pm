@@ -63,10 +63,11 @@ before 'execute' => sub {
                 if !$self->$has_method( $array[0] );
             if ( $data eq 'inventory' ) {
                 my $inventory;
-                $inventory->{location}     = $array[1];
-                $inventory->{color}        = $array[2];
-                $inventory->{stored_as}    = $array[3];
-                $inventory->{storage_date} = $array[4];
+                $inventory->{location}       = $array[1];
+                $inventory->{color}          = $array[2];
+                $inventory->{stored_as}      = $array[3];
+                $inventory->{storage_date}   = $array[4];
+                $inventory->{public_comment} = $array[5];
                 push $self->$get_method( $array[0] ), $inventory;
                 next;
             }

@@ -106,6 +106,8 @@ before 'execute' => sub {
                 $inventory->{obtained_as}     = $array[4];
                 $inventory->{stored_as}       = $array[5];
                 $inventory->{storage_date}    = $array[6];
+                $inventory->{private_comment} = $array[7];
+                $inventory->{public_comment}  = $array[8];
                 push $self->$get_method( $array[0] ), $inventory;
                 next;
             }
