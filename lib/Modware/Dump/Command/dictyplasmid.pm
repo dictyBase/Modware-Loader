@@ -207,7 +207,7 @@ sub execute {
             if ( $plasmid->keywords ) {
                 my @keywords;
                 if ( $plasmid->keywords ) {
-                    @keywords = split( /[,;]/, $plasmid->keywords );
+                    @keywords = split( /[,]/, $plasmid->keywords );
                 }
                 else {
                     $keywords[0] = $plasmid->keywords;
