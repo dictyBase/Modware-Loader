@@ -57,7 +57,7 @@ sub find_strain_inventory {
         { 'strain.dbxref_id' => $old_dbxref_id },
         {   join   => 'strain',
             select => [
-                qw/me.location me.color me.no_of_vials me.obtained_as me.stored_as me.storage_date/
+                qw/me.location me.color me.no_of_vials me.obtained_as me.stored_as me.storage_date me.storage_comments me.other_comments_and_feedback/
             ],
             cache => 1
         }
@@ -264,7 +264,7 @@ sub _get_genotype_for_V_strain {
     my ( $self, $dbs_id ) = @_;
     my $base_ax4_genotype = 'axeA1,axeB1,axeC1,<gene_name>-,[pBSR1],bsR';
     if ( $self->has_strain_gene_name($dbs_id) ) {
-        my @gene = @{$self->get_strain_gene_name($dbs_id)};
+        my @gene = @{ $self->get_strain_gene_name($dbs_id) };
         $base_ax4_genotype =~ s/<gene_name>/$gene[0]/;
     }
     else {

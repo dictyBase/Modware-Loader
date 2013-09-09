@@ -139,6 +139,27 @@ sub execute {
                         push @row, '';
                     }
 
+                    my $private_comment = $strain_invent->storage_comments;
+                    if ($private_comment) {
+                        $private_comment =~ s/\r\n//g;
+                        $private_comment =~ s/\t/ /g;
+                        push @row, $self->trim($private_comment);
+                    }
+                    else {
+                        push @row, '';
+                    }
+
+                    my $public_comment
+                        = $strain_invent->other_comments_and_feedback;
+                    if ($public_comment) {
+                        $public_comment =~ s/\r\n//g;
+                        $public_comment =~ s/\t/ /g;
+                        push @row, $self->trim($public_comment);
+                    }
+                    else {
+                        push @row, '';
+                    }
+
                     my $s = join( "\t", @row );
                     $io->{inventory}->write( $s . "\n" );
                     $stats->{inventory} = $stats->{inventory} + 1;
@@ -201,9 +222,6 @@ sub execute {
                 if ( $genotype =~ m/^[V0-9]{6}/ ) {
                     my $strain_name = $genotype;
                     my $genotype = $self->_get_genotype_for_V_strain($dbs_id);
-                    print $dbs_id. "\t"
-                        . $strain_name . "\t"
-                        . $genotype . "\n";
                 }
                 $genotype =~ s/(,\W|,)/,/g;
                 $io->{genotype}->write(
