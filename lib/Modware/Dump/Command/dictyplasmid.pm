@@ -143,6 +143,19 @@ sub execute {
                     else {
                         push @row, '';
                     }
+						
+					# No private comments for plasmid inventory
+
+                    my $public_comment
+                        = $plasmid_invent->other_comments_and_feedback;
+                    if ($public_comment) {
+                        $public_comment =~ s/\r\n//g;
+                        $public_comment =~ s/\t/ /g;
+                        push @row, $self->trim($public_comment);
+                    }
+                    else {
+                        push @row, '';
+                    }
 
                     my $s = join( "\t", @row );
                     $io->{inventory}->write( $s . "\n" );
