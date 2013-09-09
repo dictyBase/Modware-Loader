@@ -1,32 +1,50 @@
 use Test::More qw/no_plan/;
-use Test::Chado;
-use Test::Chado::Common;
 use FindBin qw($Bin);
 use Path::Class::Dir;
 use Test::Exception;
+use Test::Chado qw/:all/;
+use Test::Chado::Common;
+use Test::Chado::Cvterm qw/:all/;
 
-my $data_dir = Path::Class::Dir->new($Bin)->parent->subdir('test_data');
+my $data_dir    = Path::Class::Dir->new($Bin)->parent->subdir('test_data');
+my $obo_fixture = $data_dir->subdir('preset')->file('cvprop.tar.bz2');
 
 use_ok('Modware::Load');
 
-subtest 'loading of obo files' => sub {
-    my $schema
-        = chado_schema(
-        custom_fixture => $data_dir->subdir('preset')->file('cvprop.tar.bz2')
-        );
-    my $dbmanager = Test::Chado->fixture_loader_instance->dbmanager;
+subtest 'loading of obo file' => sub {
+    my $schema    = chado_schema( custom_fixture => $obo_fixture );
+    my $dbmanager = get_dbmanager_instance();
     my $loader    = new_ok('Modware::Load');
     local @ARGV = (
         'obo2chado',          '--dsn',
         $dbmanager->dsn,      '--user',
         $dbmanager->user,     '--password',
         $dbmanager->password, '--input',
-        $data_dir->subdir('obo')->file('eco.obo')
+        $data_dir->subdir('obo')->file('eco.obo'),
     );
+    push @ARGV, '--pg_schema', $dbmanager->schema_namespace
+        if $dbmanager->can('schema_namespace');
 
-    lives_ok { $loader->run } "should load obo file";
+    lives_ok { $loader->run } "should load eco obo file";
     has_cv( $schema, 'eco', 'should have loaded eco ontology' );
+    drop_schema();
+};
 
+subtest 'loading of cv terms and relationships from obo file' => sub {
+    my $schema    = chado_schema( custom_fixture => $obo_fixture );
+    my $dbmanager = get_dbmanager_instance();
+    my $loader    = new_ok('Modware::Load');
+    local @ARGV = (
+        'obo2chado',          '--dsn',
+        $dbmanager->dsn,      '--user',
+        $dbmanager->user,     '--password',
+        $dbmanager->password, '--input',
+        $data_dir->subdir('obo')->file('eco.obo'),
+    );
+    push @ARGV, '--pg_schema', $dbmanager->schema_namespace
+        if $dbmanager->can('schema_namespace');
+
+    lives_ok { $loader->run } "should load eco obo file";
     my @names = (
         'experimental evidence',
         'immunofluorescence evidence',
@@ -39,5 +57,115 @@ subtest 'loading of obo files' => sub {
 
     my @dbxrefs = qw(0000006 0000007 0000008 0000023 used_in);
     has_dbxref( $schema, $_, "should have dbxref $_" ) for @dbxrefs;
+    count_cvterm_ok(
+        $schema,
+        { 'cv' => 'eco', 'count' => 299 },
+        'should have loaded 299 cvterms'
+    );
+    count_subject_ok(
+        $schema,
+        {   'cv'           => 'eco',
+            'count'        => 14,
+            object         => 'direct assay evidence',
+            'relationship' => 'is_a'
+        },
+        'should have 14 subjects of term direct assay evidence'
+    );
+    count_subject_ok(
+        $schema,
+        {   'cv'           => 'eco',
+            'count'        => 58,
+            object         => 'manual assertion',
+            'relationship' => 'used_in'
+        },
+        'should have 58 subjects of term manual assertion'
+    );
+    my $subject = 'non-traceable author statement used in manual assertion';
+    count_object_ok(
+        $schema,
+        { 'cv' => 'eco', 'count' => 3, 'subject' => $subject },
+        "should have 3 objects of term $subject"
+    );
+    count_object_ok(
+        $schema,
+        {   'cv'         => 'eco',
+            'count'      => 1,
+            'subject'    => $subject,
+            relationship => 'used_in'
+        },
+        "should have 1 object of term $subject with relationship used_in"
+    );
+    has_relationship(
+        $schema,
+        {   'subject'      => 'curator inference',
+            'object'       => 'evidence',
+            'relationship' => 'is_a'
+        },
+        "should have 1 is_a relationship between curator inference and evidence terms"
+    );
+    has_relationship(
+        $schema,
+        {   'subject' =>
+                'genomic microarray evidence used in manual assertion',
+            'object'       => 'manual assertion',
+            'relationship' => 'used_in'
+        },
+        "should have a used_in relationship between genomic microarray evidence used in manual assertion and manual assertion terms"
+    );
+    is_related(
+        $schema,
+        {   'cv'      => 'eco',
+            'object'  => 'similarity evidence',
+            'subject' => 'phylogenetic evidence'
+        },
+        "should have relationship between similarity evidence and phylogenetic evidence terms in eco ontology"
+    );
+    drop_schema();
+};
+
+subtest 'loading of cvterms metadata from obo file' => sub {
+    my $schema    = chado_schema( custom_fixture => $obo_fixture );
+    my $dbmanager = get_dbmanager_instance();
+    my $loader    = new_ok('Modware::Load');
+    local @ARGV = (
+        'obo2chado',          '--dsn',
+        $dbmanager->dsn,      '--user',
+        $dbmanager->user,     '--password',
+        $dbmanager->password, '--input',
+        $data_dir->subdir('obo')->file('eco.obo'),
+    );
+    push @ARGV, '--pg_schema', $dbmanager->schema_namespace
+        if $dbmanager->can('schema_namespace');
+
+    lives_ok { $loader->run } "should load eco obo file";
+    count_synonym_ok(
+        $schema,
+        { 'cv' => 'eco', 'count' => 213 },
+        "should have 213 synonyms in eco ontology"
+    );
+    count_comment_ok(
+        $schema,
+        { 'cv' => 'eco', 'count' => 68 },
+        "should have 68 comments in eco ontology"
+    );
+    has_synonym(
+        $schema,
+        {   'cv'      => 'eco',
+            'term'    => 'similarity evidence',
+            'synonym' => 'inferred from similarity'
+        },
+        "should have inferred from similarity synonym for similarity evidence term"
+    );
+    my $comment
+        = 'Genomic cluster analyses include synteny and operon structure.';
+    has_comment(
+        $schema,
+        {   'cv'      => 'eco',
+            'term'    => 'gene neighbors evidence',
+            'comment' => $comment
+        },
+        "should have $comment comment for term gene neighbors evidence"
+    );
+
     drop_schema();
 };
