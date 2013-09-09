@@ -236,20 +236,37 @@ sub execute {
             for my $phenotype (@phenotypes) {
                 my @row;
                 push @row, $dbs_id;
-                push @row, $phenotype->[0];
+                push @row, $phenotype->[0];    # Phenotype term
+
+                # Environment term
                 if ( $phenotype->[1] ) {
                     push @row, $phenotype->[1];
                 }
                 else {
                     push @row, '';
                 }
+
+                # Assay term
                 if ( $phenotype->[2] ) {
                     push @row, $phenotype->[2];
                 }
                 else {
                     push @row, '';
                 }
+
+                # PMID
                 push @row, $phenotype->[3];
+
+                # Phenotype notes
+                if ( $phenotype->[4] ) {
+                    my $phenotype_note = $self->trim( $phenotype->[4] );
+                    $phenotype_note =~ s/\r\n//g;
+					$phenotype_note =~ s/\t/ /g;
+                    push @row, $phenotype_note;
+                }
+                else {
+                    push @row, '';
+                }
 
                 my $s = join( "\t", @row );
                 $io->{phenotype}->write( sprintf "%s\n", $s );

@@ -213,7 +213,7 @@ sub find_phenotypes {
     my ( $self, $dbs_id ) = @_;
     my $phenotypes = $self->schema->storage->dbh->selectall_arrayref(
         qq{
-	SELECT phen.name, env.name, assay.name, pub.uniquename
+	SELECT phen.name, env.name, assay.name, pub.uniquename, p.value
 	FROM phenstatement pst
 
 	LEFT JOIN genotype g on g.genotype_id = pst.genotype_id
