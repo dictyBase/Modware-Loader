@@ -3,6 +3,7 @@ package Modware::Dump::Command::dictystrain;
 
 use strict;
 
+use Data::Dumper;
 use Modware::Legacy::Schema;
 use Moose;
 use namespace::autoclean;
@@ -188,6 +189,23 @@ sub execute {
 
                 # $genotype =~ s/\?$//g;
 
+                $io->{genotype}->write(
+                    $dbs_id . "\t" . $dscg_id . "\t" . $genotype . "\n" );
+                $stats->{genotype} = $stats->{genotype} + 1;
+            }
+            $dscg = $dscg + 1;
+        }
+        else {
+            if ( $self->has_strain_genotype($dbs_id) ) {
+                my $genotype = $self->get_strain_genotype($dbs_id);
+                if ( $genotype =~ m/^[V0-9]{6}/ ) {
+                    my $strain_name = $genotype;
+                    my $genotype = $self->_get_genotype_for_V_strain($dbs_id);
+                    print $dbs_id. "\t"
+                        . $strain_name . "\t"
+                        . $genotype . "\n";
+                }
+                $genotype =~ s/(,\W|,)/,/g;
                 $io->{genotype}->write(
                     $dbs_id . "\t" . $dscg_id . "\t" . $genotype . "\n" );
                 $stats->{genotype} = $stats->{genotype} + 1;
@@ -394,6 +412,12 @@ sub _create_files {
                 'w' );
             $io->{$data_type_}    = $file_obj_;
             $stats->{$data_type_} = 0;
+        }
+        if ( $data_type eq 'genotype' ) {
+            $self->_find_strain_genotypes();
+        }
+        if ( $data_type eq 'genotype' or $data_type eq 'genes' ) {
+            $self->_find_strain_genes();
         }
 
         # if ( $data_type eq 'phenotype' ) {

@@ -234,6 +234,77 @@ sub find_phenotypes {
     return @{$phenotypes};
 }
 
+has '_genotype' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_strain_genotype => 'set',
+        get_strain_genotype => 'get',
+        has_strain_genotype => 'defined'
+    }
+);
+
+sub _find_strain_genotypes {
+    my ( $self, $dbs_id ) = @_;
+    my $genotypes = $self->schema->storage->dbh->selectall_arrayref(
+        qq{
+	SELECT uniquename, description
+	FROM genotype
+	WHERE description IS NOT NULL
+	}
+    );
+    for my $genotype ( @{$genotypes} ) {
+        $self->set_strain_genotype( $genotype->[0], $genotype->[1] );
+    }
+}
+
+sub _get_genotype_for_V_strain {
+    my ( $self, $dbs_id ) = @_;
+    my $base_ax4_genotype = 'axeA1,axeB1,axeC1,<gene_name>-,[pBSR1],bsR';
+    if ( $self->has_strain_gene_name($dbs_id) ) {
+        my @gene = @{$self->get_strain_gene_name($dbs_id)};
+        $base_ax4_genotype =~ s/<gene_name>/$gene[0]/;
+    }
+    else {
+        $base_ax4_genotype =~ s/<gene_name>-,//;
+    }
+    return $base_ax4_genotype;
+}
+
+has '_strain_genes' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_strain_gene_name => 'set',
+        get_strain_gene_name => 'get',
+        has_strain_gene_name => 'defined'
+    }
+);
+
+sub _find_strain_genes {
+    my ( $self, $dbs_id ) = @_;
+    my $strain_genes = $self->schema->storage->dbh->selectall_arrayref(
+        qq{
+	SELECT g.uniquename, f.name, gene_id.accession
+	FROM feature_genotype fg
+	JOIN genotype g ON g.genotype_id = fg.genotype_id
+	JOIN feature f ON f.feature_id = fg.feature_id
+	JOIN dbxref gene_id ON gene_id.dbxref_id = f.dbxref_id
+	}
+    );
+    for my $strain_gene ( @{$strain_genes} ) {
+        if ( !$self->has_strain_gene_name( $strain_gene->[0] ) ) {
+            $self->set_strain_gene_name( $strain_gene->[0], [] );
+        }
+        push $self->get_strain_gene_name( $strain_gene->[0] ),
+            $strain_gene->[1];
+    }
+}
+
 1;
 
 __END__
