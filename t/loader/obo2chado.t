@@ -59,8 +59,8 @@ subtest 'loading of cv terms and relationships from obo file' => sub {
     has_dbxref( $schema, $_, "should have dbxref $_" ) for @dbxrefs;
     count_cvterm_ok(
         $schema,
-        { 'cv' => 'eco', 'count' => 299 },
-        'should have loaded 299 cvterms'
+        { 'cv' => 'eco', 'count' => 294 },
+        'should have loaded 294 cvterms'
     );
     count_subject_ok(
         $schema,
@@ -111,14 +111,6 @@ subtest 'loading of cv terms and relationships from obo file' => sub {
             'relationship' => 'used_in'
         },
         "should have a used_in relationship between genomic microarray evidence used in manual assertion and manual assertion terms"
-    );
-    is_related(
-        $schema,
-        {   'cv'      => 'eco',
-            'object'  => 'similarity evidence',
-            'subject' => 'phylogenetic evidence'
-        },
-        "should have relationship between similarity evidence and phylogenetic evidence terms in eco ontology"
     );
     drop_schema();
 };
