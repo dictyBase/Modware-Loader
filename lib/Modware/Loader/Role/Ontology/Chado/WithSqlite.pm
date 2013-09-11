@@ -146,9 +146,9 @@ sub update_synonyms {
     my $sqllib = $self->sqllib;
 
     #First create a temp table with synonym that needs update
-    $dbh->do( $sqllib->retr('insert_updated_synonym_in_temp') );
+    #$dbh->do( $sqllib->retr('insert_updated_synonym_in_temp') );
 
-    #Now delete all synonyms
+    #Now delete existing synonyms
     $dbh->do( $sqllib->retr('delete_updatable_synonym') );
 
     #Now insert the new batch

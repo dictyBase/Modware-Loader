@@ -47,14 +47,6 @@
                cvterm_id integer NOT NULL
                )
 
-[create_table_temp_synonym]
-           CREATE TEMP TABLE temp_synonym_update (
-               cvterm_id integer not null,
-               syn varchar(1024) NOT NULL, 
-               syn_scope_id integer NOT NULL 
-            )
-
-
 [select_non_existing_cvterm]
 			SELECT cvterm.cvterm_id, dbxref.dbxref_id FROM cvterm
 			INNER JOIN dbxref ON cvterm.dbxref_id=dbxref.dbxref_id
@@ -230,9 +222,10 @@ INSERT INTO temp_accession(accession)
 
 [insert_updatable_synonym]           
 	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
-	    SELECT syn,syn_scope_id,cvterm_id FROM temp_synonym_update 
-
-
+           SELECT tsyn.syn,tsyn.syn_scope_id,tmacc.cvterm_id 
+               FROM temp_cvterm_synonym tsyn 
+               INNER JOIN temp_accession_exist tmacc ON
+               tsyn.accession = tmacc.accession
 
 [delete_updatable_comment]
            DELETE FROM cvtermprop WHERE cvterm_id IN (
@@ -249,7 +242,7 @@ INSERT INTO temp_accession(accession)
 [delete_updatable_synonym]
     DELETE FROM cvtermsynonym 
            WHERE cvterm_id IN (
-               SELECT cvterm_id FROM temp_synonym_update
+               SELECT cvterm_id FROM temp_accession_exist
            )
            AND
            type_id IN (
