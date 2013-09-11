@@ -3,7 +3,7 @@ use FindBin qw($Bin);
 use Path::Class::Dir;
 use Test::Exception;
 use Test::Chado qw/:all/;
-use Test::Chado::Common;
+use Test::Chado::Common qw/:all/;
 use Test::Chado::Cvterm qw/:all/;
 
 my $data_dir    = Path::Class::Dir->new($Bin)->parent->subdir('test_data');

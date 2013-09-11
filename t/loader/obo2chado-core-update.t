@@ -3,8 +3,9 @@ use FindBin qw($Bin);
 use Path::Class::Dir;
 use Test::Exception;
 use Test::Chado qw/:all/;
-use Test::Chado::Common;
+use Test::Chado::Common qw/:all/;
 use Test::Chado::Cvterm qw/:all/;
+use File::Temp qw/tmpnam/;
 
 my $data_dir    = Path::Class::Dir->new($Bin)->parent->subdir('test_data');
 my $obo_fixture = $data_dir->subdir('preset')->file('cvprop.tar.bz2');
@@ -12,15 +13,17 @@ my $obo_fixture = $data_dir->subdir('preset')->file('cvprop.tar.bz2');
 use_ok('Modware::Load');
 
 subtest 'updating ontology' => sub {
+    my $tmpfile   = tmpnam();
     my $schema    = chado_schema( custom_fixture => $obo_fixture );
     my $dbmanager = get_dbmanager_instance();
     my $loader    = new_ok('Modware::Load');
     local @ARGV = (
-        'obo2chado',          '--dsn',
-        $dbmanager->dsn,      '--user',
-        $dbmanager->user,     '--password',
-        $dbmanager->password, '--input',
-        $data_dir->subdir('obo')->file('eco_v2.00.obo'),
+        'obo2chado',                                     '--dsn',
+        $dbmanager->dsn,                                 '--user',
+        $dbmanager->user,                                '--password',
+        $dbmanager->password,                            '--input',
+        $data_dir->subdir('obo')->file('eco_v2.00.obo'), '--logfile',
+        $tmpfile
     );
     push @ARGV, '--pg_schema', $dbmanager->schema_namespace
         if $dbmanager->can('schema_namespace');
@@ -56,11 +59,13 @@ subtest 'updating cv terms and relationships from obo file' => sub {
         { 'cv' => 'eco', 'count' => 1 },
         'should have 1 obsolete cvterm'
     );
+
     is_obsolete_cvterm(
         $schema,
-        { 'cv' => 'eco', 'term' => 'not_recorded' },
+        { 'cv' => 'eco', 'term' => 'not_recorded (obsolete ECO:0000037)' },
         'not_recorded should be an obsolete cvterm'
     );
+
     count_object_ok(
         $schema,
         {   'cv'         => 'eco',
@@ -87,7 +92,7 @@ subtest 'updating cv terms and relationships from obo file' => sub {
     ) for keys %relationships;
 
     @ARGV = ( @cmd, '--input', $data_dir->subdir('obo')->file('eco.obo') );
-    lives_ok { $loader->run } "should update from eco.obo file";
+    lives_ok { $loader->run } "should update ontology from eco.obo file";
     count_cvterm_ok(
         $schema,
         { 'cv' => 'eco', 'count' => 294 },
@@ -98,17 +103,10 @@ subtest 'updating cv terms and relationships from obo file' => sub {
         { 'cv' => 'eco', 'count' => 3 },
         'should have 3 obsolete cvterms after update'
     );
-    is_obsolete_cvterm(
-        $schema,
-        { 'cv' => 'eco', 'term' => 'in vitro binding evidence' },
-        'in vitro binding evidence  should be an obsolete cvterm after update'
-    );
     has_dbxref( $schema, $_,
         "should have created new dbxref $_ after update" )
-        for (
-        'ECO:0000325', 'ECO:0000326', 'ECO:0000327',
-        'ECO:0000328', 'ECO:0000329', 'ECO:0000330'
-        );
+        for ( '0000325', '0000326', '0000327',
+        '0000328', '0000329', '0000330' );
     has_cvterm( $schema, $_,
         "should have created new cvterm $_ after update" )
         for (
@@ -138,8 +136,8 @@ subtest 'updating cv terms and relationships from obo file' => sub {
             'motif similarity evidence used in automatic assertion',
         'sequence similarity evidence used in manual assertion' =>
             'sequence orthology evidence used in manual assertion',
-            'experimental evidence' => 'plasmid maintenance assay evidence',
-            'biological assay evidence' => 'competitive growth assay evidence'
+        'experimental evidence'     => 'plasmid maintenance assay evidence',
+        'biological assay evidence' => 'competitive growth assay evidence'
     );
     has_relationship(
         $schema,
@@ -149,6 +147,14 @@ subtest 'updating cv terms and relationships from obo file' => sub {
         },
         "should have the is_a relationship between $_ and $relationships{$_} after update"
     ) for keys %relationships;
+
+    is_obsolete_cvterm(
+        $schema,
+        {   'cv'   => 'eco',
+            'term' => 'in vitro binding evidence (obsolete ECO:0000148)'
+        },
+        'in vitro binding evidence  should be an obsolete cvterm after update'
+    );
 
     drop_schema();
 };
