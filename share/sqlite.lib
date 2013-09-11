@@ -36,6 +36,14 @@
                db_id integer NOT NULL
             )
 
+[create_table_temp_alt_id]
+           CREATE TEMP TABLE temp_cvterm_alt_id(
+               accession varchar(256) NOT NULL, 
+               alt_id varchar(256) NOT NULL,
+               alt_db_id integer NOT NULL,
+               db_id integer NOT NULL
+           )
+
 [create_table_temp_accession]
            CREATE TEMP TABLE temp_accession (
                accession varchar(256) NOT NULL
@@ -117,6 +125,41 @@
 		)
 		INNER JOIN cvterm ON
 		    dbxref.dbxref_id = cvterm.dbxref_id
+
+[insert_alt_id_in_dbxref]
+           INSERT INTO dbxref(accession,db_id)
+           SELECT talt.alt_id,talt.alt_db_id 
+           FROM temp_cvterm_alt_id talt
+           INNER JOIN temp_accession tmacc ON
+               talt.accession = tmacc.accession
+           INNER JOIN dbxref ON (
+               dbxref.accession = talt.accession
+               AND
+               dbxref.db_id = talt.db_id
+           )
+           INNER JOIN cvterm ON
+               dbxref.dbxref_id = cvterm.dbxref_id
+
+[insert_alt_id_in_cvterm_dbxref]
+           INSERT INTO cvterm_dbxref(cvterm_id,dbxref_id)
+           SELECT cvterm.cvterm_id,altxref.dbxref_id
+           FROM temp_cvterm_alt_id talt
+           INNER JOIN dbxref altxref ON (
+               talt.alt_id = altxref.accession
+               AND
+               talt.alt_db_id = altxref.db_id
+           )
+           INNER JOIN temp_accession tmacc ON
+               talt.accession = tmacc.accession
+           INNER JOIN dbxref ON (
+               dbxref.accession = talt.accession
+               AND
+               dbxref.db_id = talt.db_id
+           )
+           INNER JOIN cvterm ON
+               dbxref.dbxref_id = cvterm.dbxref_id
+
+
 
 [insert_updated_synonym_in_temp]
         INSERT INTO temp_synonym_update(cvterm_id,syn,syn_scope_id)

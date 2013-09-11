@@ -140,6 +140,11 @@ subtest 'loading of cvterms metadata from obo file' => sub {
         { 'cv' => 'eco', 'count' => 68 },
         "should have 68 comments in eco ontology"
     );
+    count_alt_id_ok(
+        $schema,
+        { 'cv' => 'eco', 'count' => 7, 'db' => 'ECO' },
+        "should have 7 alt ids in eco ontology"
+    );
     has_synonym(
         $schema,
         {   'cv'      => 'eco',
@@ -157,6 +162,14 @@ subtest 'loading of cvterms metadata from obo file' => sub {
             'comment' => $comment
         },
         "should have $comment comment for term gene neighbors evidence"
+    );
+    has_alt_id(
+        $schema,
+        {   'cv'     => 'eco',
+            'term'   => 'sequence orthology evidence',
+            'alt_id' => 'ECO:00000060'
+        },
+        'should have ECO:00000060 as alt_id'
     );
 
     drop_schema();

@@ -157,6 +157,18 @@ sub update_synonyms {
     return $rows;
 }
 
+sub create_alt_ids {
+    my ( $self, $storage, $dbh ) = @_;
+    my $sqllib = $self->sqllib;
+
+    #insert in dbxref first, then in cvterm_dbxref linking table
+    my $rows = $dbh->do($sqllib->retr('insert_alt_id_in_dbxref'));
+    $dbh->do($sqllib->retr('insert_alt_id_in_cvterm_dbxref'));
+
+    $self->logger->debug("inserted $rows synonyms");
+    return $rows;
+}
+
 1;    # Magic true value required at end of module
 
 __END__

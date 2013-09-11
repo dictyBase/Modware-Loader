@@ -6,7 +6,7 @@ use Encode;
 use feature qw/say/;
 use utf8;
 with 'Modware::Role::WithDataStash' =>
-    { create_stash_for => [qw/term relationship synonym comment/] };
+    { create_stash_for => [qw/term relationship synonym comment alt_id/] };
 
 # these hook to load data that are dependent on cvterm
 has 'cvterm_dependencies' => (
@@ -14,7 +14,10 @@ has 'cvterm_dependencies' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return [ 'load_synonyms_in_staging', 'load_comments_in_staging' ];
+        return [
+            'load_synonyms_in_staging', 'load_comments_in_staging',
+            'load_alt_ids_in_staging'
+        ];
     }
 );
 
@@ -26,7 +29,8 @@ has 'post_cvterm_dependencies' => (
         return {
             term    => 'TempCvterm',
             synonym => 'TempCvtermsynonym',
-            comment => 'TempCvtermcomment'
+            comment => 'TempCvtermcomment',
+            alt_id  => 'TempCvtermaltid'
         };
     }
 );
@@ -78,6 +82,16 @@ sub load_comments_in_staging {
     }
 }
 
+sub load_alt_ids_in_staging {
+    my ( $self, $term, $insert_hash ) = @_;
+    my $alt_id_insert_array
+        = $self->get_alt_id_term_hash( $term, $insert_hash );
+    if ( defined $alt_id_insert_array ) {
+        $self->add_to_alt_id_cache(@$alt_id_insert_array);
+        $self->load_cache( 'alt_id', 'TempCvtermaltid' );
+    }
+}
+
 sub load_relationship_in_staging {
     my ($self) = @_;
     my $onto   = $self->ontology;
@@ -110,9 +124,6 @@ sub load_relationship_in_staging {
             ->populate( [ $self->entries_in_relationship_cache ] );
         $self->clean_relationship_cache;
     }
-}
-
-sub load_alt_ids_in_staging {
 }
 
 sub get_insert_term_hash {
@@ -174,13 +185,29 @@ sub get_comment_term_hash {
     }
 }
 
+sub get_alt_id_term_hash {
+    my ( $self, $term, $term_insert_hash ) = @_;
+    my $insert_array;
+    my $set = $term->alt_id;
+    for my $alt_id ( $set->get_set ) {
+        my ( $db_id, $id ) = $self->_normalize_id($alt_id);
+        push @$insert_array,
+            {
+            accession => $term_insert_hash->{accession},
+            alt_id    => $id,
+            alt_db_id => $db_id,
+            db_id => $term_insert_hash->{db_id}
+            };
+    }
+    return $insert_array;
+}
+
 sub load_cache {
     my ( $self, $cache, $result_class, $check_for_threshold ) = @_;
     if ($check_for_threshold) {
         my $count = 'count_entries_in_' . $cache . '_cache';
         return if $self->$count < $self->cache_threshold;
     }
-
     my $entries = 'entries_in_' . $cache . '_cache';
     my $clean   = 'clean_' . $cache . '_cache';
     $self->schema->resultset($result_class)->populate( [ $self->$entries ] );
