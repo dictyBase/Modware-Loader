@@ -20,7 +20,8 @@ has data => (
 
         # sub { [qw/characteristics publications inventory genotype props/] }
         sub {
-        [qw/characteristics inventory genotype phenotype props parent/];
+        [   qw/characteristics inventory genotype phenotype props parent plasmid/
+        ];
     }
 );
 
@@ -244,6 +245,31 @@ sub execute {
                 }
             }
         }
+
+        if ( $self->has_plasmid($dbs_id) ) {
+            for my $plasmid ( @{ $self->get_plasmid($dbs_id) } ) {
+                $plasmid = $self->trim($plasmid);
+                my $plasmid_stock_id = $self->find_stock($plasmid);
+                if ($plasmid_stock_id) {
+                    print sprintf "%s\t%d\t%s\n", $dbs_id, $plasmid_stock_id,
+                        $plasmid;
+                    $self->db('_global');
+                    $stock_rs->create_related(
+                        'stock_relationship_objects',
+                        {   subject_id => $plasmid_stock_id,
+                            type_id    => $self->find_or_create_cvterm(
+                                'part_of', 'stock_relation'
+                            )
+                        }
+                    );
+                }
+                else {
+                    $self->logger->warn(
+                        "Strain plasmid $plasmid did not have a stock entry");
+                }
+            }
+        }
+
     }
 
     $guard->commit;

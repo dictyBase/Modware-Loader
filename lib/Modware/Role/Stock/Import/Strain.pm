@@ -94,6 +94,18 @@ has '_parent' => (
     }
 );
 
+has '_plasmid' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_plasmid => 'set',
+        get_plasmid => 'get',
+        has_plasmid => 'defined'
+    }
+);
+
 before 'execute' => sub {
     my ($self) = @_;
 
