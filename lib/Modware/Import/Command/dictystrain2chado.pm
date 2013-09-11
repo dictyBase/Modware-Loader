@@ -19,7 +19,10 @@ has data => (
     default =>
 
         # sub { [qw/characteristics publications inventory genotype props/] }
-        sub { [qw/characteristics inventory genotype phenotype props/] }
+        sub {
+        [   qw/characteristics inventory genotype phenotype props parent plasmid/
+        ];
+    }
 );
 
 has mock_pub => (
@@ -44,7 +47,7 @@ sub execute {
                 my ( $storage, $dbh ) = @_;
                 my $sth;
                 for my $table (
-                    qw/stock stockprop stock_cvterm stock_pub stock_genotype genotype phenotype environment/
+                    qw/stock stockprop stock_cvterm stock_pub stock_genotype genotype phenotype environment stock_relationship/
                     )
                 {
                     $sth = $dbh->prepare(qq{DELETE FROM $table});
@@ -72,14 +75,18 @@ sub execute {
 
         my $stock_rs
             = $self->schema->resultset('Stock::Stock')->find_or_create($hash);
+        $self->set_stock_row( $hash->{uniquename}, $stock_rs );
+    }
 
+    for my $dbs_id ( $self->get_dbs_ids ) {
+        my $stock_rs              = $self->get_stock_row($dbs_id);
         my $strain_char_pub_title = 'Dicty Strain Characteristics';
         my $char_pub_id = $self->find_pub_by_title($strain_char_pub_title);
 
-        if ( $self->has_characteristics( $hash->{uniquename} ) ) {
+        if ( $self->has_characteristics($dbs_id) ) {
             if ($char_pub_id) {
                 foreach my $characteristics (
-                    @{ $self->get_characteristics( $hash->{uniquename} ) } )
+                    @{ $self->get_characteristics($dbs_id) } )
                 {
                     my $char_cvterm_id = $self->find_cvterm(
                         $self->trim($characteristics),
@@ -100,10 +107,8 @@ sub execute {
             }
         }
 
-        if ( $self->has_publications( $hash->{uniquename} ) ) {
-            foreach my $pmid (
-                @{ $self->get_publications( $hash->{uniquename} ) } )
-            {
+        if ( $self->has_publications($dbs_id) ) {
+            foreach my $pmid ( @{ $self->get_publications($dbs_id) } ) {
                 my $pub_id = $self->find_pub($pmid);
                 if ($pub_id) {
                     $stock_rs->create_related( 'stock_pubs',
@@ -116,11 +121,9 @@ sub execute {
             }
         }
 
-        if ( $self->has_inventory( $hash->{uniquename} ) ) {
+        if ( $self->has_inventory($dbs_id) ) {
             my $rank = 0;
-            foreach my $inventory (
-                @{ $self->get_inventory( $hash->{uniquename} ) } )
-            {
+            foreach my $inventory ( @{ $self->get_inventory($dbs_id) } ) {
                 foreach my $key ( keys $inventory ) {
                     my $type = $key;
                     $type =~ s/_/ /g if $type =~ /_/;
@@ -139,8 +142,8 @@ sub execute {
             }
         }
 
-        if ( $self->has_genotype( $hash->{uniquename} ) ) {
-            my $genotype = @{ $self->get_genotype( $hash->{uniquename} ) }[0];
+        if ( $self->has_genotype($dbs_id) ) {
+            my $genotype = @{ $self->get_genotype($dbs_id) }[0];
             my ( $key, $value ) = each %{$genotype};
             my $genotype_type_id
                 = $self->find_cvterm( 'genotype', 'dicty_stockcenter' );
@@ -156,10 +159,10 @@ sub execute {
                 { genotype_id => $genotype_rs->genotype_id } );
         }
 
-        if ( $self->has_props( $hash->{uniquename} ) ) {
+        if ( $self->has_props($dbs_id) ) {
             my $rank;
             my $previous_type = '';
-            my @props         = @{ $self->get_props( $hash->{uniquename} ) };
+            my @props         = @{ $self->get_props($dbs_id) };
             foreach my $prop (@props) {
                 my ( $key, $value ) = each %{$prop};
                 $rank = 0 if $previous_type ne $key;
@@ -177,8 +180,8 @@ sub execute {
             }
         }
 
-        if ( $self->has_phenotype( $hash->{uniquename} ) ) {
-            my @phenotype_data = $self->get_phenotype( $hash->{uniquename} );
+        if ( $self->has_phenotype($dbs_id) ) {
+            my @phenotype_data = $self->get_phenotype($dbs_id);
             for my $i ( 0 .. scalar(@phenotype_data) - 1 ) {
                 my $phenotype_term  = $phenotype_data[$i][0];
                 my $phenotype_env   = $phenotype_data[$i][1];
@@ -193,10 +196,9 @@ sub execute {
                     $phenotype_assay )
                     if $phenotype_term;
 
-                my $genotype_id = $self->find_genotype( $hash->{uniquename} );
+                my $genotype_id = $self->find_genotype($dbs_id);
                 if ( !$genotype_id ) {
-                    $self->logger->warn(
-                        "Genotype NOT found for $hash->{uniquename}");
+                    $self->logger->warn("Genotype NOT found for $dbs_id");
                 }
 
                 my $type_id = $self->find_or_create_cvterm( "unspecified",
@@ -216,6 +218,54 @@ sub execute {
                             pub_id         => $pub_id
                         }
                         );
+                }
+            }
+        }
+
+        if ( $self->has_parent($dbs_id) ) {
+            for my $parent ( @{ $self->get_parent($dbs_id) } ) {
+                $parent = $self->trim($parent);
+                my $parent_stock_id = $self->find_stock($parent);
+                if ($parent_stock_id) {
+                    print sprintf "%s\t%d\t%s\n", $dbs_id,
+                        $parent_stock_id, $parent;
+                    $self->db('_global');
+                    $stock_rs->create_related(
+                        'stock_relationship_objects',
+                        {   subject_id => $parent_stock_id,
+                            type_id    => $self->find_or_create_cvterm(
+                                'is_parent_of', 'stock_relation'
+                            )
+                        }
+                    );
+                }
+                else {
+                    $self->logger->warn(
+                        "Strain parent $parent did not have a stock entry");
+                }
+            }
+        }
+
+        if ( $self->has_plasmid($dbs_id) ) {
+            for my $plasmid ( @{ $self->get_plasmid($dbs_id) } ) {
+                $plasmid = $self->trim($plasmid);
+                my $plasmid_stock_id = $self->find_stock($plasmid);
+                if ($plasmid_stock_id) {
+                    print sprintf "%s\t%d\t%s\n", $dbs_id, $plasmid_stock_id,
+                        $plasmid;
+                    $self->db('_global');
+                    $stock_rs->create_related(
+                        'stock_relationship_objects',
+                        {   subject_id => $plasmid_stock_id,
+                            type_id    => $self->find_or_create_cvterm(
+                                'part_of', 'stock_relation'
+                            )
+                        }
+                    );
+                }
+                else {
+                    $self->logger->warn(
+                        "Strain plasmid $plasmid did not have a stock entry");
                 }
             }
         }
