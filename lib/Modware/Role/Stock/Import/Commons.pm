@@ -6,6 +6,8 @@ package Modware::Role::Stock::Import::Commons;
 use Moose::Role;
 use namespace::autoclean;
 
+requires 'schema';
+
 has 'db' => ( is => 'rw', isa => 'Str', default => 'internal' );
 has 'cv' => ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
 
@@ -193,6 +195,33 @@ sub find_or_create_cv {
         $cv_id = $row->cv_id;
     }
     return $cv_id;
+}
+
+has '_stock_row' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_stock_row => 'set',
+        get_stock_row => 'get',
+        has_stock_row => 'defined',
+        get_dbs_ids   => 'keys'
+    }
+);
+
+sub find_stock {
+    my ( $self, $id ) = @_;
+    if ( $self->has_stock_row($id) ) {
+        return $self->get_stock_row($id)->stock_id;
+    }
+    my $row = $self->schema->resultset('Stock::Stock')
+        ->search( { uniquename => $id }, {} );
+    if ( $row->count > 0 ) {
+        $self->set_stock_row( $id, $row->first );
+        return $self->get_stock_row($id)->stock_id;
+    }
+    return;
 }
 
 sub _mock_publications {

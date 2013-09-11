@@ -82,6 +82,30 @@ has '_phenotype' => (
     }
 );
 
+has '_parent' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_parent => 'set',
+        get_parent => 'get',
+        has_parent => 'defined'
+    }
+);
+
+has '_plasmid' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_plasmid => 'set',
+        get_plasmid => 'get',
+        has_plasmid => 'defined'
+    }
+);
+
 before 'execute' => sub {
     my ($self) = @_;
 
@@ -147,7 +171,6 @@ sub find_genotype {
         return $self->get_strain_genotype($dbs_id)->genotype_id;
     }
 
-    # Stock::StockGenotype query is returning 0
     my $stock_rs
         = $self->schema->resultset('Stock::Stock')
         ->search( { uniquename => $dbs_id }, {} );
