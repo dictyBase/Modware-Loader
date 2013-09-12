@@ -165,7 +165,7 @@ sub create_alt_ids {
     my $rows = $dbh->do($sqllib->retr('insert_alt_id_in_dbxref'));
     $dbh->do($sqllib->retr('insert_alt_id_in_cvterm_dbxref'));
 
-    $self->logger->debug("inserted $rows synonyms");
+    $self->logger->debug("inserted $rows alt_ids");
     return $rows;
 }
 

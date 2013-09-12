@@ -131,14 +131,6 @@
            SELECT talt.alt_id,talt.alt_db_id 
            FROM temp_cvterm_alt_id talt
            INNER JOIN temp_accession tmacc ON
-               talt.accession = tmacc.accession
-           INNER JOIN dbxref ON (
-               dbxref.accession = talt.accession
-               AND
-               dbxref.db_id = talt.db_id
-           )
-           INNER JOIN cvterm ON
-               dbxref.dbxref_id = cvterm.dbxref_id
 
 [insert_alt_id_in_cvterm_dbxref]
            INSERT INTO cvterm_dbxref(cvterm_id,dbxref_id)
@@ -151,10 +143,12 @@
            )
            INNER JOIN temp_accession tmacc ON
                talt.accession = tmacc.accession
+           INNER JOIN temp_cvterm tmcvterm ON
+               tmacc.accession = tmcvterm.accession
            INNER JOIN dbxref ON (
-               dbxref.accession = talt.accession
+               tmcvterm.accession = dbxref.accession
                AND
-               dbxref.db_id = talt.db_id
+               tmcvterm.db_id = dbxref.db_id
            )
            INNER JOIN cvterm ON
                dbxref.dbxref_id = cvterm.dbxref_id
