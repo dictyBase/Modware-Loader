@@ -3,7 +3,9 @@ package Modware::Import::Command::dictyplasmid2chado;
 
 use strict;
 
-use Data::Dumper;
+use DBD::Pg qw(:pg_types);
+use File::Spec::Functions qw/catfile/;
+use LWP::Simple qw/head/;
 use Moose;
 use namespace::autoclean;
 
@@ -16,7 +18,16 @@ has 'prune' => ( is => 'rw', isa => 'Bool', default => 0 );
 has data => (
     is      => 'rw',
     isa     => 'ArrayRef',
-    default => sub { [qw/publications inventory props/] }
+    default => sub { [qw/publications inventory props/] },
+    documentation =>
+        'Data to be imported. Options available publications, inventory, props. Default ALL'
+);
+
+has 'plasmid_map' => (
+    is            => 'rw',
+    isa           => 'Bool',
+    default       => undef,
+    documentation => 'Should plasmid map jpeg urls be saved'
 );
 
 sub execute {
@@ -28,11 +39,12 @@ sub execute {
         $self->schema->storage->dbh_do(
             sub {
                 my ( $storage, $dbh ) = @_;
-                my $sth = $dbh->prepare(qq{DELETE FROM stock});
-                $sth->execute;
-                $sth = $dbh->prepare(qq{DELETE FROM stockprop});
-                $sth->execute;
-                $sth->finish();
+                my $sth;
+                for my $table (qw/stock stockprop stock_pub/) {
+                    $sth = $dbh->prepare(qq{DELETE FROM $table});
+                    $sth->execute;
+                }
+                $sth->finish;
             }
         );
     }
@@ -55,11 +67,15 @@ sub execute {
 
         my $stock_rs
             = $self->schema->resultset('Stock::Stock')->create($hash);
+        $self->set_stock_row( $hash->{uniquename}, $stock_rs );
+    }
 
-        if ( $self->has_publications( $hash->{uniquename} ) ) {
-            foreach my $pmid (
-                @{ $self->get_publications( $hash->{uniquename} ) } )
-            {
+    for my $dbp_id ( $self->get_dbs_ids ) {
+        my $stock_rs = $self->get_stock_row($dbp_id);
+
+        # Plasmid publications
+        if ( $self->has_publications($dbp_id) ) {
+            foreach my $pmid ( @{ $self->get_publications($dbp_id) } ) {
                 my $pub_id = $self->find_pub($pmid);
                 if ($pub_id) {
                     $stock_rs->create_related( 'stock_pubs',
@@ -72,11 +88,10 @@ sub execute {
             }
         }
 
-        if ( $self->has_inventory( $hash->{uniquename} ) ) {
+        # Plasmid inventory
+        if ( $self->has_inventory($dbp_id) ) {
             my $rank = 0;
-            foreach my $inventory (
-                @{ $self->get_inventory( $hash->{uniquename} ) } )
-            {
+            foreach my $inventory ( @{ $self->get_inventory($dbp_id) } ) {
                 foreach my $key ( keys $inventory ) {
                     my $type = $key;
                     $type =~ s/_/ /g if $type =~ /_/;
@@ -95,11 +110,11 @@ sub execute {
             }
         }
 
-        if ( $self->has_props( $hash->{uniquename} ) ) {
-
+        # Plasmid properties (depositor, keyword, synonym)
+        if ( $self->has_props($dbp_id) ) {
             my $rank;
             my $previous_type = '';
-            my @props         = @{ $self->get_props( $hash->{uniquename} ) };
+            my @props         = @{ $self->get_props($dbp_id) };
             foreach my $prop (@props) {
                 my ( $key, $value ) = each %{$prop};
                 $rank = 0 if $previous_type ne $key;
@@ -116,6 +131,24 @@ sub execute {
                 $previous_type = $key;
             }
         }
+
+        if ( $self->plasmid_map ) {
+            ( my $filename = $dbp_id ) =~ s/^DBP[0]+//;
+            my $github_base_url
+                = "https://raw.github.com/dictyBase/migration-data/master/plasmid/images/";
+            my $image_url = $github_base_url . $filename . ".jpg";
+            if ( head($image_url) ) {
+                $stock_rs->create_related(
+                    'stockprops',
+                    {   type_id => $self->find_or_create_cvterm(
+                            'plasmid map', 'dicty_stockcenter'
+                        ),
+                        value => $image_url
+                    }
+                );
+            }
+        }
+
     }
 
     $guard->commit;
