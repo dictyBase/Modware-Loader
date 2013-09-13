@@ -54,10 +54,6 @@ before 'execute' => sub {
         my $get_method = "get_" . $data;
         my $has_method = "has_" . $data;
 
-        if ( $data eq 'images' ) {
-            next;
-        }
-
         my $infile = "plasmid_" . $data . ".txt";
         my $file_reader
             = IO::File->new( catfile( $self->data_dir, $infile ), 'r' );

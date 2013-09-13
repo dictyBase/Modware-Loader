@@ -5,6 +5,7 @@ use strict;
 
 use DBD::Pg qw(:pg_types);
 use File::Spec::Functions qw/catfile/;
+use LWP::Simple qw/head/;
 use Moose;
 use namespace::autoclean;
 
@@ -17,16 +18,16 @@ has 'prune' => ( is => 'rw', isa => 'Bool', default => 0 );
 has data => (
     is      => 'rw',
     isa     => 'ArrayRef',
-    default => sub { [qw/publications inventory props images/] },
+    default => sub { [qw/publications inventory props/] },
     documentation =>
         'Data to be imported. Options available publications, inventory, props. Default ALL'
 );
 
 has 'plasmid_map' => (
     is            => 'rw',
-    isa           => 'Str',
+    isa           => 'Bool',
     default       => undef,
-    documentation => 'Folder path with plasmids map images'
+    documentation => 'Should plasmid map jpeg urls be saved'
 );
 
 sub execute {
@@ -73,10 +74,8 @@ sub execute {
         my $stock_rs = $self->get_stock_row($dbp_id);
 
         # Plasmid publications
-        if ( $self->has_publications( $hash->{uniquename} ) ) {
-            foreach my $pmid (
-                @{ $self->get_publications( $hash->{uniquename} ) } )
-            {
+        if ( $self->has_publications($dbp_id) ) {
+            foreach my $pmid ( @{ $self->get_publications($dbp_id) } ) {
                 my $pub_id = $self->find_pub($pmid);
                 if ($pub_id) {
                     $stock_rs->create_related( 'stock_pubs',
@@ -90,11 +89,9 @@ sub execute {
         }
 
         # Plasmid inventory
-        if ( $self->has_inventory( $hash->{uniquename} ) ) {
+        if ( $self->has_inventory($dbp_id) ) {
             my $rank = 0;
-            foreach my $inventory (
-                @{ $self->get_inventory( $hash->{uniquename} ) } )
-            {
+            foreach my $inventory ( @{ $self->get_inventory($dbp_id) } ) {
                 foreach my $key ( keys $inventory ) {
                     my $type = $key;
                     $type =~ s/_/ /g if $type =~ /_/;
@@ -114,11 +111,10 @@ sub execute {
         }
 
         # Plasmid properties (depositor, keyword, synonym)
-        if ( $self->has_props( $hash->{uniquename} ) ) {
-
+        if ( $self->has_props($dbp_id) ) {
             my $rank;
             my $previous_type = '';
-            my @props         = @{ $self->get_props( $hash->{uniquename} ) };
+            my @props         = @{ $self->get_props($dbp_id) };
             foreach my $prop (@props) {
                 my ( $key, $value ) = each %{$prop};
                 $rank = 0 if $previous_type ne $key;
@@ -138,76 +134,21 @@ sub execute {
 
         if ( $self->plasmid_map ) {
             ( my $filename = $dbp_id ) =~ s/^DBP[0]+//;
-            my $filepath = catfile( $self->plasmid_map, $filename . ".jpg" );
-            my $filehandle = IO::File->new;
-            if ( -e $filepath ) {
-
-                # my $io = $filehandle->open($filepath);
-                open( IMAGE, $filepath );
-                binmode(IMAGE);
-                my $buf;
-                my $data;
-                while ( read( IMAGE, $buf, 10000 ) ) { $data .= $buf; }
-                close(IMAGE);
-
-                if ($data) {
-                    $self->schema->storage->dbh_do(
-                        sub {
-                            my ( $storage, $dbh ) = @_;
-                            my $sth
-                                = $dbh->prepare(
-                                "INSERT INTO stockprop (stock_id, type_id, value) VALUES ( ?,?,? ) "
-                                ) or die "PREPARE FAILED";
-
-                            $sth->bind_param( 3, undef,
-                                { pg_type => PG_BYTEA } );
-                            $sth->execute(
-                                $stock_rs->stock_id,
-                                $self->find_or_create_cvterm(
-                                    'plasmid map', 'dicty_stockcenter'
-                                ),
-                                $data
-                            ) or die "EXECUTE FAILED";
-                            $sth->finish;
-                        }
-                    );
-                }
-
-                $self->schema->storage->dbh_do(
-                    sub {
-                        my ( $storage, $dbh ) = @_;
-                        my $sth = $dbh->prepare(
-                            "SELECT sp.value
-								FROM stockprop sp
-								JOIN stock s ON s.stock_id = sp.stock_id
-								JOIN cvterm typ ON typ.cvterm_id = sp.type_id
-								WHERE typ.name = 'plasmid map'
-								AND s.uniquename = ?"
-                        );
-                        $sth->execute($dbp_id);
-
-                        my $content = $sth->fetchrow_array();
-                        if ($content) {
-                            my $new_file = "image_test/" . $dbp_id . ".jpg";
-                            open( F, ">$new_file" );
-                            binmode(F);
-                            print F $content;
-                            close(F);
-                        }
+            my $github_base_url
+                = "https://raw.github.com/dictyBase/migration-data/master/plasmid/images/";
+            my $image_url = $github_base_url . $filename . ".jpg";
+            if ( head($image_url) ) {
+                $stock_rs->create_related(
+                    'stockprops',
+                    {   type_id => $self->find_or_create_cvterm(
+                            'plasmid map', 'dicty_stockcenter'
+                        ),
+                        value => $image_url
                     }
                 );
-
-                # $stock_rs->create_related(
-                #     'stockprops',
-                #     {   type_id => $self->find_or_create_cvterm(
-                #             'plasmid map', 'dicty_stockcenter'
-                #         ),
-                #         value => $data
-                #     }
-                # );
-                print sprintf "%s\t%s\n", $dbp_id, $filepath;
             }
         }
+
     }
 
     $guard->commit;
