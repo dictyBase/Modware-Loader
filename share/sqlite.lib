@@ -131,6 +131,7 @@
            SELECT talt.alt_id,talt.alt_db_id 
            FROM temp_cvterm_alt_id talt
            INNER JOIN temp_accession tmacc ON
+           talt.accession = tmacc.accession
 
 [insert_alt_id_in_cvterm_dbxref]
            INSERT INTO cvterm_dbxref(cvterm_id,dbxref_id)
@@ -251,21 +252,41 @@ INSERT INTO temp_accession(accession)
                    dbxref.db_id = tmcv.db_id
 
 [insert_updatable_comment]
-    INSERT INTO cvtermprop(cvterm_id, type_id, value)
-		SELECT tmacc.cvterm_id, tcomm.comment_type_id, tcomm.comment
-		FROM temp_cvterm_comment tcomm
-		INNER JOIN temp_accession_exist tmacc ON
-			tmacc.accession = tcomm.accession
+           INSERT INTO cvtermprop(cvterm_id, type_id, value)
+		     SELECT tmacc.cvterm_id, tcomm.comment_type_id, tcomm.comment
+		     FROM temp_cvterm_comment tcomm
+		     INNER JOIN temp_accession_exist tmacc ON
+			 tmacc.accession = tcomm.accession
 
 [insert_updatable_synonym]           
-	    INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
-           SELECT tsyn.syn,tsyn.syn_scope_id,tmacc.cvterm_id 
+	        INSERT INTO cvtermsynonym(synonym, type_id, cvterm_id)
+               SELECT tsyn.syn,tsyn.syn_scope_id,tmacc.cvterm_id 
                FROM temp_cvterm_synonym tsyn 
                INNER JOIN temp_accession_exist tmacc ON
                tsyn.accession = tmacc.accession
 
+[insert_updatable_alt_ids]
+            INSERT INTO dbxref(accession,db_id)
+               SELECT talt.alt_id,talt.alt_db_id 
+               FROM temp_cvterm_alt_id talt
+               INNER JOIN temp_accession_exist texist ON
+               talt.accession = texist.accession
+
+[insert_updatable_alt_ids2]
+           INSERT INTO cvterm_dbxref(dbxref_id,cvterm_id)
+               SELECT dbxref.dbxref_id,texist.cvterm_id
+               FROM dbxref
+               INNER JOIN temp_cvterm_alt_id talt ON (
+               dbxref.accession = talt.alt_id
+               AND
+               dbxref.db_id = talt.alt_db_id
+               )
+               INNER JOIN temp_accession_exist texist ON
+               talt.accession = texist.accession
+
+
 [delete_updatable_comment]
-           DELETE FROM cvtermprop WHERE cvterm_id IN (
+            DELETE FROM cvtermprop WHERE cvterm_id IN (
                SELECT cvterm_id from temp_accession_exist
             ) 
             AND
@@ -277,7 +298,7 @@ INSERT INTO temp_accession(accession)
             )
 
 [delete_updatable_synonym]
-    DELETE FROM cvtermsynonym 
+           DELETE FROM cvtermsynonym 
            WHERE cvterm_id IN (
                SELECT cvterm_id FROM temp_accession_exist
            )
@@ -288,3 +309,27 @@ INSERT INTO temp_accession(accession)
                WHERE cv.name = 'synonym_type'
             )
 
+[delete_updatable_alt_ids]
+           DELETE FROM dbxref WHERE accession IN (
+               SELECT talt.alt_id FROM temp_cvterm_alt_id talt
+               INNER JOIN temp_accession_exist texist ON
+               talt.accession = texist.accession
+           )
+           AND db_id IN (
+               SELECT talt.alt_db_id FROM temp_cvterm_alt_id talt
+               INNER JOIN temp_accession_exist texist ON
+               talt.accession = texist.accession
+           )
+
+[delete_updatable_alt_ids2]
+           DELETE FROM cvterm_dbxref WHERE dbxref_id IN (
+               SELECT dbxref.dbxref_id
+               FROM dbxref
+               INNER JOIN temp_cvterm_alt_id talt ON (
+               dbxref.accession = talt.alt_id
+               AND
+               dbxref.db_id = talt.alt_db_id
+               )
+               INNER JOIN temp_accession_exist texist ON
+               talt.accession = texist.accession
+           )

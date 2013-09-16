@@ -42,6 +42,14 @@
                db_id integer NOT NULL
             )
 
+[create_table_temp_alt_id]
+           CREATE TEMP TABLE temp_cvterm_alt_id(
+               accession varchar(256) NOT NULL, 
+               alt_id varchar(256) NOT NULL,
+               alt_db_id integer NOT NULL,
+               db_id integer NOT NULL
+           )
+
 [create_table_temp_accession]
            CREATE TEMP TABLE temp_accession (
                accession varchar(256) NOT NULL
@@ -125,6 +133,35 @@
 		)
 		INNER JOIN cvterm ON
 		    dbxref.dbxref_id = cvterm.dbxref_id
+
+[insert_alt_id_in_dbxref]
+           INSERT INTO dbxref(accession,db_id)
+           SELECT talt.alt_id,talt.alt_db_id 
+           FROM temp_cvterm_alt_id talt
+           INNER JOIN temp_accession tmacc ON
+           talt.accession = tmacc.accession
+
+[insert_alt_id_in_cvterm_dbxref]
+           INSERT INTO cvterm_dbxref(cvterm_id,dbxref_id)
+           SELECT cvterm.cvterm_id,altxref.dbxref_id
+           FROM temp_cvterm_alt_id talt
+           INNER JOIN dbxref altxref ON (
+               talt.alt_id = altxref.accession
+               AND
+               talt.alt_db_id = altxref.db_id
+           )
+           INNER JOIN temp_accession tmacc ON
+               talt.accession = tmacc.accession
+           INNER JOIN temp_cvterm tmcvterm ON
+               tmacc.accession = tmcvterm.accession
+           INNER JOIN dbxref ON (
+               tmcvterm.accession = dbxref.accession
+               AND
+               tmcvterm.db_id = dbxref.db_id
+           )
+           INNER JOIN cvterm ON
+               dbxref.dbxref_id = cvterm.dbxref_id
+
 
 [insert_updated_synonym_in_temp]
         INSERT INTO temp_synonym_update(cvterm_id,syn,syn_scope_id)
@@ -250,6 +287,26 @@ INSERT INTO temp_accession(accession)
 		INNER JOIN cvterm ON
 		    dbxref.dbxref_id = cvterm.dbxref_id
 
+[insert_updatable_alt_ids]
+            INSERT INTO dbxref(accession,db_id)
+               SELECT talt.alt_id,talt.alt_db_id 
+               FROM temp_cvterm_alt_id talt
+               INNER JOIN temp_accession_exist texist ON
+               talt.accession = texist.accession
+
+[insert_updatable_alt_ids2]
+           INSERT INTO cvterm_dbxref(dbxref_id,cvterm_id)
+               SELECT dbxref.dbxref_id,texist.cvterm_id
+               FROM dbxref
+               INNER JOIN temp_cvterm_alt_id talt ON (
+               dbxref.accession = talt.alt_id
+               AND
+               dbxref.db_id = talt.alt_db_id
+               )
+               INNER JOIN temp_accession_exist texist ON
+               talt.accession = texist.accession
+
+
 
 [delete_non_existing_cvterm]
            DELETE FROM cvterm USING temp_term_delete td 
@@ -281,6 +338,17 @@ INSERT INTO temp_accession(accession)
                WHERE cv.name = 'cvterm_property_type'
                AND cvterm.name = 'comment'
             )
+
+[delete_updatable_alt_ids]
+           DELETE FROM dbxref 
+            USING temp_cvterm_alt_id talt, temp_accession_exist texist
+            WHERE 
+            dbxref.accession = talt.alt_id
+            AND
+            dbxref.db_id = talt.alt_db_id
+            AND
+            talt.accession = texist.accession
+
 
 [update_cvterm_names]
     	UPDATE cvterm SET name = fresh.fname FROM (

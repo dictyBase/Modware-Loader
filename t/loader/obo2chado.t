@@ -142,7 +142,7 @@ subtest 'loading of cvterms metadata from obo file' => sub {
     );
     count_alt_id_ok(
         $schema,
-        { 'cv' => 'eco', 'count' => 7, 'db' => 'ECO' },
+        { 'count' => 7, 'db' => 'ECO' },
         "should have 7 alt ids in eco ontology"
     );
     has_synonym(

@@ -98,7 +98,7 @@ has 'update_ontology_hooks' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return ['update_synonyms', 'update_comments'];
+        return ['update_synonyms', 'update_comments',  'update_alt_ids'];
     }
 );
 

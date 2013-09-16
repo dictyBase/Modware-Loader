@@ -63,7 +63,7 @@ subtest 'updating metadata from obo file' => sub {
     );
     count_alt_id_ok(
         $schema,
-        { 'cv' => 'eco', 'count' => 7, 'db' => 'ECO' },
+        { 'count' => 7, 'db' => 'ECO' },
         "should have 7 alt ids in eco ontology"
     );
 
@@ -106,7 +106,7 @@ subtest 'updating metadata from obo file' => sub {
     );
     count_alt_id_ok(
         $schema,
-        { 'cv' => 'eco', 'count' => 7, 'db' => 'ECO' },
+        { 'count' => 7, 'db' => 'ECO' },
         "should have 7 alt ids after update"
     );
     drop_schema();
@@ -135,7 +135,7 @@ subtest 'updating alt_id metadata from obo file' => sub {
     );
     count_alt_id_ok(
         $schema,
-        { 'cv' => 'dphen', 'count' => 59, 'db' => 'DDPHENO' },
+        { 'count' => 59, 'db' => 'DDPHENO' },
         "should have 59 alt_ids in Dictyostelium phenotypes ontology"
     );
 
@@ -144,17 +144,16 @@ subtest 'updating alt_id metadata from obo file' => sub {
         $data_dir->subdir('obo')->file('dicty_phenotypes.obo')
     );
     lives_ok { $loader->run } "should update new phenotypes ontology";
-    count_alt_id_ok(
-        $schema,
-        { 'cv' => 'dphen', 'count' => 63, 'db' => 'DDPHENO' },
-        "should have 63 alt ids after update"
-    );
     count_synonym_ok(
         $schema,
         { 'cv' => 'dphen', 'count' => 364 },
         "should have 364 synonyms after update"
     );
-
+    count_alt_id_ok(
+        $schema,
+        { 'count' => 63, 'db' => 'DDPHENO' },
+        "should have 63 alt ids after update"
+    );
     drop_schema();
 };
 
