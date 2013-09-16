@@ -16,34 +16,31 @@ line applications to import and export biological data from Chado database.
 
 # INSTALLATION
 
-First you have to install [BioPortal](https://github.com/dictyBase/BioPortal-WebService)
-distribution from github. Since none of this module is yet to ready for __cpan__,  you have to install it
-directly from __github__. For a stable release,  use any of the tarball from git __tag__ and
-for a developer release use the __build/develop__ branch. All the recepies below use the
-developer release,  suit your script accordingly if you want to use the stable one.
-
 ## Using cpanm
 
-### Single step
+Use a latest version of [cpanm](https://metacpan.org/module/cpanm), at least 1.6 is needed.
+You need to install 2/3 dependencies from __github__, rest of them would be pulled from __CPAN__ as needed.
 
-        $_> curl -o BioPortal-WebService.tar.gz -L -k \
-           https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
-           cpanm -n BioPortal-WebService.tar.gz  && \
-           curl -o Modware-Loader.tar.gz -L -k \
-           https://github.com/dictyBase/Modware-Loader/archive/build/develop.tar.gz && \
-           cpanm -n Modware-Loader.tar.gz && \
-           rm BioPortal-WebService.tar.gz Modware-Loader.tar.gz
+        cpanm -n  git://github.com/dictyBase/BioPortal-WebService.git
+        cpanm -n  git://github.com/dictyBase/Modware-Loader.git
 
-### Manually
+If you install without (-n/notest flag) then add __Test::Chado__
 
-Download the BioPortal-Webservice and Modware-Loader tarballs and invoke __cpanm__ on them.
-Read the included __INSTALL__ file for details.
+        cpanm git://github.com/dictyBase/Test-Chado.git
 
-## Using Build.PL,  cpan and friends
+## Manually
+
+Download the BioPortal-Webservice and Modware-Loader tarballs from github master and invoke __cpanm__ on them.
+
+- BioPortal-WebService [tarball](https://github.com/dictyBase/BioPortal-WebService/archive/master.tar.gz)
+- Test-Chado [tarball](https://github.com/dictyBase/Test-Chado/archive/master.tar.gz)
+- Modware-Loader [tarball](https://github.com/dictyBase/Modware:Loader/archive/master.tar.gz)
+
+### Using Build.PL,  cpan and friends
 
 Just follow the instuctions in the __INSTALL__ file.
 
-## Directly from the git repository
+### Directly from the git repository
 
 This is primarilly intended for authors/developers.
 

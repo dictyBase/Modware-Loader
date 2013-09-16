@@ -78,7 +78,7 @@ my %module_build_args = (
     }
   },
   "test_requires" => {
-    "Test::Chado" => "v1.2.0",
+    "Test::Chado" => "v4.0.0",
     "Test::File" => "1.34",
     "Test::Moose::More" => "0.0019",
     "Test::More" => "0.88",
