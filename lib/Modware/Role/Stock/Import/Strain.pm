@@ -151,6 +151,21 @@ before 'execute' => sub {
             push $self->$get_method( $array[0] ), $array[1];
         }
     }
+
+    if ( $self->dsc_phenotypes ) {
+        my $file_reader
+            = IO::File->new( catfile( 'share', 'DSC_phenotypes.tsv' ), 'r' );
+        while ( my $line = $file_reader->getline ) {
+            my @array = split /\t/, $line;
+            $self->set_phenotype( $array[0], [] )
+                if !$self->has_phenotype( $array[0] );
+            my @row;
+            push @row, $array[2];
+            push @row, $array[5];
+            push @row, $array[3];
+            push $self->get_phenotype( $array[0] ), @row;
+        }
+    }
 };
 
 has '_strain_genotype' => (
@@ -179,6 +194,57 @@ sub find_genotype {
         $self->set_strain_genotype( $dbs_id, $row->first );
         return $self->get_strain_genotype($dbs_id)->genotype_id;
     }
+}
+
+has _curr_genotype_uniquename => (
+    is  => 'rw',
+    isa => 'Str'
+);
+
+sub generate_genotype_uniquename {
+    my ($self) = @_;
+    if ( !$self->_curr_genotype_uniquename ) {
+        my $genotype_uniquename_rs
+            = $self->schema->resultset('Genetic::Genotype')->search(
+            {},
+            {   select   => 'uniquename',
+                order_by => { -desc => 'uniquename' }
+            }
+            );
+        if ( $genotype_uniquename_rs->count > 0 ) {
+            print $genotype_uniquename_rs->single->uniquename . "\n";
+            $self->_curr_genotype_uniquename(
+                $genotype_uniquename_rs->single->uniquename );
+        }
+        else {
+            $self->_curr_genotype_uniquename( sprintf "DSC_G%07d", 0 );
+        }
+    }
+    ( my $new_genotype_uniquename = $self->_curr_genotype_uniquename )
+        =~ s/^DSC_G[0]{1,6}//;
+    $self->_curr_genotype_uniquename( sprintf "DSC_G%07d",
+        $new_genotype_uniquename + 1 );
+    return $self->_curr_genotype_uniquename;
+}
+
+sub find_or_create_genotype {
+    my ( $self, $dbs_id ) = @_;
+    return if $self->find_genotype($dbs_id);
+
+    my $genotype_uniquename = $self->generate_genotype_uniquename();
+    my $stock_rs            = $self->get_stock_row($dbs_id);
+    my $genotype_rs
+        = $self->schema->resultset('Genetic::Genotype')->find_or_create(
+        {   name       => $stock_rs->name,
+            uniquename => $genotype_uniquename,
+            type_id => $self->find_cvterm( 'genotype', 'dicty_stockcenter' )
+        }
+        );
+    my $stock_genotype_rs
+        = $stock_rs->find_or_create_related( 'stock_genotypes',
+        { genotype_id => $genotype_rs->genotype_id } );
+    $self->set_strain_genotype( $dbs_id, $stock_genotype_rs );
+    return $self->get_strain_genotype($dbs_id)->genotype_id;
 }
 
 1;

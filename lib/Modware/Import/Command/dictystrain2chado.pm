@@ -31,6 +31,12 @@ has mock_pub => (
     default => 0,
 );
 
+has dsc_phenotypes => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+);
+
 sub execute {
 
     my ($self) = @_;
@@ -186,7 +192,7 @@ sub execute {
                 my $phenotype_term  = $phenotype_data[$i][0];
                 my $phenotype_env   = $phenotype_data[$i][1];
                 my $phenotype_assay = $phenotype_data[$i][2];
-                my $phenotype_pmid  = $self->trim( $phenotype_data[$i][3] );
+                my $phenotype_pmid  = $phenotype_data[$i][3];
 
                 my $env_id = $self->find_or_create_environment($phenotype_env)
                     if $phenotype_env;
@@ -196,7 +202,7 @@ sub execute {
                     $phenotype_assay )
                     if $phenotype_term;
 
-                my $genotype_id = $self->find_genotype($dbs_id);
+                my $genotype_id = $self->find_or_create_genotype($dbs_id);
                 if ( !$genotype_id ) {
                     $self->logger->warn("Genotype NOT found for $dbs_id");
                 }
@@ -204,8 +210,14 @@ sub execute {
                 my $type_id = $self->find_or_create_cvterm( "unspecified",
                     "Dicty Phenotypes" );
 
-                my $pub_id = $self->find_pub_by_title(
-                    "Dicty Stock Center Phenotyping 2003-2008");
+                my $pub_id;
+                if ($phenotype_pmid) {
+                    $pub_id = $self->find_pub( $self->trim($phenotype_pmid) );
+                }
+                $pub_id
+                    = $self->find_pub_by_title(
+                    "Dicty Stock Center Phenotyping 2003-2008")
+                    if !$pub_id;
 
                 if ( $genotype_id and $phenotype_id and $env_id and $type_id )
                 {
