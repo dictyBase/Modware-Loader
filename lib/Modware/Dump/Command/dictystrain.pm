@@ -260,8 +260,8 @@ sub execute {
                 # Phenotype notes
                 if ( $phenotype->[4] ) {
                     my $phenotype_note = $self->trim( $phenotype->[4] );
-                    $phenotype_note =~ s/\r\n//g;
-					$phenotype_note =~ s/\t/ /g;
+                    $phenotype_note =~ s/\t/ /g;
+                    $phenotype_note =~ s/[\n\r]/ /g;
                     push @row, $phenotype_note;
                 }
                 else {
