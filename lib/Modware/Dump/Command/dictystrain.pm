@@ -29,36 +29,31 @@ sub execute {
 
     my ( $io, $stats ) = $self->_create_files();
 
-    my $strain_rs = $self->legacy_schema->resultset('StockCenter')->search(
-        {},
-        {   select => [
-                qw/id strain_name strain_description species dbxref_id pubmedid phenotype genotype other_references internal_db_id mutagenesis_method mutant_type parental_strain plasmid/
-            ],
-            cache => 1
-        }
-    );
+    my $strain_rs = $self->legacy_schema->resultset('StockCenter')
+        ->search( {}, { cache => 1 } );
+    $strain_rs->result_class('DBIx::Class::ResultClass::HashRefInflator');
 
     my $dscg = 1;
 
     while ( my $strain = $strain_rs->next ) {
 
-        my $dbs_id = $self->find_dbxref_accession( $strain->dbxref_id );
+        my $dbs_id = $self->find_dbxref_accession( $strain->{dbxref_id} );
         my $dscg_id = sprintf( "DSC_G%07d", $dscg );
 
         if ( exists $io->{strain} ) {
             my @row;
             push @row, $dbs_id;
-            push @row, $self->trim( $strain->strain_name );
-            if ( $strain->species ) {
-                push @row, $strain->species;
+            push @row, $self->trim( $strain->{strain_name} );
+            if ( $strain->{species} ) {
+                push @row, $strain->{species};
             }
             else {
                 push @row, '';
             }
 
-            if ( $strain->strain_description ) {
-                my $strain_desc = $self->trim( $strain->strain_description );
-                $strain_desc =~ s/\r\n//g;
+            if ( $strain->{strain_description} ) {
+                my $strain_desc
+                    = $self->trim( $strain->{strain_description} );
                 push @row, $strain_desc;
             }
             else {
@@ -73,18 +68,20 @@ sub execute {
         if ( exists $io->{inventory} ) {
             my $strain_invent_rs = $self->find_strain_inventory($dbs_id);
             if ($strain_invent_rs) {
+                $strain_invent_rs->result_class(
+                    'DBIx::Class::ResultClass::HashRefInflator');
                 while ( my $strain_invent = $strain_invent_rs->next ) {
                     my @row;
                     push @row, $dbs_id;
-                    if ( $strain_invent->location ) {
-                        push @row, $self->trim( $strain_invent->location );
+                    if ( $strain_invent->{location} ) {
+                        push @row, $self->trim( $strain_invent->{location} );
                     }
                     else {
                         push @row, '';
                     }
 
                     my $color
-                        = $self->trim( ucfirst( $strain_invent->color ) );
+                        = $self->trim( ucfirst( $strain_invent->{color} ) );
                     if ( length($color) > 1 ) {
                         push @row, $color;
                     }
@@ -92,18 +89,19 @@ sub execute {
                         push @row, '';
                     }
 
-                    if (    $strain_invent->no_of_vials
-                        and $strain_invent->no_of_vials =~ /^\d+$/ )
+                    if (    $strain_invent->{no_of_vials}
+                        and $strain_invent->{no_of_vials} =~ /^\d+$/ )
                     {
-                        push @row, $self->trim( $strain_invent->no_of_vials );
+                        push @row,
+                            $self->trim( $strain_invent->{no_of_vials} );
                     }
                     else {
                         push @row, '';
                     }
 
-                    if ( $strain_invent->obtained_as ) {
+                    if ( $strain_invent->{obtained_as} ) {
                         my $strain_obtained_as
-                            = $self->trim( $strain_invent->obtained_as );
+                            = $self->trim( $strain_invent->{obtained_as} );
                         if ( length($strain_obtained_as) > 1 ) {
                             push @row, $strain_obtained_as;
                         }
@@ -115,7 +113,7 @@ sub execute {
                         push @row, '';
                     }
 
-                    my $strain_stored_as = $strain_invent->stored_as;
+                    my $strain_stored_as = $strain_invent->{stored_as};
                     if ( $strain_stored_as and length($strain_stored_as) > 1 )
                     {
                         $strain_stored_as =~ s/\?//g;
@@ -131,18 +129,17 @@ sub execute {
                         push @row, '';
                     }
 
-                    if ( $strain_invent->storage_date ) {
+                    if ( $strain_invent->{storage_date} ) {
                         push @row,
-                            $self->trim( $strain_invent->storage_date );
+                            $self->trim( $strain_invent->{storage_date} );
                     }
                     else {
                         push @row, '';
                     }
 
-                    my $private_comment = $strain_invent->storage_comments;
+                    my $private_comment = $strain_invent->{storage_comments};
                     if ($private_comment) {
-                        $private_comment =~ s/\r\n//g;
-                        $private_comment =~ s/\t/ /g;
+                        $private_comment =~ s/[\n\r]/ /g;
                         push @row, $self->trim($private_comment);
                     }
                     else {
@@ -150,10 +147,9 @@ sub execute {
                     }
 
                     my $public_comment
-                        = $strain_invent->other_comments_and_feedback;
+                        = $strain_invent->{other_comments_and_feedback};
                     if ($public_comment) {
-                        $public_comment =~ s/\r\n//g;
-                        $public_comment =~ s/\t/ /g;
+                        $public_comment =~ s/[\n\r]/ /g;
                         push @row, $self->trim($public_comment);
                     }
                     else {
@@ -168,50 +164,48 @@ sub execute {
         }
 
         if ( $io->{publications} ) {
-            my ( $pmids_ref, $non_pmids_ref )
-                = $self->resolve_references( $strain->pubmedid,
-                $strain->internal_db_id, $strain->other_references );
+            my ( $pmids_ref, $non_pmids_ref ) = $self->resolve_references(
+                $strain->{pubmedid},
+                $strain->{internal_db_id},
+                $strain->{other_references}
+            );
 
             my @pmids     = @{$pmids_ref};
             my @non_pmids = @{$non_pmids_ref};
 
             if (@pmids) {
-                my $outstr = '';
+                my @data;
                 for my $pmid (@pmids) {
                     if ($pmid) {
-                        $outstr
-                            = $outstr
-                            . $dbs_id . "\t"
-                            . $self->trim($pmid) . "\n";
+                        my $s = sprintf "%s\t%d", $dbs_id, $self->trim($pmid);
+                        push @data, $s;
                         $stats->{publications} = $stats->{publications} + 1;
                     }
                 }
-                $io->{publications}->write($outstr);
+                my $outstr = join( "\n", @data );
+                $io->{publications}->write( $outstr . "\n" ) if $outstr;
             }
             if (@non_pmids) {
-                my $outstr = '';
+                my @data;
                 for my $non_pmid (@non_pmids) {
                     if ($non_pmid) {
-                        $outstr
-                            = $outstr
-                            . $dbs_id . "\t"
-                            . $self->trim($non_pmid) . "\n";
+                        my $s = sprintf "%s\t%s", $dbs_id,
+                            $self->trim($non_pmid);
+                        push @data, $s;
                         $stats->{other_refs} = $stats->{other_refs} + 1;
                     }
                 }
-                $io->{other_refs}->write($outstr);
+                my $outstr = join( "\n", @data );
+                $io->{other_refs}->write( $outstr . "\n" ) if $outstr;
             }
         }
 
-        if ( $strain->genotype ) {
-            my $genotype = $self->trim( $strain->genotype );
+        if ( $strain->{genotype} ) {
+            my $genotype = $self->trim( $strain->{genotype} );
             if ( exists $io->{genotype} ) {
                 $genotype =~ s/(,\W|,)/,/g;
-
-                # $genotype =~ s/\?$//g;
-
-                $io->{genotype}->write(
-                    $dbs_id . "\t" . $dscg_id . "\t" . $genotype . "\n" );
+                my $s = sprintf "%s\t%s\t%s\n", $dbs_id, $dscg_id, $genotype;
+                $io->{genotype}->write($s);
                 $stats->{genotype} = $stats->{genotype} + 1;
             }
             $dscg = $dscg + 1;
@@ -224,8 +218,8 @@ sub execute {
                     my $genotype = $self->_get_genotype_for_V_strain($dbs_id);
                 }
                 $genotype =~ s/(,\W|,)/,/g;
-                $io->{genotype}->write(
-                    $dbs_id . "\t" . $dscg_id . "\t" . $genotype . "\n" );
+                my $s = sprintf "%s\t%s\t%s\n", $dbs_id, $dscg_id, $genotype;
+                $io->{genotype}->write($s);
                 $stats->{genotype} = $stats->{genotype} + 1;
             }
             $dscg = $dscg + 1;
@@ -260,7 +254,6 @@ sub execute {
                 # Phenotype notes
                 if ( $phenotype->[4] ) {
                     my $phenotype_note = $self->trim( $phenotype->[4] );
-                    $phenotype_note =~ s/\t/ /g;
                     $phenotype_note =~ s/[\n\r]/ /g;
                     push @row, $phenotype_note;
                 }
@@ -272,55 +265,53 @@ sub execute {
                 $io->{phenotype}->write( sprintf "%s\n", $s );
                 $stats->{phenotype} = $stats->{phenotype} + 1;
             }
-
-            # if ( $strain->phenotype ) {
-            #     my @phenotypes_jakob = split( /[,;]/, $strain->phenotype );
-            #     for my $phenotype (@phenotypes_jakob) {
-            #         $phenotype = $self->trim($phenotype);
-            #         if (   !$self->is_strain_genotype($phenotype)
-            #             && !$self->is_strain_characteristic($phenotype) )
-            #         {
-            #             $io->{phenotype_jakob}
-            #                 ->write( $dbs_id . "\t" . $phenotype . "\n" )
-            #                 if ($phenotype);
-            #         }
-            #     }
-            # }
         }
 
         if ( exists $io->{genes} ) {
             my $strain_gene_rs
                 = $self->legacy_schema->resultset('StrainGeneLink')
-                ->search( { strain_id => $strain->id }, { cache => 1 } );
+                ->search( { strain_id => $strain->{id} }, { cache => 1 } );
+            $strain_gene_rs->result_class(
+                'DBIx::Class::ResultClass::HashRefInflator');
+            my @data;
             while ( my $strain_gene = $strain_gene_rs->next ) {
-                my $gene_id = $self->find_gene_id( $strain_gene->feature_id );
-                $io->{genes}->write(
-                    $dbs_id . "\t" . $gene_id . "\t" . $dscg_id . "\n" );
+                my $gene_id
+                    = $self->find_gene_id( $strain_gene->{feature_id} );
+                my $s = sprintf "%s\t%s", $dbs_id, $gene_id;
+                push @data, $s;
                 $stats->{genes} = $stats->{genes} + 1;
             }
+            my $outstr = join( "\n", @data );
+            $io->{genes}->write( $outstr . "\n" ) if $outstr;
         }
 
         if ( exists $io->{characteristics} ) {
             my $strain_char_rs
                 = $self->legacy_schema->resultset('StrainCharCvterm')
-                ->search( { strain_id => $strain->id }, { cache => 1 } );
+                ->search( { strain_id => $strain->{id} }, { cache => 1 } );
+            $strain_char_rs->result_class(
+                'DBIx::Class::ResultClass::HashRefInflator');
+            my @data;
             while ( my $strain_char = $strain_char_rs->next ) {
                 my $cvterm_name
-                    = $self->find_cvterm_name( $strain_char->cvterm_id );
-                $io->{characteristics}
-                    ->write( $dbs_id . "\t" . $cvterm_name . "\n" );
+                    = $self->find_cvterm_name( $strain_char->{cvterm_id} );
+                my $s = sprintf "%s\t%s", $dbs_id, $cvterm_name;
+                push @data, $s;
                 $stats->{characteristics} = $stats->{characteristics} + 1;
             }
+            my $outstr = join( "\n", @data );
+            $io->{characteristics}->write( $outstr . "\n" ) if $outstr;
         }
 
         if ( exists $io->{parent} ) {
-            if ( $strain->parental_strain ) {
-                my $parent   = $self->trim( $strain->parental_strain );
+            if ( $strain->{parental_strain} ) {
+                my $parent = $self->trim( $strain->{parental_strain} );
+
                 my @dbs_id_2 = $parent =~ m/(DBS[0-9]{7})/;
                 if (@dbs_id_2) {
                     for my $dbs_id2 (@dbs_id_2) {
-                        $io->{parent}
-                            ->write( $dbs_id . "\t" . $dbs_id2 . "\n" );
+                        my $s = sprintf "%s\t%s\n", $dbs_id, $dbs_id2;
+                        $io->{parent}->write($s);
                         $stats->{parent} = $stats->{parent} + 1;
                     }
                 }
@@ -330,8 +321,9 @@ sub execute {
                         for my $str (@strains) {
                             my $dbs_id_2
                                 = $self->find_dbxref_accession( $str->[0] );
-                            my $outstr = $dbs_id . "\t" . $dbs_id_2;
-                            $outstr = $outstr . "\t" . $str->[1] if $str->[1];
+                            my $outstr = sprintf "%s\t%s", $dbs_id, $dbs_id_2;
+                            $outstr = $outstr . "\t" . $str->[1]
+                                if $str->[1];
                             $outstr = $outstr . "\n";
                             $io->{parent}->write($outstr);
                             $stats->{parent} = $stats->{parent} + 1;
@@ -347,42 +339,40 @@ sub execute {
         }
 
         if ( exists $io->{props} ) {
-            my $mm = $strain->mutagenesis_method;
+            my @data;
+            my $mm = $strain->{mutagenesis_method};
             if ($mm) {
                 $mm =~ s/\?//;
                 $mm = $self->trim($mm);
                 if ( $self->has_mutagenesis_method($mm) ) {
-                    $io->{props}->write( $dbs_id . "\t"
-                            . 'mutagenesis method' . "\t"
-                            . $self->get_mutagenesis_method($mm)
-                            . "\n" );
+                    my $s = sprintf "%s\tmutagenesis method\t%s", $dbs_id,
+                        $self->get_mutagenesis_method($mm);
+                    push @data, $s;
                     $stats->{props} = $stats->{props} + 1;
                 }
             }
-
-            my $gm = $strain->mutant_type;
+            my $gm = $strain->{mutant_type};
             if ($gm) {
                 my $mutant_type = $self->find_cvterm_name($gm);
-                $io->{props}->write( $dbs_id . "\t"
-                        . 'mutant type' . "\t"
-                        . $mutant_type
-                        . "\n" );
+                my $s = sprintf "%s\tmutant type\t%s", $dbs_id, $mutant_type;
+                push @data, $s;
                 $stats->{props} = $stats->{props} + 1;
             }
-
-            my @synonyms = $self->get_synonyms( $strain->id );
+            my @synonyms = $self->get_synonyms( $strain->{id} );
             if (@synonyms) {
                 for my $synonym (@synonyms) {
-                    $io->{props}->write(
-                        $dbs_id . "\t" . 'synonym' . "\t" . $synonym . "\n" );
+                    my $s = sprintf "%s\tsynonym\t%s", $dbs_id, $synonym;
+                    push @data, $s;
                     $stats->{props} = $stats->{props} + 1;
                 }
             }
+            my $outstr = join( "\n", @data );
+            $io->{props}->write( $outstr . "\n" ) if $outstr;
         }
 
         if ( exists $io->{plasmid} ) {
-            if ( $strain->plasmid ) {
-                my $pl_name = $self->trim( $strain->plasmid );
+            if ( $strain->{plasmid} ) {
+                my $pl_name = $self->trim( $strain->{plasmid} );
                 my @plasmids;
                 if ( length($pl_name) > 1 ) {
                     if ( $pl_name =~ /,/ ) {
@@ -418,7 +408,10 @@ sub execute {
 
 sub trim {
     my ( $self, $s ) = @_;
+    $s =~ s/\t/ /;
     $s =~ s/^\s+//;
+    $s =~ s/\s+$//;
+    $s =~ s/[\n\r]/ /;
     $s =~ s/\s+$//;
     return $s;
 }
@@ -435,7 +428,7 @@ sub _create_files {
     for my $data_type ( @{ $self->data } ) {
         my $file_obj
             = IO::File->new(
-            $self->output_dir . "/strain_" . $data_type . ".txt", 'w' );
+            $self->output_dir . "/strain_" . $data_type . ".tsv", 'w' );
         $io->{$data_type}    = $file_obj;
         $stats->{$data_type} = 0;
 
@@ -443,7 +436,7 @@ sub _create_files {
             my $data_type_ = "other_refs";
             my $file_obj_
                 = IO::File->new(
-                $self->output_dir . "/strain_publications_no_pubmed.txt",
+                $self->output_dir . "/strain_publications_no_pubmed.tsv",
                 'w' );
             $io->{$data_type_}    = $file_obj_;
             $stats->{$data_type_} = 0;
@@ -454,14 +447,6 @@ sub _create_files {
         if ( $data_type eq 'genotype' or $data_type eq 'genes' ) {
             $self->_find_strain_genes();
         }
-
-        # if ( $data_type eq 'phenotype' ) {
-        #     my $data_type_ = "phenotype_jakob";
-        #     my $file_obj_
-        #         = IO::File->new(
-        #         $self->output_dir . "/strain_phenotype_jakob.txt", 'w' );
-        #     $io->{$data_type_} = $file_obj_;
-        # }
     }
     return ( $io, $stats );
 }
