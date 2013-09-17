@@ -68,51 +68,6 @@ sub find_strain_inventory {
     }
 }
 
-has '_strain_characteristics' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => [qw/Hash/],
-    handles => { is_strain_characteristic => 'defined' },
-    lazy    => 1,
-    builder => '_load_list_characteristics'
-);
-
-sub _load_list_characteristics {
-    my ($self) = @_;
-    my $dir = Path::Class::Dir->new($Bin);
-    my $fh
-        = IO::File->new(
-        $dir->parent->subdir('data')->file('strain_characteristics.txt'),
-        'r' );
-    my $char_hashref;
-    while ( my $io = $fh->getline ) {
-        $char_hashref->{ $self->trim($io) } = 1;
-    }
-    return $char_hashref;
-}
-
-has '_strain_genotype' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => [qw/Hash/],
-    handles => { is_strain_genotype => 'defined' },
-    lazy    => 1,
-    builder => '_load_list_genotype'
-);
-
-sub _load_list_genotype {
-    my ($self) = @_;
-    my $dir = Path::Class::Dir->new($Bin);
-    my $fh
-        = IO::File->new(
-        $dir->parent->subdir('data')->file('strain_genotype.txt'), 'r' );
-    my $char_hashref;
-    while ( my $io = $fh->getline ) {
-        $char_hashref->{ $self->trim($io) } = 1;
-    }
-    return $char_hashref;
-}
-
 has '_mutagenesis_method' => (
     is      => 'rw',
     isa     => 'HashRef',
