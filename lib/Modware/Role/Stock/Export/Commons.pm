@@ -108,16 +108,16 @@ sub resolve_references {
             @pmids = split( /,/, $pubmedid );
         }
         else {
-            push( @pmids, $self->trim($pubmedid) )
-                if $pubmedid =~ /[0-9]{6,10}/;
+            push( @pmids, $1 )
+                if $pubmedid =~ /([0-9]{6,10})/;
         }
     }
     if ($internal) {
         if ( $internal =~ /,/ ) {
             my @internals = split( /,/, $internal );
             foreach my $d_id (@internals) {
-                if ( $d_id =~ /[0-9]{6,10}/ ) {
-                    push( @pmids, $self->trim($d_id) );
+                if ( $d_id =~ /([0-9]{6,12})/ ) {
+                    push( @pmids, $1 );
                 }
                 else {
                     $d_id =~ /(d[0-9]{4})/;
@@ -134,8 +134,8 @@ sub resolve_references {
         if ( $other_ref =~ /[,;\/]/ ) {
             my @ref_data = split( /[,;\s\/]/, $other_ref );
             foreach my $ref (@ref_data) {
-                if ( $ref =~ /[0-9]{6,10}/ ) {
-                    push( @pmids, $self->trim($ref) );
+                if ( $ref =~ /([0-9]{6,10})/ ) {
+                    push( @pmids, $1 );
                 }
                 else {
                     $ref =~ /(d[0-9]{4})/;
@@ -144,8 +144,8 @@ sub resolve_references {
             }
         }
         else {
-            push( @pmids, $self->trim($other_ref) )
-                if $other_ref =~ /[0-9]{6,10}/;
+            push( @pmids, $1 )
+                if $other_ref =~ /([0-9]{6,10})/;
         }
     }
     return ( \@pmids, \@non_pmids );
