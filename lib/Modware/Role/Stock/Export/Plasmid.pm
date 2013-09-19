@@ -61,7 +61,7 @@ sub find_plasmid_inventory {
     my $plasmid_invent_rs
         = $self->legacy_schema->resultset('PlasmidInventory')->search(
         { plasmid_id => $plasmid_id },
-        {   select => [qw/me.location me.color me.stored_as me.storage_date/],
+        {   select => [qw/me.location me.color me.stored_as me.storage_date me.other_comments_and_feedback/],
             cache  => 1
         }
         );

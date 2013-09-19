@@ -57,7 +57,7 @@ sub find_strain_inventory {
         { 'strain.dbxref_id' => $old_dbxref_id },
         {   join   => 'strain',
             select => [
-                qw/me.location me.color me.no_of_vials me.obtained_as me.stored_as me.storage_date/
+                qw/me.location me.color me.no_of_vials me.obtained_as me.stored_as me.storage_date me.storage_comments me.other_comments_and_feedback/
             ],
             cache => 1
         }
@@ -66,51 +66,6 @@ sub find_strain_inventory {
         $self->set_strain_invent_row( $dbs_id, $strain_invent_rs );
         return $self->get_strain_invent_row($dbs_id);
     }
-}
-
-has '_strain_characteristics' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => [qw/Hash/],
-    handles => { is_strain_characteristic => 'defined' },
-    lazy    => 1,
-    builder => '_load_list_characteristics'
-);
-
-sub _load_list_characteristics {
-    my ($self) = @_;
-    my $dir = Path::Class::Dir->new($Bin);
-    my $fh
-        = IO::File->new(
-        $dir->parent->subdir('data')->file('strain_characteristics.txt'),
-        'r' );
-    my $char_hashref;
-    while ( my $io = $fh->getline ) {
-        $char_hashref->{ $self->trim($io) } = 1;
-    }
-    return $char_hashref;
-}
-
-has '_strain_genotype' => (
-    is      => 'rw',
-    isa     => 'HashRef',
-    traits  => [qw/Hash/],
-    handles => { is_strain_genotype => 'defined' },
-    lazy    => 1,
-    builder => '_load_list_genotype'
-);
-
-sub _load_list_genotype {
-    my ($self) = @_;
-    my $dir = Path::Class::Dir->new($Bin);
-    my $fh
-        = IO::File->new(
-        $dir->parent->subdir('data')->file('strain_genotype.txt'), 'r' );
-    my $char_hashref;
-    while ( my $io = $fh->getline ) {
-        $char_hashref->{ $self->trim($io) } = 1;
-    }
-    return $char_hashref;
 }
 
 has '_mutagenesis_method' => (
@@ -213,7 +168,7 @@ sub find_phenotypes {
     my ( $self, $dbs_id ) = @_;
     my $phenotypes = $self->schema->storage->dbh->selectall_arrayref(
         qq{
-	SELECT phen.name, env.name, assay.name, pub.uniquename
+	SELECT phen.name, env.name, assay.name, pub.uniquename, p.value
 	FROM phenstatement pst
 
 	LEFT JOIN genotype g on g.genotype_id = pst.genotype_id
@@ -232,6 +187,77 @@ sub find_phenotypes {
 	}
     );
     return @{$phenotypes};
+}
+
+has '_genotype' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_strain_genotype => 'set',
+        get_strain_genotype => 'get',
+        has_strain_genotype => 'defined'
+    }
+);
+
+sub _find_strain_genotypes {
+    my ( $self, $dbs_id ) = @_;
+    my $genotypes = $self->schema->storage->dbh->selectall_arrayref(
+        qq{
+	SELECT uniquename, description
+	FROM genotype
+	WHERE description IS NOT NULL
+	}
+    );
+    for my $genotype ( @{$genotypes} ) {
+        $self->set_strain_genotype( $genotype->[0], $genotype->[1] );
+    }
+}
+
+sub _get_genotype_for_V_strain {
+    my ( $self, $dbs_id ) = @_;
+    my $base_ax4_genotype = 'axeA1,axeB1,axeC1,<gene_name>-,[pBSR1],bsR';
+    if ( $self->has_strain_gene_name($dbs_id) ) {
+        my @gene = @{ $self->get_strain_gene_name($dbs_id) };
+        $base_ax4_genotype =~ s/<gene_name>/$gene[0]/;
+    }
+    else {
+        $base_ax4_genotype =~ s/<gene_name>-,//;
+    }
+    return $base_ax4_genotype;
+}
+
+has '_strain_genes' => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub { {} },
+    handles => {
+        set_strain_gene_name => 'set',
+        get_strain_gene_name => 'get',
+        has_strain_gene_name => 'defined'
+    }
+);
+
+sub _find_strain_genes {
+    my ( $self, $dbs_id ) = @_;
+    my $strain_genes = $self->schema->storage->dbh->selectall_arrayref(
+        qq{
+	SELECT g.uniquename, f.name, gene_id.accession
+	FROM feature_genotype fg
+	JOIN genotype g ON g.genotype_id = fg.genotype_id
+	JOIN feature f ON f.feature_id = fg.feature_id
+	JOIN dbxref gene_id ON gene_id.dbxref_id = f.dbxref_id
+	}
+    );
+    for my $strain_gene ( @{$strain_genes} ) {
+        if ( !$self->has_strain_gene_name( $strain_gene->[0] ) ) {
+            $self->set_strain_gene_name( $strain_gene->[0], [] );
+        }
+        push $self->get_strain_gene_name( $strain_gene->[0] ),
+            $strain_gene->[1];
+    }
 }
 
 1;
