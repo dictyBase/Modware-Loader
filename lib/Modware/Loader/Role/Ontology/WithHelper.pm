@@ -137,14 +137,8 @@ sub parse_id {
 
 sub find_or_create_db_id {
     my ( $self, $name ) = @_;
-    if ( $self->has_dbrow($name) ) {
-        return $self->get_dbrow($name)->db_id;
-    }
-    my $schema = $self->schema;
-    my $row    = $schema->resultset('General::Db')
-        ->find_or_create( { name => $name } );
-    $self->set_dbrow( $name, $row );
-    $row->db_id;
+    my $row = $self->find_or_create_dbrow($name);
+    return $row->db_id;
 }
 
 sub _normalize_id {
