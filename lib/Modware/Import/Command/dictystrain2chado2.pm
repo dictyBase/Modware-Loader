@@ -44,6 +44,10 @@ sub execute {
     if ( $self->prune ) {
         $self->prune_stock();
     }
+	if ($self->mock_pubs) {
+		$self->mock_publications();
+	}
+	
     my $importer = Modware::Import::Stock::StrainImporter->new();
     $importer->logger( $self->logger );
     $importer->schema( $self->schema );
