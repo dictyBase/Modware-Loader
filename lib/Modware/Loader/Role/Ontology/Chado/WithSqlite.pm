@@ -146,14 +146,42 @@ sub update_synonyms {
     my $sqllib = $self->sqllib;
 
     #First create a temp table with synonym that needs update
-    $dbh->do( $sqllib->retr('insert_updated_synonym_in_temp') );
+    #$dbh->do( $sqllib->retr('insert_updated_synonym_in_temp') );
 
-    #Now delete all synonyms
+    #Now delete existing synonyms
     $dbh->do( $sqllib->retr('delete_updatable_synonym') );
 
     #Now insert the new batch
     my $rows = $dbh->do( $sqllib->retr('insert_updatable_synonym') );
     $self->logger->debug("updated $rows synonyms");
+    return $rows;
+}
+
+sub create_alt_ids {
+    my ( $self, $storage, $dbh ) = @_;
+    my $sqllib = $self->sqllib;
+
+    #insert in dbxref first, then in cvterm_dbxref linking table
+    my $rows = $dbh->do( $sqllib->retr('insert_alt_id_in_dbxref') );
+    $dbh->do( $sqllib->retr('insert_alt_id_in_cvterm_dbxref') );
+
+    $self->logger->debug("inserted $rows alt_ids");
+    return $rows;
+}
+
+sub update_alt_ids {
+    my ( $self, $storage, $dbh ) = @_;
+
+    my $sqllib = $self->sqllib;
+
+    #Now delete existing synonyms
+    $dbh->do( $sqllib->retr('delete_updatable_alt_ids2') );
+    $dbh->do( $sqllib->retr('delete_updatable_alt_ids') );
+
+    #Now insert the new batch
+    my $rows = $dbh->do( $sqllib->retr('insert_updatable_alt_ids') );
+    $rows = $dbh->do( $sqllib->retr('insert_updatable_alt_ids2') );
+    $self->logger->debug("updated $rows alt ids");
     return $rows;
 }
 
