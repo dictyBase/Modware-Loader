@@ -89,7 +89,7 @@ has 'create_ontology_hooks' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return [ 'create_synonyms', 'create_comments' ];
+        return [ 'create_synonyms', 'create_comments', 'create_alt_ids'];
     }
 );
 
@@ -98,7 +98,7 @@ has 'update_ontology_hooks' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return ['update_synonyms', 'update_comments'];
+        return ['update_synonyms', 'update_comments',  'update_alt_ids'];
     }
 );
 
@@ -131,6 +131,8 @@ sub _register_schema_classes {
             'Modware::Loader::Schema::Temporary::Cvtermsynonym' );
     $schema->register_class( 'TempCvtermcomment' =>
             'Modware::Loader::Schema::Temporary::Cvtermcomment' );
+    $schema->register_class( 'TempCvtermaltid' =>
+            'Modware::Loader::Schema::Temporary::Cvtermaltid' );
 }
 
 sub is_cvprop_present {

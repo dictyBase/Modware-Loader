@@ -56,7 +56,7 @@ __PACKAGE__->add_columns(
 __PACKAGE__->add_columns(
     'syn_scope_id' => { data_type => 'integer', nullable => 0 } );
 __PACKAGE__->add_columns(
-    'db_id' => { data_type => 'int', nullable => 0 } );
+    'db_id' => { data_type => 'integer', nullable => 0 } );
 
 
 1;    # Magic true value required at end of module
@@ -73,7 +73,23 @@ __PACKAGE__->add_columns(
 __PACKAGE__->add_columns(
     'comment_type_id' => { data_type => 'integer', nullable => 0 } );
 __PACKAGE__->add_columns(
-    'db_id' => { data_type => 'int', nullable => 0 } );
+    'db_id' => { data_type => 'integer', nullable => 0 } );
 
 1;    # Magic true value required at end of module
+
+
+package Modware::Loader::Schema::Temporary::Cvtermaltid;
+use base qw/DBIx::Class::Core/;
+
+__PACKAGE__->table('temp_cvterm_alt_id');
+__PACKAGE__->add_columns(
+    'accession' => { data_type => 'varchar', size => 256 } );
+__PACKAGE__->add_columns(
+    'alt_id' => { data_type => 'varchar', size => 256 } );
+__PACKAGE__->add_columns(
+    'alt_db_id' => { data_type => 'integer', nullable => 0 } );
+__PACKAGE__->add_columns(
+    'db_id' => { data_type => 'integer', nullable => 0 } );
+
+1;
 

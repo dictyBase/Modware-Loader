@@ -32,7 +32,7 @@ on 'build' => sub {
 };
 
 on 'test' => sub {
-  requires "Test::Chado" => "v1.1.0";
+  requires "Test::Chado" => "v4.0.0";
   requires "Test::File" => "1.34";
   requires "Test::Moose::More" => "0.0019";
   requires "Test::More" => "0.88";
