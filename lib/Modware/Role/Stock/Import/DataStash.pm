@@ -6,6 +6,9 @@ use strict;
 use Moose::Role;
 use namespace::autoclean;
 
+requires 'schema';
+requires 'logger';
+
 has 'db' => ( is => 'rw', isa => 'Str', default => 'internal' );
 has 'cv' => ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
 
@@ -235,7 +238,7 @@ has '_environment' => (
 
 sub find_or_create_environment {
     my ( $self, $env_term ) = @_;
-	$env_term = $self->trim($env_term);
+    $env_term = $self->trim($env_term);
     if ( $self->has_env_row($env_term) ) {
         return $self->get_env_row($env_term)->environment_id;
     }
@@ -253,9 +256,12 @@ sub find_or_create_environment {
         return $self->get_env_row($env_term)->environment_id;
     }
     else {
-        my $uniquename = $self->generate_uniquename('DSC_ENV');
-        $env_rs = $self->schema->resultset('Genetic::Environment')
-            ->create( { uniquename => $uniquename, description => $env_term } );
+        # my $uniquename = $self->generate_uniquename('DSC_ENV');
+        my $uniquename = $self->get_nextval( 'environment', 'DSC_ENV' );
+        $env_rs
+            = $self->schema->resultset('Genetic::Environment')
+            ->create(
+            { uniquename => $uniquename, description => $env_term } );
         $env_rs->create_related( 'environment_cvterms',
             { cvterm_id => $cvterm_env } );
         $self->set_env_row( $env_term, $env_rs );
@@ -290,8 +296,9 @@ sub find_or_create_genotype {
     }
     else {
 
-        my $genotype_uniquename = $self->generate_uniquename('DSC_G');
-        my $stock_rs            = $self->find_stock($dbs_id);
+        # my $genotype_uniquename = $self->generate_uniquename('DSC_G');
+        my $genotype_uniquename = $self->get_nextval( 'genotype', 'DSC_G' );
+        my $stock_rs = $self->find_stock($dbs_id);
         my $genotype_rs
             = $self->schema->resultset('Genetic::Genotype')->find_or_create(
             {   name       => $stock_rs->name,
@@ -319,7 +326,7 @@ has '_phenotype' => (
 );
 
 sub find_or_create_phenotype {
-    my ( $self, $phenotype_term, $assay ) = @_;
+    my ( $self, $phenotype_term, $assay, $note ) = @_;
     if ( $self->has_phenotype($phenotype_term) ) {
         return $self->get_phenotype($phenotype_term)->phenotype_id;
     }
@@ -336,13 +343,25 @@ sub find_or_create_phenotype {
         my $msg = "Couldn't find \"$assay\" in Dicty assay ontology";
         $self->logger->warn($msg);
     }
+    $note =~ s/(\[.*\])//;
+    my $note_type_id
+        = $self->find_or_create_cvterm( 'curator note', 'dicty_stockcenter' );
+
     my $phenotype_hash;
-    $phenotype_hash->{uniquename}    = $self->generate_uniquename('DSC_PHEN');
+
+  # $phenotype_hash->{uniquename}    = $self->generate_uniquename('DSC_PHEN');
+    $phenotype_hash->{uniquename}
+        = $self->get_nextval( 'phenotype', 'DSC_PHEN' );
     $phenotype_hash->{observable_id} = $cvterm_phenotype;
-    $phenotype_hash->{assay_id}      = $cvterm_assay if $cvterm_assay;
+    $phenotype_hash->{assay_id} = $cvterm_assay if $cvterm_assay;
+    $phenotype_hash->{phenotypeprops}
+        = [ { type_id => $note_type_id, value => $note } ]
+        if $note;
+
     my $phenotype_rs
         = $self->schema->resultset('Phenotype::Phenotype')
         ->find_or_create($phenotype_hash);
+
     if ($phenotype_rs) {
         $self->set_phenotype( $phenotype_term, $phenotype_rs );
         return $self->get_phenotype($phenotype_term)->phenotype_id;
