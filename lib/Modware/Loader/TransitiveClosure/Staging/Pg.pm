@@ -1,4 +1,4 @@
-package Modware::Loader::TransitiveClosure::Staging::Sqlite;
+package Modware::Loader::TransitiveClosure::Staging::Pg;
 use namespace::autoclean;
 use SQL::Library;
 use File::ShareDir qw/module_dir/;
@@ -55,8 +55,18 @@ sub create_indexes {
 
 sub bulk_load {
     my ($self) = @_;
-    $self->schema->resultset('Staging::Cvtermpath')
-        ->populate( [ $self->entries_in_cvtermpath_cache ] );
+    my $dbh = $self->schema->storage->dbh;
+    $dbh->do(
+        "COPY temp_cvtermpath(pathdistance,object_accession,subject_accession, type_accession,object_db_id,subject_db_id,type_db_id) FROM STDIN"
+    );
+    for my $row ( $self->entries_in_cvtermpath_cache ) {
+        my $data = join(
+            "\t",
+            @${row{qw(pathdistance object_accession subject_accession type_accession object_db_id subject_db_id type_db_id)}}
+        ) . "\n";
+        $dbh->pg_putcopydata($data);
+    }
+    $dbh->pg_putcopyend;
 }
 
 # Each data row is a string with four columns
