@@ -54,4 +54,8 @@ my $strain_prop_rs
     { join => { 'stock' => 'type' } } );
 is( $strain_prop_rs->count, 85, 'Should have 85 stockprop entries' );
 
+my $plasmid_input = $data_dir->file('strain_plasmid.tsv');
+dies_ok { $importer->import_plasmid($plasmid_input) }
+'Should die as plasmid not loaded, even though strain is loaded';
+
 drop_schema();
