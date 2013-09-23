@@ -1,0 +1,11 @@
+[create_table_temp_cvtermpath]
+        CREATE TEMP TABLE temp_cvtermpath (
+           pathdistance integer,
+           object_accession varchar(256) NOT NULL,
+           subject_accession varchar(256) NOT NULL,
+           type_accession varchar(256) NOT NULL,
+           object_db_id integer NOT NULL,
+           subject_db_id integer NOT NULL,
+           type_db_id integer NOT NULL
+        )
+
