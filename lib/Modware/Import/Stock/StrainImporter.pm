@@ -1,7 +1,6 @@
 
 package Modware::Import::Stock::StrainImporter;
 
-use autodie;
 use strict;
 
 use Carp;
@@ -11,34 +10,31 @@ use Text::CSV;
 
 use Modware::Import::Stock::DataTransformer;
 
+has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
+has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+
 with 'Modware::Role::Stock::Import::DataStash';
 with 'Modware::Role::Stock::Import::Utils';
-
-has logger => (
-    is  => 'rw',
-    isa => 'Log::Log4perl::Logger'
-);
-
-has schema => ( is => 'rw', isa => 'Bio::Chado::Schema' );
 
 sub import_stock {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    my $io = IO::File->new( $input, 'r' ) or die "Cannot open file: $input";
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
-        or die "Cannot use CSV: " . Text::CSV->error_diag();
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
 
     my $type_id
         = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
-    my $stockcollection_id
+    my $stockcollection_rs
         = $self->schema->resultset('Stock::Stockcollection')->find_or_create(
         {   type_id    => $type_id,
             name       => 'dicty_stockcenter',
-            uniquename => 'D_DSC0000001'
+            uniquename => $self->get_nextval( 'stockcollection', 'DSC' )
         }
-        )->stockcollection_id;
+        );
+    my $stockcollection_id = $stockcollection_rs->stockcollection_id;
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
@@ -70,17 +66,19 @@ sub import_stock {
                 . scalar @stock_data
                 . " strain entries. Missed $missed entries" );
     }
+    return;
 }
 
 sub import_props {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    croak "Please load strain data first!" if !$self->is_stock_loaded('strain');
+    croak "Please load strain data first!"
+        if !$self->is_stock_loaded('strain');
 
-    my $io = IO::File->new( $input, 'r' ) or die "Cannot open file: $input";
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
-        or die "Cannot use CSV: " . Text::CSV->error_diag();
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
 
     my @stock_props;
@@ -120,6 +118,7 @@ sub import_props {
                 . scalar @stock_props
                 . " strain property entries. Missed $missed entries" );
     }
+    return;
 }
 
 sub import_inventory {
@@ -128,11 +127,12 @@ sub import_inventory {
 
     croak "Please load strain_inventory ontology!"
         if !$self->is_ontology_loaded('strain_inventory');
-    croak "Please load strain data first!" if !$self->is_stock_loaded('strain');
+    croak "Please load strain data first!"
+        if !$self->is_stock_loaded('strain');
 
-    my $io = IO::File->new( $input, 'r' ) or die "Cannot open file: $input";
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
-        or die "Cannot use CSV: " . Text::CSV->error_diag();
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
 
     my $transform = Modware::Import::Stock::DataTransformer->new();
@@ -187,17 +187,19 @@ sub import_inventory {
                 . scalar @stock_data / 9
                 . " strain inventory entries. Missed $missed entries" );
     }
+    return;
 }
 
 sub import_publications {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    croak "Please load strain data first!" if !$self->is_stock_loaded('strain');
+    croak "Please load strain data first!"
+        if !$self->is_stock_loaded('strain');
 
-    my $io = IO::File->new( $input, 'r' ) or die "Cannot open file: $input";
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
-        or die "Cannot use CSV: " . Text::CSV->error_diag();
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
 
     my @stock_data;
@@ -235,6 +237,7 @@ sub import_publications {
                 . scalar @stock_data
                 . " strain publication entries. Missed $missed entries" );
     }
+    return;
 }
 
 sub import_characteristics {
@@ -243,15 +246,17 @@ sub import_characteristics {
 
     croak "Please load strain_characteristics ontology!"
         if !$self->is_ontology_loaded('strain_characteristics');
-    croak "Please load strain data first!" if !$self->is_stock_loaded('strain');
+    croak "Please load strain data first!"
+        if !$self->is_stock_loaded('strain');
 
     my $strain_char_pub_title = 'Dicty Strain Characteristics';
     my $char_pub_id = $self->find_pub_by_title($strain_char_pub_title)
-        or die "Pub reference for strain_characteristics ontology not found!";
+        or croak
+        "Pub reference for strain_characteristics ontology not found!";
 
-    my $io = IO::File->new( $input, 'r' ) or die "Cannot open file: $input";
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
-        or die "Cannot use CSV: " . Text::CSV->error_diag();
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
 
     my @stock_data;
@@ -291,13 +296,15 @@ sub import_characteristics {
                 . scalar @stock_data
                 . " strain characteristics entries. Missed $missed entries" );
     }
+    return;
 }
 
 sub import_genotype {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    croak "Please load strain data first!" if !$self->is_stock_loaded('strain');
+    croak "Please load strain data first!"
+        if !$self->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' )
         or confess "Cannot open file: $input";
@@ -325,9 +332,11 @@ sub import_genotype {
                     "Failed import of genotype for $fields[0]");
                 next;
             }
-            $data->{name}            = $fields[2];
-            $data->{uniquename}      = $self->generate_uniquename('DSC_G');
-            $data->{type_id}         = $genotype_type_id;
+            $data->{name} = $fields[2];
+
+            # $data->{uniquename}      = $self->generate_uniquename('DSC_G');
+            $data->{uniquename} = $self->get_nextval( 'genotype', 'DSC_G' );
+            $data->{type_id} = $genotype_type_id;
             $data->{stock_genotypes} = [ { stock_id => $stock_id } ];
             push @stock_data, $data;
         }
@@ -340,29 +349,32 @@ sub import_genotype {
                 . scalar @stock_data
                 . " genotype entries. Missed $missed entries" );
     }
+    return;
 }
 
 sub import_phenotype {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    croak "Please load strain data first!" if !$self->is_stock_loaded('strain');
+    croak "Please load strain data first!"
+        if !$self->is_stock_loaded('strain');
     croak "Please load Dicty Phenotypes ontology!"
         if !$self->is_ontology_loaded('Dicty Phenotypes');
     croak "Please load Dicty Environment ontology!"
         if !$self->is_ontology_loaded('Dicty Environment');
     croak "Please load genotype data first!" if !$self->is_genotype_loaded();
 
-    my $io = IO::File->new( $input, 'r' ) or die "Cannot open file: $input";
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
-        or die "Cannot use CSV: " . Text::CSV->error_diag();
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
 
     my $type_id
         = $self->find_or_create_cvterm( "observation", "dicty_stockcenter" );
 
-    my $default_pub_id = $self->find_pub_by_title(
-        "Dicty Stock Center Phenotyping 2003-2008") or croak "Dicty Phenotypes ontology reference not available";
+    my $default_pub_id
+        = $self->find_pub_by_title("Dicty Stock Center Phenotyping 2003-2008")
+        or croak "Dicty Phenotypes ontology reference not available";
 
     # my @stock_data;
     while ( my $line = $io->getline() ) {
@@ -377,27 +389,25 @@ sub import_phenotype {
             my $data;
             $data->{genotype_id}
                 = $self->find_or_create_genotype( $fields[0] );
-			if (!$data->{genotype_id}) {
-	            $self->logger->debug(
-	            	"Couldn't find genotype for $fields[0]"
-	            );
-				next;
-			}
-			$data->{phenotype_id} = $self->find_or_create_phenotype($fields[1], $fields[3]);
-			if (!$data->{phenotype_id}) {
-	            $self->logger->debug(
-	            	"Couldn't find phenotype for $fields[1]"
-	            );
-				next;
-			}
+            if ( !$data->{genotype_id} ) {
+                $self->logger->debug("Couldn't find genotype for $fields[0]");
+                next;
+            }
+            $data->{phenotype_id}
+                = $self->find_or_create_phenotype( $fields[1], $fields[3],
+                $fields[5] );
+            if ( !$data->{phenotype_id} ) {
+                $self->logger->debug(
+                    "Couldn't find phenotype for $fields[1]");
+                next;
+            }
             $data->{environment_id}
                 = $self->find_or_create_environment( $fields[2] );
-			if (!$data->{environment_id}) {
-	            $self->logger->debug(
-	            	"Couldn't find environment for $fields[2]"
-	            );
-				next;
-			}
+            if ( !$data->{environment_id} ) {
+                $self->logger->debug(
+                    "Couldn't find environment for $fields[2]");
+                next;
+            }
             $data->{type_id} = $type_id;
             $data->{pub_id}  = $self->find_pub( $fields[4] );
             if ( !$data->{pub_id} ) {
@@ -406,13 +416,18 @@ sub import_phenotype {
                 );
                 $data->{pub_id} = $default_pub_id;
             }
-			# push @stock_data, $data;
-			my $pst_rs = $self->schema->resultset('Genetic::Phenstatement')->create($data);
-			if (!$pst_rs) {
-				$self->logger->debug('Error creating phenstatement entry for $fields[0], $fields[1]');
-			}
+
+            # push @stock_data, $data;
+            my $pst_rs = $self->schema->resultset('Genetic::Phenstatement')
+                ->find_or_create($data);
+            if ( !$pst_rs ) {
+                $self->logger->debug(
+                    'Error creating phenstatement entry for $fields[0], $fields[1]'
+                );
+            }
         }
     }
+
     # my $missed = $csv->record_number() / 6 - scalar @stock_data;
     # if ( $self->schema->resultset('Genetic::Phenstatement')
     #    ->populate( \@stock_data ) )
@@ -421,17 +436,19 @@ sub import_phenotype {
     #            . scalar @stock_data
     #            . " phenotype entries. Missed $missed entries" );
     # }
+    return;
 }
 
 sub import_parent {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    croak "Please load strain data first!" if !$self->is_stock_loaded('strain');
+    croak "Please load strain data first!"
+        if !$self->is_stock_loaded('strain');
 
-    my $io = IO::File->new( $input, 'r' ) or die "Cannot open file: $input";
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
-        or die "Cannot use CSV: " . Text::CSV->error_diag();
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
 
     my $stock_rel_type_id
@@ -473,14 +490,17 @@ sub import_parent {
                 . scalar @stock_data
                 . " parental strain entries. Missed $missed entries" );
     }
+    return;
 }
 
 sub import_plasmid {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    croak "Please load strain data first!" if !$self->is_stock_loaded('strain');
-    carp "Please load plasmid data first!" if !$self->is_stock_loaded('plasmid');
+    croak "Please load strain data first!"
+        if !$self->is_stock_loaded('strain');
+    carp "Please load plasmid data before loading strain-plasmid!"
+        if !$self->is_stock_loaded('plasmid');
 
     my $io = IO::File->new( $input, 'r' )
         or confess "Cannot open file: $input";
@@ -526,6 +546,7 @@ sub import_plasmid {
                 . scalar @stock_data
                 . " strain-plasmid entries. Missed $missed entries" );
     }
+    return;
 }
 
 1;
