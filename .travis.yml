@@ -13,8 +13,7 @@ script:
 install:
     - "sudo apt-get update"
     - "sudo apt-get install libdb-dev"
-    - "cpanm git://github.com/dictyBase/BioPortal-WebService.git"
-    - "cpanm git://github.com/dictyBase/Test-Chado.git"
+    - "cpanm -n git://github.com/dictyBase/Test-Chado.git"
     - "cpanm -n --quiet --installdeps ."
     - "cpanm --quiet -n Devel::Cover::Report::Coveralls DBD::Pg"
 branches:

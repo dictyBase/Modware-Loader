@@ -4,6 +4,8 @@ Modware-*
 !modware-export
 !modware-transform
 !modware-load
+!modware-dump
+!modware-import
 locallib/
 data/
 config/
