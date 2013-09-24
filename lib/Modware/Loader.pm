@@ -22,7 +22,6 @@ You need to install 2/3 dependencies from B<github>, rest of them would be pulle
 
 =over
 
-   cpanm -n  git://github.com/dictyBase/BioPortal-WebService.git
    cpanm -n  git://github.com/dictyBase/Modware-Loader.git
 
 =back
@@ -39,13 +38,9 @@ If you install without (-n/notest flag) then add B<Test::Chado>
 
 =head2 Manually
 
-Download the BioPortal-Webservice and Modware-Loader tarballs from github master and invoke B<cpanm> on them.
+Download the Modware-Loader tarballs from github master and invoke B<cpanm> on them.
 
 =over
-
-=item
-
-BioPortal-WebService L<tarball|https://github.com/dictyBase/BioPortal-WebService/archive/master.tar.gz>
 
 =item
 
@@ -70,8 +65,6 @@ This is primarilly intended for authors/developers.
 
     git checkout git://github.com/dictyBase/Modware-Loader.git
     cpanm -n Dist::Zilla
-    curl -o BioPortal-WebService.tar.gz -L -k \
-       https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
     dzil listdeps --author --missing | cpanm -n
     dzil install
 

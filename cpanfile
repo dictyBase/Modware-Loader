@@ -1,6 +1,5 @@
 requires "Bio::Chado::Schema" => "0.20000";
 requires "Bio::GFF3::LowLevel" => "1.5";
-requires "BioPortal::WebService" => "v1.0.0";
 requires "File::Find::Rule" => "0.32";
 requires "Log::Log4perl" => "1.40";
 requires "MooseX::App::Cmd" => "0.09";
@@ -9,12 +8,14 @@ requires "MooseX::ConfigFromFile" => "0.10";
 requires "MooseX::Event" => "v0.2.0";
 requires "MooseX::Getopt" => "0.56";
 requires "MooseX::Types::Path::Class" => "0.06";
+requires "OBO::Core::Ontology" => "1.40";
 requires "Regexp::Common" => "2013030901";
 requires "SQL::Library" => "v0.0.5";
 requires "Spreadsheet::WriteExcel" => "2.37";
 requires "Tie::Cache" => "0.17";
 requires "perl" => "5.010";
 recommends "BibTeX::Parser" => "0.64";
+recommends "BioPortal::WebService" => "v1.0.0";
 recommends "Child" => "0.009";
 recommends "DBD::Oracle" => "1.52";
 recommends "Email::Sender::Simple" => "0.102370";
@@ -40,6 +41,7 @@ on 'test' => sub {
 };
 
 on 'configure' => sub {
+  requires "Date::Manip" => "6.36";
   requires "Module::Build" => "0.3601";
 };
 

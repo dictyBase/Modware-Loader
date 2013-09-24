@@ -10,6 +10,7 @@ my %module_build_args = (
     "Module::Build" => "0.3601"
   },
   "configure_requires" => {
+    "Date::Manip" => "6.36",
     "Module::Build" => "0.3601"
   },
   "dist_abstract" => "Command line apps for Chado relational database ",
@@ -22,6 +23,7 @@ my %module_build_args = (
   "module_name" => "Modware::Loader",
   "recommends" => {
     "BibTeX::Parser" => "0.64",
+    "BioPortal::WebService" => "v1.0.0",
     "Child" => "0.009",
     "DBD::Oracle" => "1.52",
     "Email::Sender::Simple" => "0.102370",
@@ -38,7 +40,6 @@ my %module_build_args = (
   "requires" => {
     "Bio::Chado::Schema" => "0.20000",
     "Bio::GFF3::LowLevel" => "1.5",
-    "BioPortal::WebService" => "v1.0.0",
     "File::Find::Rule" => "0.32",
     "Log::Log4perl" => "1.40",
     "MooseX::App::Cmd" => "0.09",
@@ -47,6 +48,7 @@ my %module_build_args = (
     "MooseX::Event" => "v0.2.0",
     "MooseX::Getopt" => "0.56",
     "MooseX::Types::Path::Class" => "0.06",
+    "OBO::Core::Ontology" => "1.40",
     "Regexp::Common" => "2013030901",
     "SQL::Library" => "v0.0.5",
     "Spreadsheet::WriteExcel" => "2.37",
@@ -54,22 +56,26 @@ my %module_build_args = (
     "perl" => "5.010"
   },
   "script_files" => [
-    "bin/modware-update",
-    "bin/modware",
-    "bin/modware-transform",
-    "bin/modware-export",
+    "bin/chado2dicty_gff3_parallel.sh",
     "bin/discoideum-split-canonical.pl",
     "bin/discoideum_tblastn_filter.pl",
-    "bin/chado2dicty_gff3_parallel.sh",
+    "bin/modware",
+    "bin/modware-dump",
+    "bin/modware-export",
+    "bin/modware-import",
     "bin/modware-load",
-    "bin/modware-update",
-    "bin/modware",
     "bin/modware-transform",
-    "bin/modware-export",
+    "bin/modware-update",
+    "bin/chado2dicty_gff3_parallel.sh",
     "bin/discoideum-split-canonical.pl",
     "bin/discoideum_tblastn_filter.pl",
-    "bin/chado2dicty_gff3_parallel.sh",
-    "bin/modware-load"
+    "bin/modware",
+    "bin/modware-dump",
+    "bin/modware-export",
+    "bin/modware-import",
+    "bin/modware-load",
+    "bin/modware-transform",
+    "bin/modware-update"
   ],
   "share_dir" => {
     "dist" => "share",
