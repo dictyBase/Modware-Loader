@@ -34,6 +34,7 @@
       "runtime" : {
          "recommends" : {
             "BibTeX::Parser" : "0.64",
+            "BioPortal::WebService" : "v1.0.0",
             "Child" : "0.009",
             "DBD::Oracle" : "1.52",
             "Math::Base36" : "0.10",
@@ -45,7 +46,6 @@
          "requires" : {
             "Bio::Chado::Schema" : "0.20000",
             "Bio::GFF3::LowLevel" : "1.5",
-            "BioPortal::WebService" : "v1.0.0",
             "Email::Sender::Simple" : "0.102370",
             "Email::Simple" : "2.10",
             "Email::Valid" : "0.184",

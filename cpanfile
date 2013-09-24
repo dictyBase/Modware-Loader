@@ -1,6 +1,5 @@
 requires "Bio::Chado::Schema" => "0.20000";
 requires "Bio::GFF3::LowLevel" => "1.5";
-requires "BioPortal::WebService" => "v1.0.0";
 requires "Email::Sender::Simple" => "0.102370";
 requires "Email::Simple" => "2.10";
 requires "Email::Valid" => "0.184";
@@ -20,6 +19,7 @@ requires "Text::CSV" => "1.32";
 requires "Tie::Cache" => "0.17";
 requires "perl" => "5.010";
 recommends "BibTeX::Parser" => "0.64";
+recommends "BioPortal::WebService" => "v1.0.0";
 recommends "Child" => "0.009";
 recommends "DBD::Oracle" => "1.52";
 recommends "Math::Base36" => "0.10";
