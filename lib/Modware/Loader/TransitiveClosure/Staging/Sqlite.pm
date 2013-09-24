@@ -1,31 +1,9 @@
 package Modware::Loader::TransitiveClosure::Staging::Sqlite;
 use namespace::autoclean;
-use SQL::Library;
-use File::ShareDir qw/module_dir/;
-use File::Spec::Functions;
-use Modware::Loader;
 use Modware::Loader::Schema::Staging::TransitiveClosure;
 use Moose;
 with 'Modware::Role::WithDataStash' =>
     { 'create_stash_for' => [qw/cvtermpath/] };
-
-has 'sqlmanager' => (
-    is      => 'rw',
-    isa     => 'SQL::Library',
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        my $lib = SQL::Library->new(
-            {   lib => catfile(
-                    module_dir('Modware::Loader'),
-                    lc( $self->schema->storage->sqlt_type )
-                        . '_transitive.lib'
-                )
-            }
-        );
-        return $lib;
-    }
-);
 
 has 'schema' => (
     is      => 'rw',
@@ -37,8 +15,6 @@ has 'schema' => (
         );
     }
 );
-has 'chunk_threshold' =>
-    ( is => 'rw', isa => 'Int', lazy => 1, default => 5000 );
 
 sub create_tables {
     my ($self) = @_;
@@ -99,6 +75,7 @@ sub count_entries_in_staging {
     return $counts;
 }
 
+with 'Modware::Loader::Role::WithStaging';
 with 'Modware::Loader::Role::WithChadoHelper';
 __PACKAGE__->meta->make_immutable;
 1;
