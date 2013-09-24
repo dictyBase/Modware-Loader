@@ -15,6 +15,7 @@ install:
     - "sudo apt-get install libdb-dev"
     - "cpanm -n https://github.com/dictyBase/Test-Chado/releases/download/v4.0.0/Test-Chado-v4.0.0.tar.gz" 
     - "cpanm -n --quiet --installdeps ."
+    - "cpanm -n git://github.com/dictyBase/BioPortal-WebService.git"
     - "cpanm --quiet -n Devel::Cover::Report::Coveralls DBD::Pg"
 branches:
     only:
