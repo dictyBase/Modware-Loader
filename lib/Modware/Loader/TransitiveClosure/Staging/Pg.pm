@@ -5,6 +5,8 @@ use Moose;
 with 'Modware::Role::WithDataStash' =>
     { 'create_stash_for' => [qw/cvtermpath/] };
 
+has 'logger' =>
+    ( is => 'rw', isa => 'Log::Log4perl::Logger');
 
 has 'schema' => (
     is      => 'rw',

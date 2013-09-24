@@ -16,6 +16,9 @@ has 'schema' => (
     }
 );
 
+has 'logger' =>
+    ( is => 'rw', isa => 'Log::Log4perl::Logger');
+
 sub create_tables {
     my ($self) = @_;
     for my $elem ( grep {/^create_table_temp/} $self->sqlmanager->elements ) {

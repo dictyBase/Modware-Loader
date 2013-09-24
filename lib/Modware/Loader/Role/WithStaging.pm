@@ -10,7 +10,7 @@ use Modware::Loader;
 
 
 requires
-    qw(schema create_tables drop_tables create_indexes bulk_load count_entries_in_staging);
+    qw(schema create_tables drop_tables create_indexes bulk_load count_entries_in_staging logger);
 
 has 'sqlmanager' => (
     is      => 'rw',
