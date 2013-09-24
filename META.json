@@ -4,7 +4,7 @@
       "Siddhartha Basu <biosidd@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.300035, CPAN::Meta::Converter version 2.132140",
+   "generated_by" : "Dist::Zilla version 4.300036, CPAN::Meta::Converter version 2.132140",
    "license" : [
       "perl_5"
    ],
@@ -21,6 +21,7 @@
       },
       "configure" : {
          "requires" : {
+            "Date::Manip" : "6.36",
             "Module::Build" : "0.3601"
          }
       },
@@ -33,6 +34,7 @@
       "runtime" : {
          "recommends" : {
             "BibTeX::Parser" : "0.64",
+            "BioPortal::WebService" : "v1.0.0",
             "Child" : "0.009",
             "DBD::Oracle" : "1.52",
             "Email::Sender::Simple" : "0.102370",
@@ -48,7 +50,6 @@
          "requires" : {
             "Bio::Chado::Schema" : "0.20000",
             "Bio::GFF3::LowLevel" : "1.5",
-            "BioPortal::WebService" : "v1.0.0",
             "File::Find::Rule" : "0.32",
             "Log::Log4perl" : "1.40",
             "MooseX::App::Cmd" : "0.09",
@@ -57,6 +58,7 @@
             "MooseX::Event" : "v0.2.0",
             "MooseX::Getopt" : "0.56",
             "MooseX::Types::Path::Class" : "0.06",
+            "OBO::Core::Ontology" : "1.40",
             "Regexp::Common" : "2013030901",
             "SQL::Library" : "v0.0.5",
             "Spreadsheet::WriteExcel" : "2.37",
