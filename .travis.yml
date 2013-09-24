@@ -18,5 +18,5 @@ install:
 branches:
     only:
         - "develop"
-    after_success:
-        cover -report coveralls
+after_success:
+    cover -report coveralls
