@@ -37,6 +37,18 @@ is_deeply(
     { 'temp_cvtermpath' => 1525 },
     'should have correct entries in staging table'
 );
+is( $schema->resultset('Staging::Cvtermpath')->count(
+        { 'subject_accession' => '0000114', 'type_accession' => 'is_a' }
+    ),
+    6,
+    '0000114 accession should have 6 entries'
+);
+is( $schema->resultset('Staging::Cvtermpath')
+        ->count( { 'type_accession' => 'used_in' } ),
+    164,
+    'should have 164 entries for used_in type'
+);
+
 drop_schema();
 $test_handler->close;
 $schema->storage->disconnect;

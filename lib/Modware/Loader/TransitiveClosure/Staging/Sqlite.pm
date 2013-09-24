@@ -63,6 +63,7 @@ sub bulk_load {
 # subject type(predicate) pathdistance object
 sub add_data {
     my ( $self, $data_row ) = @_;
+    chomp $data_row;
     my @data = split /\t/, $data_row;
 
     my ( $subject_db_id, $subject_acc ) = $self->normalize_id( $data[0] );
