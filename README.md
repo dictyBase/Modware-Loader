@@ -17,6 +17,14 @@ line applications to import and export biological data from Chado database.
 # INSTALLATION
 
 ## Using cpanm
+Use a latest version of [cpanm](https://metacpan.org/module/cpanm), at least 1.6 is needed.
+You need to install 2/3 dependencies from __github__, rest of them would be pulled from __CPAN__ as needed.
+
+
+    cpanm -n  git://github.com/dictyBase/BioPortal-WebService.git
+    cpanm -n  git://github.com/dictyBase/Modware-Loader.git
+
+If you install without (-n/notest flag) then add B<Test::Chado>
 
 Use a latest version of [cpanm](https://metacpan.org/module/cpanm), at least 1.6 is needed.
 You need to install 2/3 dependencies from __github__, rest of them would be pulled from __CPAN__ as needed.
@@ -46,8 +54,9 @@ This is primarilly intended for authors/developers.
 
         git checkout git://github.com/dictyBase/Modware-Loader.git
         cpanm -n Dist::Zilla
-        curl -o BioPortal-WebService.tar.gz -L -k \
-           https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
+        cpanm git://github.com/dictyBase/BioPortal-WebService.git
+        cpanm git://github.com/dictyBase/Test-Chado.git
+        cpanm git://github.com/dictyBase/Modware-Loader.git
         dzil listdeps --author --missing | cpanm -n
         dzil install
 
