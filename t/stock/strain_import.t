@@ -10,6 +10,7 @@ use Log::Log4perl::Logger qw(:easy);
 use Log::Log4perl::Level;
 use File::Temp;
 use FindBin qw($Bin);
+use Modware::Import::Utils;
 
 my $schema   = chado_schema();
 my $data_dir = Path::Class::Dir->new($Bin)->parent->subdir('test_data');
@@ -18,11 +19,15 @@ Log::Log4perl->easy_init(
         file  => File::Temp->new()->filename
     }
 );
+my $logger = Log::Log4perl->get_logger('My::TestChado');
+my $utils
+    = Modware::Import::Utils->new( schema => $schema, logger => $logger );
 
 use_ok('Modware::Import::Stock::StrainImporter');
 my $importer = new_ok(Modware::Import::Stock::StrainImporter);
 $importer->schema($schema);
-$importer->logger( Log::Log4perl->get_logger('My::TestChado') );
+$importer->logger($logger);
+$importer->utils($utils);
 
 can_ok( $importer, 'import_' . $_ ) for qw/stock props/;
 
