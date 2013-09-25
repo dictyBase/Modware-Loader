@@ -9,3 +9,42 @@
            type_db_id integer NOT NULL
         )
 
+[insert_new_cvtermpath]
+    INSERT INTO
+           cvtermpath(object_id,subject_id,type_id,pathdistance,cv_id)
+               SELECT
+                   object.cvterm_id,subject.cvterm_id,reltype.cvterm_id,
+                   tmpath.pathdistance, objcv.cv_id
+               FROM temp_cvtermpath tmpath
+               INNER JOIN dbxref objxref ON (
+                   tmpath.object_db_id = objxref.db_id
+                   AND
+                   tmpath.object_accession = objxref.accession
+               )
+               INNER JOIN cvterm object ON
+                   objxref.dbxref_id = object.dbxref_id
+               INNER JOIN cv objcv ON
+                   object.cv_id = objcv.cv_id
+               INNER JOIN dbxref subxref ON (
+                   tmpath.subject_db_id = subxref.db_id
+                   AND
+                   tmpath.subject_accession = subxref.accession
+               )
+               INNER JOIN cvterm subject ON
+                   subxref.dbxref_id = subject.dbxref_id
+               INNER JOIN dbxref relxref ON (
+                   tmpath.type_db_id = relxref.db_id
+                   AND
+                   tmpath.type_accession = relxref.accession
+               )
+               INNER JOIN cvterm reltype ON
+                   relxref.dbxref_id = reltype.dbxref_id
+               WHERE reltype.is_relationshiptype = 1
+               EXCEPT
+               SELECT object_id,subject_id,type_id,pathdistance,cv_id
+                   FROM cvtermpath
+
+
+
+
+

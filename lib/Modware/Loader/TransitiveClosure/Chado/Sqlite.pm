@@ -8,7 +8,9 @@ has 'logger' =>
 
 
 sub bulk_load {
-
+    my ($self) = @_;
+    my $rows = $self->schema->storage->dbh->do($self->sqlmanager->retr('insert_new_cvtermpath'));
+    $self->logger->debug("loaded new $rows entries in cvtermpath");
 }
 
 sub alter_tables {
