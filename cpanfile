@@ -1,3 +1,4 @@
+requires "Archive::Tar" => "1.92";
 requires "Bio::Chado::Schema" => "0.20000";
 requires "Bio::GFF3::LowLevel" => "1.5";
 requires "Email::Abstract" => "3.006";
