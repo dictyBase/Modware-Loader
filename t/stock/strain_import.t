@@ -10,57 +10,63 @@ use Log::Log4perl::Logger qw(:easy);
 use Log::Log4perl::Level;
 use File::Temp;
 use FindBin qw($Bin);
-use Modware::Import::Utils;
 
-my $schema   = chado_schema();
-my $data_dir = Path::Class::Dir->new($Bin)->parent->subdir('test_data');
-Log::Log4perl->easy_init(
-    {   level => $INFO,
-        file  => File::Temp->new()->filename
-    }
-);
-my $logger = Log::Log4perl->get_logger('My::TestChado');
-my $utils
-    = Modware::Import::Utils->new( schema => $schema, logger => $logger );
+SKIP: {
+    skip 'Environment variable TC_DSN is not set',
+        if not defined $ENV{TC_DSN};
 
-use_ok('Modware::Import::Stock::StrainImporter');
-my $importer = new_ok(Modware::Import::Stock::StrainImporter);
-$importer->schema($schema);
-$importer->logger($logger);
-$importer->utils($utils);
+    my $schema   = chado_schema();
+    my $data_dir = Path::Class::Dir->new($Bin)->parent->subdir('test_data');
+    Log::Log4perl->easy_init(
+        {   level => $INFO,
+            file  => File::Temp->new()->filename
+        }
+    );
+    my $logger = Log::Log4perl->get_logger('My::TestChado');
+    use_ok('Modware::Import::Utils');
+    my $utils
+        = Modware::Import::Utils->new( schema => $schema, logger => $logger );
 
-can_ok( $importer, 'import_' . $_ ) for qw/stock props/;
+    use_ok('Modware::Import::Stock::StrainImporter');
+    my $importer = new_ok(Modware::Import::Stock::StrainImporter);
+    $importer->schema($schema);
+    $importer->logger($logger);
+    $importer->utils($utils);
 
-does_ok(
-    $importer,
-    'Modware::Role::Stock::Import::DataStash',
-    'does the DataStash role'
-);
+    can_ok( $importer, 'import_' . $_ ) for qw/stock props/;
 
-my $props_input = $data_dir->file('strain_props.tsv');
+    does_ok(
+        $importer,
+        'Modware::Role::Stock::Import::DataStash',
+        'does the DataStash role'
+    );
 
-# file_exists_ok($props_input);
-dies_ok { $importer->import_props($props_input) }
-'Should die as strain not loaded';
+    my $props_input = $data_dir->file('strain_props.tsv');
 
-my $strain_input = $data_dir->file('strain_strain.tsv');
+    # file_exists_ok($props_input);
+    dies_ok { $importer->import_props($props_input) }
+    'Should die as strain not loaded';
 
-# file_exists_ok($strain_input);
-lives_ok { $importer->import_stock($strain_input) }
-'Should import strain data';
-my $strain_rs = $schema->resultset('Stock::Stock')
-    ->search( { 'type.name' => 'strain' }, { join => 'type' } );
-is( $strain_rs->count, 50, 'Should have 50 strain entries' );
+    my $strain_input = $data_dir->file('strain_strain.tsv');
 
-lives_ok { $importer->import_props($props_input) } 'Should load strain props';
-my $strain_prop_rs
-    = $schema->resultset('Stock::Stockprop')
-    ->search( { 'type.name' => 'strain' },
-    { join => { 'stock' => 'type' } } );
-is( $strain_prop_rs->count, 85, 'Should have 85 stockprop entries' );
+    # file_exists_ok($strain_input);
+    lives_ok { $importer->import_stock($strain_input) }
+    'Should import strain data';
+    my $strain_rs = $schema->resultset('Stock::Stock')
+        ->search( { 'type.name' => 'strain' }, { join => 'type' } );
+    is( $strain_rs->count, 50, 'Should have 50 strain entries' );
 
-my $plasmid_input = $data_dir->file('strain_plasmid.tsv');
-dies_ok { $importer->import_plasmid($plasmid_input) }
-'Should die as plasmid not loaded, even though strain is loaded';
+    lives_ok { $importer->import_props($props_input) }
+    'Should load strain props';
+    my $strain_prop_rs
+        = $schema->resultset('Stock::Stockprop')
+        ->search( { 'type.name' => 'strain' },
+        { join => { 'stock' => 'type' } } );
+    is( $strain_prop_rs->count, 85, 'Should have 85 stockprop entries' );
 
-drop_schema();
+    my $plasmid_input = $data_dir->file('strain_plasmid.tsv');
+    dies_ok { $importer->import_plasmid($plasmid_input) }
+    'Should die as plasmid not loaded, even though strain is loaded';
+
+    drop_schema();
+}
