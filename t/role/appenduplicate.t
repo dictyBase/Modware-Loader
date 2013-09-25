@@ -14,7 +14,7 @@ has 'test_input' => (
     trigger => sub {
         my ( $self, $file ) = @_;
         my $handler = IO::File->new( $file, 'r' );
-        my $fh = File::Temp->new( unlink => 0 );
+        my $fh = File::Temp->new( UNLINK => 0 );
         while ( my $line = $handler->getline ) {
             $fh->print($line);
         }
@@ -30,7 +30,7 @@ sub execute {
         $output->print($line);
     }
     $handler->close;
-    File::Temp->cleanup;
+    File::Temp::cleanup();
 }
 with 'Modware::Role::Loggable';
 with 'Modware::Role::Command::GOA::Dicty::AppendDuplicate';
