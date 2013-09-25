@@ -4,6 +4,8 @@ Modware-*
 !modware-export
 !modware-transform
 !modware-load
+!modware-dump
+!modware-import
 locallib/
 data/
 config/
@@ -11,5 +13,15 @@ log/
 sqlnet.log
 tmp/
 perltidy.LOG
-*.gaf
 nytprof*
+gaf_check/
+local/
+.carton/
+.perl-version
+Build
+MYMETA.json
+MYMETA.yml
+_build/
+blib/
+
+

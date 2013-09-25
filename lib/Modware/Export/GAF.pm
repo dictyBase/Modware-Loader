@@ -184,6 +184,12 @@ sub execute {
     my $schema = $self->chado;
     my $log    = $self->dual_logger;
 
+    my $t_start = localtime;
+    $log->info( "Starting GAF export process at "
+            . $t_start->hour . ":"
+            . $t_start->min . ":"
+            . $t_start->sec );
+
     my $base_query = {
         'cvterm.is_obsolete ' => 0,
         'cv.name'             => {
@@ -309,6 +315,8 @@ sub execute {
         $gaf_row->{13} = $self->taxon_namespace . ':' . $self->taxon_id;
         $gaf_row->{14} = $self->get_date_column($fcvprop_rs);
         $gaf_row->{15} = $self->get_source_column($fcvprop_rs);
+        $gaf_row->{16} = '';
+        $gaf_row->{17} = '';
 
         my $gaf = $self->stringify($gaf_row);
         $io->write( $gaf . "\n" );
@@ -320,7 +328,12 @@ sub execute {
 
     }
     $io->close;
-    $log->info( 'Finished dumping GAF to ' . $self->output );
+
+    my $t_end = localtime;
+    $log->info( "Finished exporting GAF at "
+            . $t_end->hour . ":"
+            . $t_end->min . ":"
+            . $t_end->sec );
 }
 
 sub feat2gene {

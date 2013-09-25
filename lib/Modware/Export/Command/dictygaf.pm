@@ -10,6 +10,7 @@ use Modware::Legacy::Schema;
 extends qw/Modware::Export::GAF/;
 
 with 'Modware::Role::Command::WithLogger';
+with 'Modware::Role::Command::WithEmail';
 
 has '+input'          => ( traits => [qw/NoGetopt/] );
 has '+data_dir'       => ( traits => [qw/NoGetopt/] );
@@ -62,19 +63,6 @@ has '+source_database' => (
 );
 
 has '+common_name' => ( default => 'dicty' );
-
-has 'send_email' => (
-    is      => 'rw',
-    isa     => 'Bool',
-    default => 0,
-    trigger => sub {
-        my ($self) = @_;
-        $self->meta->make_mutable;
-        ensure_all_roles( $self, 'Modware::Role::Command::WithEmail' );
-        $self->meta->make_immutable;
-    },
-    documentation => ''
-);
 
 has 'legacy_dsn' => (
     is            => 'rw',
@@ -175,7 +163,7 @@ __END__
 
 =head1 NAME
 
-dictygaf - Dump GAF2.0 file for dictyBase from Chado database
+Modware::Export::Command::dictygaf - Dump GAF2.0 file for dictyBase from Chado database
 
 =head1 SYNOPSIS
 

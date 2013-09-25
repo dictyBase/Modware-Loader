@@ -3,3 +3,9 @@
 \blog/
 \bperltidy\.LOG\b
 \btmp/
+\bnytprof/
+\bnytprof\.out\b
+\blocal/
+\b.carton/
+\bgaf_check/
+

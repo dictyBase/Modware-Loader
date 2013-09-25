@@ -990,7 +990,7 @@ sub _link_feat2pub_rs {
             undef $feat2publinks;
         }
     }
-    if ( defined @$feat2publinks ) {
+    if ( defined $feat2publinks ) {
         unshift @$feat2publinks, [qw/feature_id pub_id/];
         $schema->resultset('Sequence::FeaturePub')->populate($feat2publinks);
         $logger->info(

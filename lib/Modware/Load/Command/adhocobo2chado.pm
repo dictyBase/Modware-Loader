@@ -6,6 +6,32 @@ use OBO::Parser::OBOParser;
 use Modware::Loader::Adhoc::Ontology;
 extends qw/Modware::Load::Chado/;
 
+has 'pg_schema' => (
+    is  => 'rw',
+    isa => 'Str',
+    documentation =>
+        'Name of postgresql schema where the ontology will be loaded, default is public and makes no sense to set it for any other backend'
+);
+
+has 'include_metadata' => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    lazy    => 1,
+    documentation =>
+        'Loads metadata of terms, that includes synonyms, dbxrefs, comments and alt_ids, by default they are skipped'
+);
+
+has '_metadata_apis' => (
+    is      => 'ro',
+    isa     => 'ArrayRef',
+    lazy    => 1,
+    traits  => [qw/NoGetopt/],
+    default => sub {
+        return [qw/comment synonyms xrefs alt_ids/];
+    }
+);
+
 sub execute {
     my ($self) = @_;
 
@@ -18,35 +44,41 @@ sub execute {
 
     #2a. Get a loader object and set it up
     my $loader = Modware::Loader::Adhoc::Ontology->new(
-        logger => $self->logger,
-        chado  => $schema
+        logger       => $self->logger,
+        app_instance => $self,
+        chado        => $schema
     );
     $loader->load_namespaces($onto);
 
     #3. do upsert of relationship terms
-    for my $term ( @{ $onto->get_relationship_types } ) {
-
-        #get list of new relationship terms
-        #   It wraps around two methods
-        #   if (find_term($term)) {
-        #	  update_term($term, $term_from_db);
-        #   }
-        #   else {
-        #     insert_term($term);
-        #}
-        $loader->update_or_create_term($term);
+    for my $term (
+        ( @{ $onto->get_relationship_types }, @{ $onto->get_terms } ) )
+    {
+        my $return = $loader->update_or_create_term($term);
+        if ( $self->include_metadata ) {
+            if ( $return->[0] eq 'insert' ) {
+                for my $name ( @{ $self->_metadata_apis } ) {
+                    my $api = 'create_' . $name;
+                    $loader->$api( $term, $return->[1] );
+                }
+            }
+            else {
+                for my $name ( @{ $self->_metadata_apis } ) {
+                    my $create_api = 'create_' . $name;
+                    my $delete_api = 'delete' . $name;
+                    $loader->$delete_api( $term, $return->[1] );
+                    $loader->$create_api( $term, $return->[1] );
+                }
+            }
+        }
     }
 
-    #4. do upsert of terms
-    $loader->update_or_create_term($_) for @{ $onto->get_terms };
-    #5. do insert of relationships
+    #5. commit terms
     $guard->commit;
 
-
-    my $guard2  = $schema->txn_scope_guard;
-    $loader->create_relationship($_) for @{$onto->get_relationships};
+    my $guard2 = $schema->txn_scope_guard;
+    $loader->create_relationship($_) for @{ $onto->get_relationships };
     $guard2->commit;
-
 
 }
 

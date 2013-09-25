@@ -15,40 +15,49 @@ line applications to import and export biological data from Chado database.
 
 =head1 INSTALLATION
 
-First you have to install L<BioPortal|https://github.com/dictyBase/BioPortal-WebService>
-distribution from github. Since none of this module is yet to ready for B<cpan>,  you have to install it
-directly from B<github>. For a stable release,  use any of the tarball from git B<tag> and
-for a developer release use the B<build/develop> branch. All the recepies below use the
-developer release,  suit your script accordingly if you want to use the stable one.
-
 =head2 Using cpanm
 
-
-=head3 Single step
+Use a latest version of L<cpanm|https://metacpan.org/module/cpanm>, at least 1.6 is needed.
+You need to install 2/3 dependencies from B<github>, rest of them would be pulled from B<CPAN> as needed.
 
 =over
 
-  $_> curl -o BioPortal-WebService.tar.gz -L -k \
-     https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
-     cpanm -n BioPortal-WebService.tar.gz  && \
-     curl -o Modware-Loader.tar.gz -L -k \
-     https://github.com/dictyBase/Modware-Loader/archive/build/develop.tar.gz && \
-     cpanm -n Modware-Loader.tar.gz && \
-     rm BioPortal-WebService.tar.gz Modware-Loader.tar.gz
+   cpanm -n  git://github.com/dictyBase/Modware-Loader.git
 
 =back
 
-=head3 Manually
-
-Download the BioPortal-Webservice and Modware-Loader tarballs and invoke B<cpanm> on them.
-Read the included B<INSTALL> file for details.
+If you install without (-n/notest flag) then add B<Test::Chado>
 
 
-=head2 Using Build.PL,  cpan and friends
+=over
+
+  cpanm git://github.com/dictyBase/Test-Chado.git
+
+=back
+
+
+=head2 Manually
+
+Download the Modware-Loader tarballs from github master and invoke B<cpanm> on them.
+
+=over
+
+=item
+
+Test-Chado L<tarball|https://github.com/dictyBase/Test-Chado/archive/master.tar.gz>
+
+=item
+
+Modware-Loader L<tarball|https://github.com/dictyBase/Modware:Loader/archive/master.tar.gz>
+
+=back
+
+
+=head3 Using Build.PL,  cpan and friends
 
 Just follow the instuctions in the B<INSTALL> file.
 
-=head2 Directly from the git repository
+=head3 Directly from the git repository
 
 This is primarilly intended for authors/developers.
 
@@ -56,10 +65,21 @@ This is primarilly intended for authors/developers.
 
     git checkout git://github.com/dictyBase/Modware-Loader.git
     cpanm -n Dist::Zilla
-    curl -o BioPortal-WebService.tar.gz -L -k \
-       https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
     dzil listdeps --author --missing | cpanm -n
     dzil install
 
 =back
 
+=head1 Build Status
+
+=begin HTML
+
+<a href='https://travis-ci.org/dictyBase/Modware-Loader'>
+  	<img src='https://travis-ci.org/dictyBase/Modware-Loader.png?branch=develop' alt='Travis CI status'/>
+</a>
+
+<a href='https://coveralls.io/r/dictyBase/Modware-Loader'>
+	<img src='https://coveralls.io/repos/dictyBase/Modware-Loader/badge.png?branch=develop' alt='Coverage Status' />
+</a>
+
+=end HTML
