@@ -4,6 +4,11 @@ use Test::Chado qw/:schema/;
 use FindBin qw/$Bin/;
 use Path::Class::Dir;
 use IO::File;
+use File::Spec::Functions;
+use File::ShareDir qw/module_dir/;
+use Modware::Loader;
+use SQL::Library;
+use Log::Log4perl qw/:easy/;
 
 use_ok 'Modware::Loader::TransitiveClosure::Staging::Pg';
 SKIP: {
@@ -15,10 +20,20 @@ SKIP: {
     my $loader = new_ok 'Modware::Loader::TransitiveClosure::Staging::Pg';
 
     my $schema = chado_schema();
+    my $sqllib = SQL::Library->new(
+        {   lib => catfile(
+                module_dir('Modware::Loader'),
+                'postgresql_transitive.lib'
+            )
+        }
+    );
+    Log::Log4perl->easy_init($ERROR);
     $loader->schema($schema);
+    $loader->sqlmanager($sqllib);
+    $loader->logger( get_logger('MyStaging::Loader') );
+
     is( $schema->source('Staging::Cvtermpath')->from,
         'temp_cvtermpath', 'should load the resultsource' );
-    isa_ok( $loader->sqlmanager, 'SQL::Library' );
 
     my $test_handler
         = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_data')
@@ -46,9 +61,8 @@ SKIP: {
         6,
         '0000114 accession should have 6 entries'
     );
-    is( $schema->resultset('Staging::Cvtermpath')->count(
-            { 'type_accession' => 'used_in' }
-        ),
+    is( $schema->resultset('Staging::Cvtermpath')
+            ->count( { 'type_accession' => 'used_in' } ),
         164,
         'should have 164 entries for used_in type'
     );

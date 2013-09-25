@@ -5,6 +5,11 @@ use FindBin qw/$Bin/;
 use Path::Class::Dir;
 use IO::File;
 use Bio::Chado::Schema;
+use File::Spec::Functions;
+use File::ShareDir qw/module_dir/;
+use Modware::Loader;
+use SQL::Library;
+use Log::Log4perl qw/:easy/;
 
 Test::Chado->ignore_tc_env(1);    #make it sqlite specific
 
@@ -13,11 +18,15 @@ my $loader = new_ok 'Modware::Loader::TransitiveClosure::Staging::Sqlite';
 
 my $tmp_schema = chado_schema();
 my $schema = Bio::Chado::Schema->connect( sub { $tmp_schema->storage->dbh } );
-
+my $sqllib = SQL::Library->new(
+    { lib => catfile( module_dir('Modware::Loader'), 'sqlite_transitive.lib' ) } );
+Log::Log4perl->easy_init($ERROR);
 $loader->schema($schema);
+$loader->sqlmanager($sqllib);
+$loader->logger(get_logger('MyStaging::Loader'));
+
 is( $schema->source('Staging::Cvtermpath')->from,
     'temp_cvtermpath', 'should load the resultsource' );
-isa_ok( $loader->sqlmanager, 'SQL::Library' );
 
 my $test_handler
     = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_data')

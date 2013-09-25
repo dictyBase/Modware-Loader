@@ -2,10 +2,6 @@ package Modware::Loader::Role::WithStaging;
 
 use strict;
 use Moose::Role;
-use SQL::Library;
-use File::ShareDir qw/module_dir/;
-use File::Spec::Functions;
-use Modware::Loader;
 
 
 
@@ -15,19 +11,6 @@ requires
 has 'sqlmanager' => (
     is      => 'rw',
     isa     => 'SQL::Library',
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        my $lib = SQL::Library->new(
-            {   lib => catfile(
-                    module_dir('Modware::Loader'),
-                    lc( $self->schema->storage->sqlt_type )
-                        . '_transitive.lib'
-                )
-            }
-        );
-        return $lib;
-    }
 );
 
 has 'chunk_threshold' =>
