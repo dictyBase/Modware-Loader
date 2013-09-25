@@ -204,41 +204,9 @@ has '_environment' => (
     }
 );
 
-#sub find_or_create_environment {
-#    my ( $self, $env_term ) = @_;
-#     if ( $self->has_env_row($env_term) ) {
-#         return $self->get_env_row($env_term)->environment_id;
-#     }
-#     my $cvterm_env;
-#     $cvterm_env = $self->find_cvterm( $env_term, 'Dicty Environment' ) if $env_term;
-#
-#     if ( !$cvterm_env ) {
-#         $cvterm_env = $self->find_or_create_cvterm( 'unspecified environment',
-#             'Dicty Environment' );
-#         $env_term = 'unspecified environment' if !$env_term;
-#     }
-#     my $env_rs
-#         = $self->schema->resultset('Genetic::Environment')
-#         ->search( { description => $env_term } );
-#
-# 	if ($env_rs) {
-#     	$self->set_env_row( $env_term, $env_rs->first );
-#     	return $self->get_env_row($env_term)->environment_id;
-# 	}
-# 	my $uniquename = $self->generate_uniquename('DSC_ENV');
-#     $env_rs = $self->schema->resultset('Genetic::Environment')->find_or_create(
-#         {   uniquename          => $uniquename,
-#             description         => $env_term,
-# 			environment_cvterms => [{ cvterm_id => $cvterm_env}]
-#         }
-#     );
-# 	$self->set_env_row( $env_term, $env_rs );
-# 	return $self->get_env_row($env_term)->environment_id;
-# }
-
 sub find_or_create_environment {
     my ( $self, $env_term ) = @_;
-    $env_term = $self->trim($env_term);
+    $env_term = $self->utils->trim($env_term);
     if ( $self->has_env_row($env_term) ) {
         return $self->get_env_row($env_term)->environment_id;
     }
@@ -257,7 +225,7 @@ sub find_or_create_environment {
     }
     else {
         # my $uniquename = $self->generate_uniquename('DSC_ENV');
-        my $uniquename = $self->get_nextval( 'environment', 'DSC_ENV' );
+        my $uniquename = $self->utils->nextval( 'environment', 'DSC_ENV' );
         $env_rs
             = $self->schema->resultset('Genetic::Environment')
             ->create(
@@ -290,15 +258,18 @@ sub find_or_create_genotype {
     my $stock_rs
         = $self->schema->resultset('Stock::StockGenotype')
         ->search( { 'stock.uniquename' => $dbs_id }, { join => 'stock' } );
-    if ($stock_rs) {
+    if ( $stock_rs->count > 0 ) {
         $self->set_strain_genotype( $dbs_id, $stock_rs->first );
         return $self->get_strain_genotype($dbs_id)->genotype_id;
     }
     else {
-
-        # my $genotype_uniquename = $self->generate_uniquename('DSC_G');
-        my $genotype_uniquename = $self->get_nextval( 'genotype', 'DSC_G' );
         my $stock_rs = $self->find_stock($dbs_id);
+		if (!$stock_rs) {
+			return;
+		}
+        # my $genotype_uniquename = $self->generate_uniquename('DSC_G');
+        my $genotype_uniquename
+            = $self->utils->nextval( 'genotype', 'DSC_G' );
         my $genotype_rs
             = $self->schema->resultset('Genetic::Genotype')->find_or_create(
             {   name       => $stock_rs->name,
@@ -351,7 +322,7 @@ sub find_or_create_phenotype {
 
   # $phenotype_hash->{uniquename}    = $self->generate_uniquename('DSC_PHEN');
     $phenotype_hash->{uniquename}
-        = $self->get_nextval( 'phenotype', 'DSC_PHEN' );
+        = $self->utils->nextval( 'phenotype', 'DSC_PHEN' );
     $phenotype_hash->{observable_id} = $cvterm_phenotype;
     $phenotype_hash->{assay_id} = $cvterm_assay if $cvterm_assay;
     $phenotype_hash->{phenotypeprops}

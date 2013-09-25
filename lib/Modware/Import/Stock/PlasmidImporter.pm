@@ -13,9 +13,9 @@ use Modware::Import::Stock::DataTransformer;
 
 has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
 
 with 'Modware::Role::Stock::Import::DataStash';
-with 'Modware::Role::Stock::Import::Utils';
 
 sub import_stock {
     my ( $self, $input ) = @_;
@@ -32,7 +32,7 @@ sub import_stock {
         = $self->schema->resultset('Stock::Stockcollection')->find_or_create(
         {   type_id    => $type_id,
             name       => 'dicty_stockcenter',
-            uniquename => $self->get_nextval( 'stockcollection', 'DSC' )
+            uniquename => $self->utils->nextval( 'stockcollection', 'DSC' )
         }
         );
     my $stockcollection_id = $stockcollection_rs->stockcollection_id;
@@ -50,13 +50,15 @@ sub import_stock {
             my $data;
             $data->{uniquename}  = $fields[0];
             $data->{name}        = $fields[1];
-            $data->{description} = $self->trim( $fields[2] ) if $fields[2];
-            $data->{type_id}     = $type_id;
+            $data->{description} = $self->utils->trim( $fields[2] )
+                if $fields[2];
+            $data->{type_id} = $type_id;
             $data->{stockcollection_stocks}
                 = [ { stockcollection_id => $stockcollection_id } ];
             push @stock_data, $data;
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 3 - scalar @stock_data;
     if ( $self->schema->resultset('Stock::Stock')->populate( \@stock_data ) )
     {
@@ -72,7 +74,7 @@ sub import_props {
     $self->logger->info("Importing data from $input");
 
     croak "Please load plasmid data first!"
-        if !$self->is_stock_loaded('plasmid');
+        if !$self->utils->is_stock_loaded('plasmid');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -108,6 +110,7 @@ sub import_props {
             $previous_type_id = $strain_props->{type_id};
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 3 - scalar @stock_props;
     if ( $self->schema->resultset('Stock::Stockprop')
         ->populate( \@stock_props ) )
@@ -124,7 +127,7 @@ sub import_publications {
     $self->logger->info("Importing data from $input");
 
     croak "Please load plasmid data first!"
-        if !$self->is_stock_loaded('plasmid');
+        if !$self->utils->is_stock_loaded('plasmid');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -158,6 +161,7 @@ sub import_publications {
             push @stock_data, $data;
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 2 - scalar @stock_data;
     if ( $self->schema->resultset('Stock::StockPub')->populate( \@stock_data )
         )
@@ -176,9 +180,9 @@ sub import_inventory {
     my $inventory_ontology_name = 'plasmid_inventory';
 
     croak "Please load plasmid_inventory ontology!"
-        if !$self->is_ontology_loaded($inventory_ontology_name);
+        if !$self->utils->is_ontology_loaded($inventory_ontology_name);
     croak "Please load plasmid data first!"
-        if !$self->is_stock_loaded('plasmid');
+        if !$self->utils->is_stock_loaded('plasmid');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -229,6 +233,7 @@ sub import_inventory {
         }
         $rank = $rank + 1;
     }
+    $io->close();
     my $missed = $csv->record_number() / 6 - scalar @stock_data / 6;
     if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
         )
@@ -245,7 +250,7 @@ sub import_images {
     $self->logger->info("Importing data from images");
 
     croak "Please load plasmid data first!"
-        if !$self->is_stock_loaded('plasmid');
+        if !$self->utils->is_stock_loaded('plasmid');
 
     my $dbh = $self->schema->storage->dbh;
     my $stock_ids

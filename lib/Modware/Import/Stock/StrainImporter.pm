@@ -9,12 +9,13 @@ use namespace::autoclean;
 use Text::CSV;
 
 use Modware::Import::Stock::DataTransformer;
+use Modware::Import::Utils;
 
 has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has utils => ( is => 'rw', isa => 'Modware::Import::Utils' );
 
 with 'Modware::Role::Stock::Import::DataStash';
-with 'Modware::Role::Stock::Import::Utils';
 
 sub import_stock {
     my ( $self, $input ) = @_;
@@ -31,7 +32,7 @@ sub import_stock {
         = $self->schema->resultset('Stock::Stockcollection')->find_or_create(
         {   type_id    => $type_id,
             name       => 'dicty_stockcenter',
-            uniquename => $self->get_nextval( 'stockcollection', 'DSC' )
+            uniquename => $self->utils->nextval( 'stockcollection', 'DSC' )
         }
         );
     my $stockcollection_id = $stockcollection_rs->stockcollection_id;
@@ -52,13 +53,14 @@ sub import_stock {
             $strain->{organism_id}
                 = $self->find_or_create_organism( $fields[2] )
                 if $fields[2];
-            $strain->{description} = $self->trim( $fields[3] ) if $fields[3];
+            $strain->{description} = $self->utils->trim( $fields[3] ) if $fields[3];
             $strain->{type_id} = $type_id;
             $strain->{stockcollection_stocks}
                 = [ { stockcollection_id => $stockcollection_id } ];
             push @stock_data, $strain;
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 4 - scalar @stock_data;
     if ( $self->schema->resultset('Stock::Stock')->populate( \@stock_data ) )
     {
@@ -74,7 +76,7 @@ sub import_props {
     $self->logger->info("Importing data from $input");
 
     croak "Please load strain data first!"
-        if !$self->is_stock_loaded('strain');
+        if !$self->utils->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -110,6 +112,7 @@ sub import_props {
             $previous_type_id = $strain_props->{type_id};
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 3 - scalar @stock_props;
     if ( $self->schema->resultset('Stock::Stockprop')
         ->populate( \@stock_props ) )
@@ -126,9 +129,9 @@ sub import_inventory {
     $self->logger->info("Importing data from $input");
 
     croak "Please load strain_inventory ontology!"
-        if !$self->is_ontology_loaded('strain_inventory');
+        if !$self->utils->is_ontology_loaded('strain_inventory');
     croak "Please load strain data first!"
-        if !$self->is_stock_loaded('strain');
+        if !$self->utils->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -179,6 +182,7 @@ sub import_inventory {
         }
         $rank = $rank + 1;
     }
+    $io->close();
     my $missed = $csv->record_number() / 9 - scalar @stock_data / 9;
     if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
         )
@@ -195,7 +199,7 @@ sub import_publications {
     $self->logger->info("Importing data from $input");
 
     croak "Please load strain data first!"
-        if !$self->is_stock_loaded('strain');
+        if !$self->utils->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -229,6 +233,7 @@ sub import_publications {
             push @stock_data, $data;
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 2 - scalar @stock_data;
     if ( $self->schema->resultset('Stock::StockPub')->populate( \@stock_data )
         )
@@ -245,9 +250,9 @@ sub import_characteristics {
     $self->logger->info("Importing data from $input");
 
     croak "Please load strain_characteristics ontology!"
-        if !$self->is_ontology_loaded('strain_characteristics');
+        if !$self->utils->is_ontology_loaded('strain_characteristics');
     croak "Please load strain data first!"
-        if !$self->is_stock_loaded('strain');
+        if !$self->utils->is_stock_loaded('strain');
 
     my $strain_char_pub_title = 'Dicty Strain Characteristics';
     my $char_pub_id = $self->find_pub_by_title($strain_char_pub_title)
@@ -288,6 +293,7 @@ sub import_characteristics {
             push @stock_data, $data;
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 2 - scalar @stock_data;
     if ( $self->schema->resultset('Stock::StockCvterm')
         ->populate( \@stock_data ) )
@@ -304,7 +310,7 @@ sub import_genotype {
     $self->logger->info("Importing data from $input");
 
     croak "Please load strain data first!"
-        if !$self->is_stock_loaded('strain');
+        if !$self->utils->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' )
         or confess "Cannot open file: $input";
@@ -335,12 +341,13 @@ sub import_genotype {
             $data->{name} = $fields[2];
 
             # $data->{uniquename}      = $self->generate_uniquename('DSC_G');
-            $data->{uniquename} = $self->get_nextval( 'genotype', 'DSC_G' );
-            $data->{type_id} = $genotype_type_id;
+            $data->{uniquename}      = $self->utils->nextval( 'genotype', 'DSC_G' );
+            $data->{type_id}         = $genotype_type_id;
             $data->{stock_genotypes} = [ { stock_id => $stock_id } ];
             push @stock_data, $data;
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 3 - scalar @stock_data;
     if ( $self->schema->resultset('Genetic::Genotype')
         ->populate( \@stock_data ) )
@@ -357,12 +364,12 @@ sub import_phenotype {
     $self->logger->info("Importing data from $input");
 
     croak "Please load strain data first!"
-        if !$self->is_stock_loaded('strain');
+        if !$self->utils->is_stock_loaded('strain');
     croak "Please load Dicty Phenotypes ontology!"
-        if !$self->is_ontology_loaded('Dicty Phenotypes');
+        if !$self->utils->is_ontology_loaded('Dicty Phenotypes');
     croak "Please load Dicty Environment ontology!"
-        if !$self->is_ontology_loaded('Dicty Environment');
-    croak "Please load genotype data first!" if !$self->is_genotype_loaded();
+        if !$self->utils->is_ontology_loaded('Dicty Environment');
+    croak "Please load genotype data first!" if !$self->utils->is_genotype_loaded();
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -427,6 +434,7 @@ sub import_phenotype {
             }
         }
     }
+    $io->close();
 
     # my $missed = $csv->record_number() / 6 - scalar @stock_data;
     # if ( $self->schema->resultset('Genetic::Phenstatement')
@@ -444,7 +452,7 @@ sub import_parent {
     $self->logger->info("Importing data from $input");
 
     croak "Please load strain data first!"
-        if !$self->is_stock_loaded('strain');
+        if !$self->utils->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -482,6 +490,7 @@ sub import_parent {
             push @stock_data, $data;
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 2 - scalar @stock_data;
     if ( $self->schema->resultset('Stock::StockRelationship')
         ->populate( \@stock_data ) )
@@ -498,9 +507,9 @@ sub import_plasmid {
     $self->logger->info("Importing data from $input");
 
     croak "Please load strain data first!"
-        if !$self->is_stock_loaded('strain');
+        if !$self->utils->is_stock_loaded('strain');
     carp "Please load plasmid data before loading strain-plasmid!"
-        if !$self->is_stock_loaded('plasmid');
+        if !$self->utils->is_stock_loaded('plasmid');
 
     my $io = IO::File->new( $input, 'r' )
         or confess "Cannot open file: $input";
@@ -538,6 +547,7 @@ sub import_plasmid {
             push @stock_data, $data;
         }
     }
+    $io->close();
     my $missed = $csv->record_number() / 2 - scalar @stock_data;
     if ( $self->schema->resultset('Stock::StockRelationship')
         ->populate( \@stock_data ) )
