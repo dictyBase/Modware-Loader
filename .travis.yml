@@ -16,7 +16,7 @@ install:
     - "cpanm -n LWP::Protocol::https"
     - "cpanm -n https://github.com/dictyBase/Test-Chado/releases/download/v4.0.0/Test-Chado-v4.0.0.tar.gz" 
     - "cpanm -n --quiet --installdeps ."
-    - "cpanm --quiet -n Devel::Cover::Report::Coveralls DBD::Pg String::Random"
+    - "cpanm --quiet -n Devel::Cover::Report::Coveralls DBD::Pg"
 branches:
     only:
         - "develop"
