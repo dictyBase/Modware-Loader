@@ -4,7 +4,7 @@ Modware::Loader
 
 # VERSION
 
-version 1.1.0
+version v1.5.0
 
 # NAME
 
@@ -46,6 +46,16 @@ This is primarilly intended for authors/developers.
         cpanm -n Dist::Zilla
         dzil listdeps --author --missing | cpanm -n
         dzil install
+
+# Build Status
+
+<a href='https://travis-ci.org/dictyBase/Modware-Loader'>
+  	<img src='https://travis-ci.org/dictyBase/Modware-Loader.png?branch=develop' alt='Travis CI status'/>
+</a>
+
+<a href='https://coveralls.io/r/dictyBase/Modware-Loader'>
+	<img src='https://coveralls.io/repos/dictyBase/Modware-Loader/badge.png?branch=develop' alt='Coverage Status' />
+</a>
 
 # AUTHOR
 

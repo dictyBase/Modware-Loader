@@ -70,3 +70,16 @@ This is primarilly intended for authors/developers.
 
 =back
 
+=head1 Build Status
+
+=begin HTML
+
+<a href='https://travis-ci.org/dictyBase/Modware-Loader'>
+  	<img src='https://travis-ci.org/dictyBase/Modware-Loader.png?branch=develop' alt='Travis CI status'/>
+</a>
+
+<a href='https://coveralls.io/r/dictyBase/Modware-Loader'>
+	<img src='https://coveralls.io/repos/dictyBase/Modware-Loader/badge.png?branch=develop' alt='Coverage Status' />
+</a>
+
+=end HTML
