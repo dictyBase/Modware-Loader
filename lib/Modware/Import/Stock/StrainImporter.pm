@@ -154,7 +154,7 @@ sub import_inventory {
 
             my $inventory
                 = $transform->convert_row_to_strain_inventory_hash(@fields);
-            foreach my $key ( keys $inventory ) {
+            foreach my $key ( keys %$inventory ) {
                 my $data;
                 $data->{stock_id} = $self->find_stock( $fields[0] );
                 if ( !$data->{stock_id} ) {
