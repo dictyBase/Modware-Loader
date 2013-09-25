@@ -1,12 +1,16 @@
 
-package Modware::Role::Stock::Import::Utils;
+package Modware::Import::Utils;
 
 use autodie;
 use strict;
 
-use Moose::Role;
+use Moose;
 use namespace::autoclean;
-use String::Random;
+
+# use String::Random;
+
+has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
+has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 
 with 'Modware::Role::Stock::Import::DataStash';
 
@@ -84,19 +88,19 @@ has '_uniquename' => (
     }
 );
 
-sub generate_uniquename {
-    my ( $self, $prefix ) = @_;
-    my $id_generator = String::Random->new();
-    my $uniquename   = $id_generator->randregex( $prefix . "[0-9]{7}" );
-    if ( !$self->has_uniquename($uniquename) ) {
-        $self->set_uniquename( $uniquename, 1 );
-        return $uniquename;
-    }
-    $self->generate_uniquename($prefix);
-    return;
-}
+# sub generate_uniquename {
+#     my ( $self, $prefix ) = @_;
+#     my $id_generator = String::Random->new();
+#     my $uniquename   = $id_generator->randregex( $prefix . "[0-9]{7}" );
+#     if ( !$self->has_uniquename($uniquename) ) {
+#         $self->set_uniquename( $uniquename, 1 );
+#         return $uniquename;
+#     }
+#     $self->generate_uniquename($prefix);
+#     return;
+# }
 
-sub get_nextval {
+sub nextval {
     my ( $self, $tablename, $prefix ) = @_;
     my $seq = sprintf "%s_%s_%s_%s", $tablename, $tablename, 'id', 'seq';
     my $dbh = $self->schema->storage->dbh;

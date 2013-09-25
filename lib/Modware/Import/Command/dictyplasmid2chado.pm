@@ -6,11 +6,11 @@ use File::Spec::Functions qw/catfile/;
 use Moose;
 use namespace::autoclean;
 
+use Modware::Import::Utils;
 use Modware::Import::Stock::PlasmidImporter;
 
 extends qw/Modware::Import::Command/;
 with 'Modware::Role::Command::WithLogger';
-with 'Modware::Role::Stock::Import::Utils';
 
 has 'prune' => ( is => 'rw', isa => 'Bool', default => 0 );
 
@@ -33,16 +33,21 @@ sub execute {
 
     my $guard = $self->schema->txn_scope_guard;
 
+    my $utils = Modware::Import::Utils->new();
+    $utils->schema( $self->schema );
+    $utils->logger( $self->logger );
+
     if ( $self->prune ) {
-        $self->prune_stock();
+        $utils->prune_stock();
     }
     if ( $self->mock_pubs ) {
-        $self->mock_publications();
+        $utils->mock_publications();
     }
 
     my $importer = Modware::Import::Stock::PlasmidImporter->new();
     $importer->logger( $self->logger );
     $importer->schema( $self->schema );
+    $importer->utils($utils);
 
     my $base_image_url
         = "https://raw.github.com/dictyBase/migration-data/master/plasmid/images/";
