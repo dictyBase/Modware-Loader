@@ -34,6 +34,7 @@ subtest 'transitive closure of eco ontology' => sub {
             = Modware::Loader::TransitiveClosure::Staging::Sqlite->new(
             schema     => $schema,
             sqlmanager => $sqlmanager,
+            namespace => 'eco',
             logger     => get_logger('MyStaging::Loader')
             );
         my $test_handler
