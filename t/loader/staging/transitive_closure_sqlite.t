@@ -19,11 +19,15 @@ my $loader = new_ok 'Modware::Loader::TransitiveClosure::Staging::Sqlite';
 my $tmp_schema = chado_schema();
 my $schema = Bio::Chado::Schema->connect( sub { $tmp_schema->storage->dbh } );
 my $sqllib = SQL::Library->new(
-    { lib => catfile( module_dir('Modware::Loader'), 'sqlite_transitive.lib' ) } );
+    {   lib =>
+            catfile( module_dir('Modware::Loader'), 'sqlite_transitive.lib' )
+    }
+);
 Log::Log4perl->easy_init($ERROR);
 $loader->schema($schema);
 $loader->sqlmanager($sqllib);
-$loader->logger(get_logger('MyStaging::Loader'));
+$loader->namespace('eco');
+$loader->logger( get_logger('MyStaging::Loader') );
 
 is( $schema->source('Staging::Cvtermpath')->from,
     'temp_cvtermpath', 'should load the resultsource' );
@@ -56,6 +60,14 @@ is( $schema->resultset('Staging::Cvtermpath')
         ->count( { 'type_accession' => 'used_in' } ),
     164,
     'should have 164 entries for used_in type'
+);
+
+my $row = $schema->resultset('Staging::Cvtermpath')
+    ->search( { 'type_accession' => 'used_in' }, { rows => 1 } )->first;
+is( $schema->resultset('General::Db')->find( { db_id => $row->type_db_id } )
+        ->name,
+    'eco',
+    'should match the default namespace'
 );
 
 drop_schema();

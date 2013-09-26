@@ -29,6 +29,7 @@ SKIP: {
     );
     Log::Log4perl->easy_init($ERROR);
     $loader->schema($schema);
+    $loader->namespace('eco');
     $loader->sqlmanager($sqllib);
     $loader->logger( get_logger('MyStaging::Loader') );
 
@@ -66,6 +67,14 @@ SKIP: {
         164,
         'should have 164 entries for used_in type'
     );
+    my $row = $schema->resultset('Staging::Cvtermpath')
+        ->search( { 'type_accession' => 'used_in' }, { rows => 1 } )->first;
+    is( $schema->resultset('General::Db')
+            ->find( { db_id => $row->type_db_id } )->name,
+        'eco',
+        'should match the default namespace'
+    );
+
     drop_schema();
     $test_handler->close;
 }

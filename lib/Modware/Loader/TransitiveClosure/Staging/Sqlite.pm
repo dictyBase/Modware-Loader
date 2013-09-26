@@ -16,8 +16,9 @@ has 'schema' => (
     }
 );
 
-has 'logger' =>
-    ( is => 'rw', isa => 'Log::Log4perl::Logger');
+has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+
+has 'namespace' => ( is => 'rw', isa => 'Str', predicate => 'has_namespace' );
 
 sub create_tables {
     my ($self) = @_;
@@ -47,13 +48,19 @@ sub add_data {
 
     my ( $subject_db_id, $subject_acc ) = $self->normalize_id( $data[0] );
     my ( $object_db_id,  $object_acc )  = $self->normalize_id( $data[3] );
-    my ( $type_db_id,    $type_acc );
+    my ($type_acc);
     if ( $self->has_idspace( $data[1] ) ) {
-        ( $type_db_id, $type_acc ) = $self->normalize_id( $data[1] );
+        my @parsed = $self->parse_id( $data[1] );
+        $type_acc = $parsed[1];
     }
     else {
         $type_acc = $data[1];
     }
+
+    my $type_db_id
+        = $self->has_namespace
+        ? $self->find_or_create_dbrow( $self->namespace )->db_id
+        : $object_db_id;
 
     my $insert_hash = {
         pathdistance      => $data[2],
@@ -62,7 +69,7 @@ sub add_data {
         object_db_id      => $object_db_id,
         subject_db_id     => $subject_db_id,
         type_accession    => $type_acc,
-        type_db_id        => $object_db_id
+        type_db_id        => $type_db_id
     };
     $self->add_to_cvtermpath_cache($insert_hash);
 }
