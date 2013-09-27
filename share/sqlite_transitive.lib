@@ -9,6 +9,9 @@
            type_db_id integer NOT NULL
         )
 
+[drop_table_temp_cvtermpath]
+           DROP TABLE temp_cvtermpath
+
 [insert_new_cvtermpath]
     INSERT INTO
            cvtermpath(object_id,subject_id,type_id,pathdistance,cv_id)

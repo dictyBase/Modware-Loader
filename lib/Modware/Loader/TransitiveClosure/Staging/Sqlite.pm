@@ -28,6 +28,9 @@ sub create_tables {
 }
 
 sub drop_tables {
+    my ($self) = @_;
+    $self->schema->storage->dbh->do(
+        $self->sqlmanager->retr('drop_table_temp_cvtermpath') );
 }
 
 sub create_indexes {
