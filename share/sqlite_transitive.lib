@@ -48,6 +48,33 @@
                    FROM cvtermpath
 
 
-
-
+[delete_removed_cvtermpath]
+           DELETE FROM cvtermpath 
+            WHERE EXISTS (
+               SELECT
+                   objxref.accession,objxref.db_id,subxref.accession,subxref.db_id,
+                   relxref.accession,relxref.db_id,cvtpath.pathdistance
+               FROM cvtermpath cvtpath
+               INNER JOIN cvterm object ON (
+                   cvtpath.object_id = object.cvterm_id
+                   AND
+                   cvtpath.cv_id = object.cv_id
+                )
+               INNER JOIN dbxref objxref ON 
+                   object.dbxref_id = objxref.dbxref_id
+               INNER JOIN cvterm subject ON
+                   cvtpath.subject_id = subject.cvterm_id
+               INNER JOIN dbxref subxref ON 
+                   object.dbxref_id = subxref.dbxref_id
+               INNER JOIN cvterm reltype ON
+                   cvtpath.type_id = reltype.cvterm_id
+               INNER JOIN dbxref relxref ON 
+                   reltype.dbxref_id = relxref.dbxref_id
+               WHERE reltype.is_relationshiptype = 1
+               EXCEPT
+               SELECT
+                   object_accession,object_db_id,subject_accession,subject_db_id,
+                   type_accession,type_db_id,pathdistance
+               FROM temp_cvtermpath
+            )
 

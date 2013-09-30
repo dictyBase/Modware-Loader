@@ -9,7 +9,9 @@ has 'logger' =>
 
 sub bulk_load {
     my ($self) = @_;
-    my $rows = $self->schema->storage->dbh->do($self->sqlmanager->retr('insert_new_cvtermpath'));
+    my $dbh = $self->schema->storage->dbh;
+    $dbh->do($self->sqlmanager->retr('delete_removed_cvtermpath'));
+    my $rows = $dbh->do($self->sqlmanager->retr('insert_new_cvtermpath'));
     $self->logger->debug("loaded new $rows entries in cvtermpath");
 }
 
