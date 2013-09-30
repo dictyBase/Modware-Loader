@@ -1,4 +1,4 @@
-package Modware::Loader::TransitiveClosure::Chado::Pg;
+package Modware::Loader::TransitiveClosure::Chado::Postgresql;
 use namespace::autoclean;
 use Moose;
 

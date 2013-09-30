@@ -1,4 +1,4 @@
-package Modware::Loader::TransitiveClosure::Staging::Pg;
+package Modware::Loader::TransitiveClosure::Staging::Postgresql;
 use namespace::autoclean;
 use Modware::Loader::Schema::Staging::TransitiveClosure;
 use Moose;

@@ -10,14 +10,14 @@ use Modware::Loader;
 use SQL::Library;
 use Log::Log4perl qw/:easy/;
 
-use_ok 'Modware::Loader::TransitiveClosure::Staging::Pg';
+use_ok 'Modware::Loader::TransitiveClosure::Staging::Postgresql';
 SKIP: {
     skip 'Environment variable TC_DSN is not set',
         if not defined $ENV{TC_DSN};
     eval { require DBD::Pg };
     skip 'DBD::Pg is needed to run this test' if $@;
 
-    my $loader = new_ok 'Modware::Loader::TransitiveClosure::Staging::Pg';
+    my $loader = new_ok 'Modware::Loader::TransitiveClosure::Staging::Postgresql';
 
     my $schema = chado_schema();
     my $sqllib = SQL::Library->new(

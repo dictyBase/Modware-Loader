@@ -10,9 +10,9 @@ use File::ShareDir qw/module_dir module_file/;
 use Modware::Loader;
 use SQL::Library;
 use Log::Log4perl qw/:easy/;
-use Modware::Loader::TransitiveClosure::Staging::Pg;
+use Modware::Loader::TransitiveClosure::Staging::Postgresql;
 
-use_ok 'Modware::Loader::TransitiveClosure::Chado::Pg';
+use_ok 'Modware::Loader::TransitiveClosure::Chado::Postgresql';
 use_ok('Modware::Load');
 
 SKIP: {
