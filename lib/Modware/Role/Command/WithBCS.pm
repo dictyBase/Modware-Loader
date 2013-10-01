@@ -80,22 +80,39 @@ has 'schema_debug' => (
         'Output SQL statements that are executed,  default to false'
 );
 
+has 'disconnect_hook' => (
+    is        => 'rw',
+    isa       => 'CodeRef',
+    writer    => 'add_disconnect_hook',
+    traits    => [qw/NoGetopt/],
+    predicate => 'has_disconnect_hook'
+);
+
+has 'connect_hook' => (
+    is        => 'rw',
+    isa       => 'CodeRef',
+    writer    => 'add_connect_hook',
+    traits    => [qw/NoGetopt/],
+    predicate => 'has_connect_hook'
+);
+
 sub _build_schema {
     my ($self) = @_;
     my $attribute = $self->attribute;
-    if ( $self->dsn =~ /Oracle/i ) {
+    if ( $self->dsn =~ / Oracle / i ) {
         $attribute->{LongReadLen} = 2**25;
     }
-    my $schema = Bio::Chado::Schema->connect(
-        $self->dsn,
-        $self->user,
-        $self->password,
-        $attribute,
-        {   on_connect_do => sub {
-                tie %{ shift->_dbh->{CachedKids} }, 'Tie::Cache', 100;
-                }
-        }
-    );
+
+    my $opt = {
+        on_connect_do => sub {
+            tie %{ shift->_dbh->{CachedKids} }, 'Tie::Cache', 100;
+            }
+    };
+    $opt->{on_connect_call} = $self->connect_hook if $self->has_connect_hook;
+    $opt->{on_disconnect_do} = $self->disconnect_hook
+        if $self->has_disconnect_hook;
+    my $schema = Bio::Chado::Schema->connect( $self->dsn, $self->user,
+        $self->password, $attribute, $opt );
     $schema->storage->debug( $self->schema_debug );
     $self->connect_info(
         Modware::Storage::Connection->new(
@@ -103,12 +120,8 @@ sub _build_schema {
             user            => $self->user,
             password        => $self->password,
             attribute       => $self->attribute,
-            extra_attribute => {
-                on_connect_do => sub {
-                    tie %{ shift->_dbh->{CachedKids} }, 'Tie::Cache', 100;
-                    }
-            },
-            schema_debug => $self->schema_debug
+            extra_attribute => $opt,
+            schema_debug    => $self->schema_debug
         )
     );
     return $schema;
