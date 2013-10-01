@@ -12,7 +12,7 @@ sub bulk_load {
     my $dbh = $self->schema->storage->dbh;
     $dbh->do($self->sqlmanager->retr('delete_removed_cvtermpath'));
     my $rows = $dbh->do($self->sqlmanager->retr('insert_new_cvtermpath'));
-    $self->logger->debug("loaded new $rows entries in cvtermpath");
+    return $rows;
 }
 
 sub alter_tables {
