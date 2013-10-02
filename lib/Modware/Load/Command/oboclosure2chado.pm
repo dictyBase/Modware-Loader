@@ -10,7 +10,8 @@ extends qw/Modware::Load::Chado/;
 
 has '+input' => (
     documentation =>
-        'Name of chado closure file. You need owltools(http://code.google.com/p/owltools) to generate the closure file',
+        'Name of chado closure file. You need owltools(http://code.google.com/p/owltools) to generate the closure file. First install  owltools(http://code.google.com/p/owltools/wiki/InstallOWLTools) using the jar and script.
+                                Then run owltools <file.obo> --save-closure-for-chado <file.closure> to generate the closure file.',
     required => 1
 );
 has '+input_handler' => ( traits => [qw/NoGetopt/] );
