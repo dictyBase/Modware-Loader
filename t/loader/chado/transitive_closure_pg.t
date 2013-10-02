@@ -55,7 +55,7 @@ SKIP: {
                 }
             );
             $staging_loader
-                = Modware::Loader::TransitiveClosure::Staging::Pg->new(
+                = Modware::Loader::TransitiveClosure::Staging::Postgresql->new(
                 schema     => $schema,
                 sqlmanager => $sqlmanager,
                 namespace  => 'eco',
@@ -108,7 +108,7 @@ SKIP: {
         subtest 'loading in chado database with pg backend' => sub {
             $setup->();
             $chado_loader
-                = new_ok 'Modware::Loader::TransitiveClosure::Chado::Pg';
+                = new_ok 'Modware::Loader::TransitiveClosure::Chado::Postgresql';
             $chado_loader->sqlmanager($sqlmanager);
             $chado_loader->schema($schema);
             $chado_loader->logger( get_logger('MyChado::Loader') );
