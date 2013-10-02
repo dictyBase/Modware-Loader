@@ -15,10 +15,11 @@ line applications to import and export biological data from Chado database.
 
 =head1 INSTALLATION
 
-=head2 Using cpanm
-
-Use a latest version of L<cpanm|https://metacpan.org/module/cpanm>, at least 1.6 is needed.
 You need to install 2/3 dependencies from B<github>, rest of them would be pulled from B<CPAN> as needed.
+Install using B<cpanm> is highly recommended.
+Use a latest version of L<cpanm|https://metacpan.org/module/cpanm>, at least 1.6 is needed.
+
+=head2 Latest release 
 
 =over
 
@@ -27,7 +28,7 @@ You need to install 2/3 dependencies from B<github>, rest of them would be pulle
 
 =back
 
-If you install without (-n/notest flag) then add B<Test::Chado>
+If you install without (-n/notest flag) then install B<Test::Chado> before you install B<BioPortal-Webservice>.
 
 
 =over
@@ -37,23 +38,23 @@ If you install without (-n/notest flag) then add B<Test::Chado>
 =back
 
 
-=head2 Manually
+=head2 Any particular release
 
-Download the BioPortal-Webservice and Modware-Loader tarballs from github master and invoke B<cpanm> on them.
+Download the respective tarballs from their release pages in github and invoke B<cpanm> on them locally.
 
 =over
 
 =item
 
-BioPortal-WebService L<tarball|https://github.com/dictyBase/BioPortal-WebService/archive/master.tar.gz>
+BioPortal-WebService L<release page|https://github.com/dictyBase/BioPortal-WebService/releases>
 
 =item
 
-Test-Chado L<tarball|https://github.com/dictyBase/Test-Chado/archive/master.tar.gz>
+Test-Chado L<release page|https://github.com/dictyBase/Test-Chado/releases>
 
 =item
 
-Modware-Loader L<tarball|https://github.com/dictyBase/Modware:Loader/archive/master.tar.gz>
+Modware-Loader L<release pages|https://github.com/dictyBase/Modware:Loader/releases>
 
 =back
 
@@ -62,18 +63,32 @@ Modware-Loader L<tarball|https://github.com/dictyBase/Modware:Loader/archive/mas
 
 Just follow the instuctions in the B<INSTALL> file.
 
-=head3 Directly from the git repository
 
-This is primarilly intended for authors/developers.
+=head1 Quick start
+
+Run any one of the following command
 
 =over
 
-    git checkout git://github.com/dictyBase/Modware-Loader.git
-    cpanm -n Dist::Zilla
-    curl -o BioPortal-WebService.tar.gz -L -k \
-       https://github.com/dictyBase/BioPortal-WebService/archive/build/develop.tar.gz && \
-    dzil listdeps --author --missing | cpanm -n
-    dzil install
+=item modware-export
+
+=item modware-load
+
+=item modware-transform
+
+=item modware-update
 
 =back
 
+Then follow the instructions to run any of the subcommand. Invoking the subcommand will display further help which is more or less self-explanatory.
+
+
+=head1 Documentation/Examples
+
+=over
+
+=item L<Exporting annotations|http://dictybase.github.io/blog/2013/03/06/exporting-discoideum-annotations/>
+
+=item L<Converting  tblastn alignments to GFF3 format|http://dictybase.github.io/refining-tblastn-protein-alignments/index.html>
+
+=back
