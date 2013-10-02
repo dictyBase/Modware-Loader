@@ -16,36 +16,45 @@ line applications to import and export biological data from Chado database.
 
 # INSTALLATION
 
-## Using cpanm
-
-Use a latest version of [cpanm](https://metacpan.org/module/cpanm), at least 1.6 is needed.
 You need to install 2/3 dependencies from __github__, rest of them would be pulled from __CPAN__ as needed.
+Install using __cpanm__ is highly recommended.
+Use a latest version of [cpanm](https://metacpan.org/module/cpanm), at least 1.6 is needed.
+
+## Latest release 
 
         cpanm -n  git://github.com/dictyBase/Modware-Loader.git
 
-If you install without (-n/notest flag) then add __Test::Chado__
+If you install without (-n/notest flag) then install __Test::Chado__ before you install __BioPortal-Webservice__.
 
         cpanm git://github.com/dictyBase/Test-Chado.git
 
-## Manually
+## Any particular release
 
-Download the Modware-Loader tarballs from github master and invoke __cpanm__ on them.
+Download the respective tarballs from their release pages in github and invoke __cpanm__ on them locally.
 
-- Test-Chado [tarball](https://github.com/dictyBase/Test-Chado/archive/master.tar.gz)
-- Modware-Loader [tarball](https://github.com/dictyBase/Modware:Loader/archive/master.tar.gz)
+- BioPortal-WebService [release page](https://github.com/dictyBase/BioPortal-WebService/releases)
+- Test-Chado [release page](https://github.com/dictyBase/Test-Chado/releases)
+- Modware-Loader [release pages](https://github.com/dictyBase/Modware:Loader/releases)
 
 ### Using Build.PL,  cpan and friends
 
 Just follow the instuctions in the __INSTALL__ file.
 
-### Directly from the git repository
+# Quick start
 
-This is primarilly intended for authors/developers.
+Run any one of the following command
 
-        git checkout git://github.com/dictyBase/Modware-Loader.git
-        cpanm -n Dist::Zilla
-        dzil listdeps --author --missing | cpanm -n
-        dzil install
+- modware-export
+- modware-load
+- modware-transform
+- modware-update
+
+Then follow the instructions to run any of the subcommand. Invoking the subcommand will display further help which is more or less self-explanatory.
+
+# Documentation/Examples
+
+- [Exporting annotations](http://dictybase.github.io/blog/2013/03/06/exporting-discoideum-annotations/)
+- [Converting tblastn alignments to GFF3 format](http://dictybase.github.io/refining-tblastn-protein-alignments/index.html)
 
 # Build Status
 
