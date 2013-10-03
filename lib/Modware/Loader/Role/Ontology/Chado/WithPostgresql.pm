@@ -7,108 +7,28 @@ use Moose::Role;
 # Module implementation
 #
 
-has cache_threshold =>
-    ( is => 'rw', isa => 'Int', lazy => 1, default => 5000 );
-
 sub transform_schema { }
-
-
-before 'merge_ontology' => sub {
-    my ($self) = @_;
-    $self->schema->storage->dbh_do(
-        sub {
-            my ($storage, $dbh) = @_;
-            $dbh->do(
-                qq{
-	           CREATE TEMPORARY TABLE temp_accession (
-                  accession varchar(256) NOT NULL 
-    			) ON COMMIT PRESERVE ROWS }
-            );
-        }
-    );
-};
 
 sub delete_non_existing_terms {
     my ( $self, $storage, $dbh ) = @_;
-    $dbh->do(
-        q{
-			CREATE TEMP TABLE temp_term_delete AS
-				SELECT cvterm.cvterm_id, dbxref.dbxref_id FROM cvterm
-				INNER JOIN dbxref ON cvterm.dbxref_id=dbxref.dbxref_id
-				LEFT JOIN temp_cvterm tmcv ON (
-					tmcv.accession = dbxref.accession
-					AND
-					tmcv.db_id = dbxref.db_id
-				)
-				WHERE tmcv.accession IS NULL
-				AND tmcv.db_id IS NULL
-				AND cvterm.cv_id IN (SELECT cv_id FROM temp_cvterm)
-				AND dbxref.db_id IN (SELECT db_id FROM temp_cvterm)
-	     }
-    );
-
-    $dbh->do(
-        q{ DELETE FROM cvterm USING temp_term_delete td WHERE cvterm.cvterm_id = td.cvterm_id}
-    );
-    my $rows = $dbh->do(
-        q{ DELETE FROM dbxref USING temp_term_delete td 
-             WHERE
-	         dbxref.dbxref_id = td.dbxref_id
-	      }
-    );
+    my $sqllib = $self->sqllib;
+    $dbh->do( $sqllib->retr('insert_temp_term_delete') );
+    $dbh->do( $sqllib->retr('delete_non_existing_cvterm') );
+    my $rows = $dbh->do( $sqllib->retr('delete_non_existing_dbxref') );
     return $rows;
 }
 
 sub create_dbxrefs {
     my ( $self, $storage, $dbh ) = @_;
-    $dbh->do(
-        q{
-    		INSERT INTO temp_accession(accession)
-			SELECT tmcv.accession FROM temp_cvterm tmcv
-			LEFT JOIN dbxref ON (
-			     tmcv.accession = dbxref.accession
-			     AND
-			     tmcv.db_id = dbxref.db_id
-            )
-			WHERE dbxref.accession is NULL
-			AND 
-			dbxref.db_id IS NULL
-			}
-    );
-    my $rows = $dbh->do(
-        q{
-			INSERT INTO dbxref(accession, db_id)
-			SELECT tmcv.accession, tmcv.db_id FROM temp_cvterm tmcv
-			LEFT JOIN dbxref ON (
-			     tmcv.accession = dbxref.accession
-			     AND
-			     tmcv.db_id = dbxref.db_id
-            )
-			WHERE dbxref.accession is NULL
-			AND 
-			dbxref.db_id IS NULL
-			}
-    );
+    $dbh->do( $self->sqllib->retr('insert_new_accession') );
+
+    my $rows = $dbh->do( $self->sqllib->retr('insert_dbxref') );
     return $rows;
 }
 
 sub create_cvterms {
     my ( $self, $storage, $dbh ) = @_;
-    my $rows = $dbh->do(
-        q{
-    		INSERT INTO cvterm(name, is_obsolete, is_relationshiptype,
-    		  definition, cv_id, dbxref_id)
-			SELECT tmcv.name,tmcv.is_obsolete,tmcv.is_relationshiptype, 
-			tmcv.definition,tmcv.cv_id,dbxref.dbxref_id 
-			FROM temp_cvterm tmcv
-			INNER JOIN temp_accession tmacc ON 
-			     tmcv.accession=tmacc.accession
-			INNER JOIN dbxref ON (
-			  dbxref.accession=tmcv.accession
-			  AND dbxref.db_id=tmcv.db_id
-			)
-			}
-    );
+    my $rows = $dbh->do( $self->sqllib->retr('insert_cvterm') );
     return $rows;
 }
 
@@ -135,82 +55,102 @@ sub create_cvterms_debug {
 
 sub update_cvterm_names {
     my ( $self, $storage, $dbh ) = @_;
-    my $row = $dbh->do(
-        q{
-    	UPDATE cvterm SET name = fresh.fname FROM (
-    	   SELECT tmcv.name fname, cvterm.name oname, cvterm.cvterm_id
-    		 FROM cvterm
-    		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
-    		 INNER JOIN temp_cvterm tmcv ON (
-    		 	dbxref.accession = tmcv.accession
-    		 	AND 
-    		 	dbxref.db_id = tmcv.db_id
-    		 )
-    	) AS fresh
-    	WHERE fresh.fname != fresh.oname
-    	AND cvterm.cvterm_id = fresh.cvterm_id
-    });
-    return  $row;
+    my $row = $dbh->do( $self->sqllib->retr('update_cvterm_names') );
+    return $row;
 }
 
 sub update_cvterms {
     my ( $self, $storage, $dbh ) = @_;
-    my $row = $dbh->do(
-        q{
-            UPDATE cvterm SET definition = fresh.definition, 
-              is_obsolete = fresh.is_obsolete FROM (
-    		SELECT cvterm.cvterm_id, cvterm.name, tmcv.definition, tmcv.is_obsolete 
-    		 FROM cvterm
-    		 INNER JOIN dbxref ON dbxref.dbxref_id = cvterm.dbxref_id
-    		 INNER JOIN temp_cvterm tmcv ON (
-    		 	dbxref.accession = tmcv.accession
-    		 	AND 
-    		 	dbxref.db_id = tmcv.db_id
-    		 ) ) AS fresh
-    		WHERE cvterm.cvterm_id = fresh.cvterm_id
-    });
-    return  $row;
-}
-
-sub merge_comments {
+    $dbh->do( $self->sqllib->retr('insert_existing_accession') );
+    my $row = $dbh->do( $self->sqllib->retr('update_cvterms') );
+    return $row;
 }
 
 sub create_relations {
     my ( $self, $storage, $dbh ) = @_;
-    my $rows = $dbh->do(
-        q{
-        INSERT INTO cvterm_relationship(object_id, subject_id, type_id)
-		SELECT object.cvterm_id, subject.cvterm_id, type.cvterm_id
-        FROM temp_cvterm_relationship tmprel
-
-        INNER JOIN dbxref dbobject ON (
-        	dbobject.accession = tmprel.object AND
-        	dbobject.db_id = tmprel.object_db_id 
-        )
-        INNER JOIN cvterm object ON
-        object.dbxref_id = dbobject.dbxref_id
-
-        INNER JOIN dbxref dbsubject ON (
-        	dbsubject.accession = tmprel.subject AND
-        	dbsubject.db_id = tmprel.subject_db_id 
-        )
-        INNER JOIN cvterm subject ON
-        subject.dbxref_id = dbsubject.dbxref_id
-
-        INNER JOIN dbxref dbtype ON (
-        	dbtype.accession = tmprel.type AND
-        	dbtype.db_id = tmprel.type_db_id 
-        )
-        INNER JOIN cvterm type ON
-        type.dbxref_id = dbtype.dbxref_id
-             
-      EXCEPT
-      SELECT cvrel.object_id, cvrel.subject_id, cvrel.type_id
-      FROM cvterm_relationship cvrel
-    }
-    );
+    my $rows = $dbh->do( $self->sqllib->retr('insert_relationship') );
     return $rows;
 }
+
+sub create_synonyms {
+    my ( $self, $storage, $dbh ) = @_;
+
+    # The logic here is as follows
+    #  Get the list of new synonyms for new dbxrefs(from temp_accession table)
+    #  Join across cvterm table to get their cvterm_id
+    #  Join with db table to make sure the dbxref belong to correct namespace
+    my $row = $dbh->do( $self->sqllib->retr('insert_synonym') );
+    $self->logger->debug("created $row synonyms");
+    return $row;
+}
+
+sub update_synonyms {
+    my ( $self, $storage, $dbh ) = @_;
+
+    my $sqllib = $self->sqllib;
+
+    #First create a temp table with synonym that needs update
+    #$dbh->do( $sqllib->retr('insert_updated_synonym_in_temp') );
+
+    #Delete all existing synonyms 
+    $dbh->do( $sqllib->retr('delete_updatable_synonym') );
+
+    #Now insert the new batch
+    my $rows = $dbh->do( $self->sqllib->retr('insert_updatable_synonym') );
+    $self->logger->debug("updated $rows synonyms");
+    return $rows;
+}
+
+sub create_comments {
+    my ( $self, $storage, $dbh ) = @_;
+
+# The logic here to get a list of new cvterms and their comments.
+# A temp table(temp_accession) with all the new cvterms were created which is turn joined
+# with cvterm table to get their cvterm_id
+    my $row = $dbh->do( $self->sqllib->retr('insert_comment') );
+    $self->logger->debug("created $row comments");
+    return $row;
+}
+
+sub update_comments {
+    my ( $self, $storage, $dbh ) = @_;
+
+    #DELETE existing comment
+    $dbh->do( $self->sqllib->retr('delete_updatable_comment') );
+
+    #INSERT all comments from temp table
+    my $rows = $dbh->do( $self->sqllib->retr('insert_updatable_comment') );
+    $self->logger->debug("updated $rows comments");
+    return $rows;
+}
+
+sub create_alt_ids {
+    my ( $self, $storage, $dbh ) = @_;
+    my $sqllib = $self->sqllib;
+
+    #insert in dbxref first, then in cvterm_dbxref linking table
+    my $rows = $dbh->do( $sqllib->retr('insert_alt_id_in_dbxref') );
+    $dbh->do( $sqllib->retr('insert_alt_id_in_cvterm_dbxref') );
+
+    $self->logger->debug("inserted $rows alt_ids");
+    return $rows;
+}
+
+sub update_alt_ids {
+    my ( $self, $storage, $dbh ) = @_;
+
+    my $sqllib = $self->sqllib;
+
+    #Now delete existing synonyms
+    $dbh->do( $sqllib->retr('delete_updatable_alt_ids') );
+
+    #Now insert the new batch
+    my $rows = $dbh->do( $sqllib->retr('insert_updatable_alt_ids') );
+    $rows = $dbh->do( $sqllib->retr('insert_updatable_alt_ids2') );
+    $self->logger->debug("updated $rows alt ids");
+    return $rows;
+}
+
 
 1;    # Magic true value required at end of module
 

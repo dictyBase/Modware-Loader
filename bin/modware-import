@@ -1,0 +1,10 @@
+#!/usr/bin/env perl
+
+package import;
+use Modware::Import;
+
+Modware::Import->run;
+
+=head1 NAME
+
+B<import> - [Runnable for import modules]

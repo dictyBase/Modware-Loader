@@ -1,0 +1,50 @@
+DBP0000034	pCFC5	Expression vector containing N-terminal epitope tag (T7 antigen); Vector contains Act6P-G418R-Act8T casette; Plasmid from Chen and Katz.
+DBP0000098	GFP-G&#946;	Reporter construct (GFP fused to NH2-terminus of G&#946; subunit). The coding region of GFP-G&#946; fusion protein was cloned into pMC34, an extrachromosomal expression vector.
+DBP0000099	G&#946;-YFP	Reporter construct (YFP fused to NH2-terminal of G&#946;). The gene encoding the full-length YFP was fused to the NH2-terminus of the G&#946; gene. A BglII restriction site was added at the junction that consisted of two additional amino acids, arginine and serine. This &#946;-YFP fusion protein was cloned into the CV5 vector. CV5 was derived from p88 by addition of an actin 15 expression cassette from pMC34.
+DBP0000100	pUNK-KO	MHCK B knockout vector with bsR cassette
+DBP0000101	pDF15	myosin heavy chain kinase gene replacement vector containing the Thy1 gene
+DBP0000102	pMKC-Hyg1	myosin heavy chain knockout vector containing hygromycin resistance cassette
+DBP0000103	pDNeoII (pDNeo2)	Expression vector including the start codon and first 8 amino acids of actin 6; <b>Sequence note:</b> This sequence has been provided by Piero Morandini and Klaus Salger.
+DBP0000104	FadA-KO	fadA knock-out vector (Bsr cassette inserted in the HindIII site)
+DBP0000105	pFadB-KO	fadB knockout vector with the Bsr cassette inserted in the BglII site.
+DBP0000106	amiB-KO (p82ClaI)	Recapitulation of the R8-2 amiB- REMI mutant (aggregation-minus B)
+DBP0000107	amiB-KO (p12-3NdeI)	Recapitulation of the R12-3 amiB- REMI mutant (aggregation-minus B)
+DBP0000011	pTX-GFP	GFP expression under control of the actin15 promoter (extrachromosomal vector based on Ddp1)
+DBP0000012	pREP	Plasmid for cotransformation with pDXA/DXD series expression vectors. Pedigree: neoR cassette from pnDedeltaI removed by cutting with SacI/BamHI.
+DBP0000013	ncsA	ncsA cDNA in PET15b (NcsA protein)
+DBP0000014	calA	calA cDNA in PET15b (Dicty calmodulin I)
+DBP0000015	cbpJ	cbpJ cDNA in PET15b (CbpJ protein) calcium-binding protein
+DBP0000016	pNcsA-KO	ncsA cDNA clone (SSL268) in pBluescript KS - with the blasticidin S cassette from pBsR519 cloned into the ClaI site near the middle of the coding region.
+DBP0000017	pCnxA-GFP(S65T)	calnexin-S65T-GFP in pDEXRH (G418)
+DBP0000018	pGFP(S65T)-crtA	S65T-GFP-calreticulin in pDEXRH (G418)
+DBP0000020	pMC34	cAR1 cDNA minus first 2 codons,  (nt 97-1312), cloned into the BglII site of pJK1
+DBP0000022	pJK3	cAR1 cDNA cloned in the extrachromosomal expression vector pJK1
+DBP0000023	pCV5	CV5 is derived from p88 by the addition of an actin 15 expression cassette from pMC34.
+DBP0000025	pB18	Integrating expression vector. containing the actin6 neo cassette.
+DBP0000026	pTorA-B18	TorA expression vector
+DBP0000027	pRHI30	Plasmid containing a truncated pyr5-6 region; <b> Sequence note: </b> the sequence below represents the insert only (Robert Insall).
+DBP0000028	pCAR2-B18	cAR2 over-expression vector
+DBP0000029	pCAR3-B18	cAR3 over-expression vector
+DBP0000030	pRJ525	cAR3 in pBlueScript
+DBP0000031	pDXA-HC	Expression vector under control of the actin 15 promoter and carrying an N-terminal histidine tag and a C-terminal c-myc tag.  Plasmid has been resequenced.
+DBP0000033	pBSR3	REMI plasmid containing blasticidin cassette (SmaI and ApaI sites were introduced in pBSR1 flanking the BamHI site)
+DBP0000035	pCFC6	Expression vector containing N-terminal epitope tag (T7 antigen); Vector contains Act6P-G418R-Act8T casette; Plasmid from Chen and Katz.
+DBP0000036	pBsR519	ampicillin-resistant vector with bsR cassette
+DBP0000037	pBsR479	ampicillin-resistant vector with bsR cassette
+DBP0000038	pBsR503	Kanamycin-resistant vector with bsR cassette
+DBP0000039	pDd56	EcmB (ST310) cDNA clone isolated as a prestalk-enriched, DIF-inducible mRNA (2.4-kb cDNA cloned in the PstI site of pUC8). DDB0216219
+DBP0000040	pDd63	EcmA (ST430) cDNA clone isolated as a prestalk-enriched, DIF-inducible mRNA (2.3-kb cDNA cloned in the PstI site of pUC8); DDB0220137
+DBP0000041	pUCBsr&#916;Bam	REMI plasmid; <b> Sequence note: </b> The sequence of the terminator is missing and indicated by a poly-a. Note that only one of the Xba sites can be cut, allowing to obtain the famous Xba-Hind cassette (Pierre Cosson).
+DBP0000043	p6B (CAR1)	Partial cAR1 cDNA in pBlue Script.
+DBP0000044	pMB35	Transactivator plasmid containing the tTA<sub>s</sub>* gene under the control of A15P and 2H3T   .
+DBP0000045	pMB38	Extrachromosomal response plasmid containing the inducible promoter TRE-P<sub>min</sub> upstream of the 2H3T terminator with 4 unique restriction sites in between.    Both tetON and tetOFF systems exist for Dicty. The tetOFF system was pioneered by Dingermann and colleagues, but the most frequently used  vectors are those constructed by Blaauw et al., Gene 252:71-82, 2000.  The Dicty tetON system is derived from yeast vectors described in Urlinger  et al., PNAS 97:7963-8, 2000; the rtTa-M2 element from ? was recloned into the Blaauw vector MB35 by Adriano Ceccarelli, and students in my lab have shown that the performance of this tetON system in Dicty (induction  factor, response time) is similar to that of the tetOFF system.    Both the original tetOFF MB35 and its tetON version are neo vectors. In practice one needs a Dicty strain carrying one or the other of these, which one overtransforms with a second, blasticidin vector (Blauuw et al. MB38) carrying the gene of interest. Once one has cloned one's gene into MB38, it can be overtransformed into both tetON and tetOFF strains. Both MB35 and MB38 are in the stock center, as are cells containing MB35. H. MacWilliams
+DBP0000046	EcmA-Gal	EcmA PCR'd promoter fragments inserted into BamHI site of A15deltaBam-gal. 3'end, Bam/BglII at +250 (just upstream of EcmA-ATG). 5'end, BamHI site at variable points. (prestalk marker)
+DBP0000048	pA15-Rm	(pActRsub-A<sup>E</sup>B<sup>E</sup>)  Two glycine->glutamic acid mutations in the regulatory subunit of PKA. Overexpression results in inhibition of the catalytic subunit in the presence of cAMP.
+DBP0000117	pAct15-Gal	Galactosidase expression vector with actin 15 promoter. The XbaI/BglII fragment of the actin 15 promoter was cloned into pdDGal17.
+DBP0000108	GFP-Arp2/pBIG(G418)	The arp2 fragment was subloned into the pBIG plasmid downstream of the actin15 promoter, the GFP coding sequence, and a Gly-Pro-Gly linker sequence, and upstream of the actin15 terminator.
+DBP0000019	pMC25	cAR1 gene disruption construct (ura selection): 2-kb region immediately upstream of cAR1 coding region and 0.4-kb 3'coding region plus 0.1-kb 3'non-translated region subloned into pBluescript-SK. 3.7-kb ClaI fragment from pDU3B1 was subloned between the fragments.
+DBP0000158	CS4 5.03	Blasticidin cassette is loxed; plasmid can be used to replace the endogenous NSFA gene with the ts variant, which exists in HM1067. Plasmid is similar to the unloxed version used to generate NSFA2 (Pmid 12183371; d7379).
+DBP0000021	pJK1	Extrachromosal vector containing a neoR cassette derived from the Ddp1-based vector pATANB43 (Pmid 2813371) into which the actin15 promoter and the 2H3 terminator have been inserted.
+DBP0000118	pVEII	inducible gene expression vector containing the discoidin gamma promoter; constructed by replacing the act6 promoter in pDnNeo2. <br/><br/> Transformation vector which can be used for expression of genes from the discoidin I gamma promoter. The vector contains a multiple cloning site for inserting the gene of interest. The discoidin ATG is located upstream of the MCS. We recommend sequencing the junction of the insert using a primer within the promoter. The oligo: 5'-GAA AAA TTA AAA TTT CAT ACA AAT TAT C-3' worked well for us; you can start reading at the ATG - XbaI site.  <br/><br/>  Regulation of the promoter is described in Vauti et al., Mol. Cell. BioI. 8, 4080-4088, 1990. The paper by Blusch et al., Nucl. Acids Res. 20, 6235-6238, 1992 describes use of pVEII as an inducible expression system. This has now been working for several people (e.g. M. Clarke, G. Weeks). In addition, Dictyostelium cells with altered discoidin expression can be used to get higher or lower expression. These mutant strains can be obtained from B. Wetterauer and H. MacWilliams (PMID 8464730 and PMID 8396055). <b> Sequence note: </b> This sequence has been provided by Piero Morandini and Klaus Salger.
+DBP0000119	pDE102	Vector containing hygromycin cassette
+DBP0000120	pDE109	Non-autonomous extrachromosomal expression vector with hygromycin selection cassette.

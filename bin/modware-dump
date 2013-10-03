@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+
+package dump;
+use Modware::Dump;
+
+Modware::Dump->run;
+
+
+=head1 NAME
+
+B<dump> - [Runnable for dump modules]

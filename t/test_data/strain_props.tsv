@@ -1,0 +1,100 @@
+DBS0236426	mutagenesis method	Homologous Recombination
+DBS0236426	synonym	IP6K-
+DBS0236426	synonym	Insp6K
+DBS0236895	mutagenesis method	Homologous Recombination
+DBS0236895	mutant type	endogenous deletion
+DBS0236895	synonym	RI-1
+DBS0236896	mutagenesis method	Homologous Recombination
+DBS0236896	mutant type	endogenous deletion
+DBS0236896	synonym	aimless-null
+DBS0236896	synonym	RI-19
+DBS0236896	synonym	RasGefA-
+DBS0236440	mutagenesis method	Homologous Recombination
+DBS0236440	synonym	JB-6
+DBS0236440	synonym	car3-
+DBS0236436	mutagenesis method	Restriction Enzyme-Mediated Integration
+DBS0236436	mutant type	endogenous insertion
+DBS0236436	synonym	RasGefA-
+DBS0236436	synonym	JB-10
+DBS0236436	synonym	jb10-ale
+DBS0236436	synonym	jb10 ale
+DBS0236436	synonym	jb10ale
+DBS0236455	mutagenesis method	Random Insertion
+DBS0236455	mutant type	exogenous mutation
+DBS0236455	synonym	cAR1-oxp-AX3
+DBS0236455	synonym	cAR-oxp-AX3
+DBS0236455	synonym	cAR1-OE in ax-3
+DBS0236455	synonym	car1-ox
+DBS0236831	mutagenesis method	Random Insertion
+DBS0236831	mutant type	exogenous insertion
+DBS0236831	synonym	PTEN-GFP/pten&#8722;
+DBS0236831	synonym	PTEN//pten&#8722;
+DBS0236464	mutagenesis method	Homologous Recombination
+DBS0236464	mutant type	endogenous mutation
+DBS0236464	synonym	JS-14
+DBS0236464	synonym	d208
+DBS0236767	mutagenesis method	Restriction Enzyme-Mediated Integration
+DBS0236767	mutant type	endogenous mutation
+DBS0236575	synonym	myc2
+DBS0236575	synonym	Galpha2-
+DBS0236575	synonym	Ga2-
+DBS0236575	synonym	myc-2
+DBS0237092	mutagenesis method	Random Insertion
+DBS0237092	mutant type	exogenous mutation
+DBS0237092	synonym	yakagfp
+DBS0235407	mutagenesis method	Homologous Recombination
+DBS0235407	mutant type	endogenous mutation
+DBS0235407	synonym	&#916;317
+DBS0235407	synonym	car1 null
+DBS0235407	synonym	delta317
+DBS0235407	synonym	d317
+DBS0237018	mutagenesis method	Random Insertion
+DBS0237018	mutant type	exogenous mutation
+DBS0237018	synonym	TorA-gfp
+DBS0235945	mutagenesis method	Homologous Recombination
+DBS0235945	mutant type	endogenous mutation
+DBS0236414	mutagenesis method	Haploid Segregant
+DBS0236414	synonym	357F
+DBS0236414	synonym	357-F
+DBS0236415	mutagenesis method	Haploid Segregant
+DBS0236415	synonym	360-F
+DBS0236206	mutagenesis method	Spontaneous
+DBS0236206	mutant type	endogenous mutation
+DBS0236206	synonym	HK4
+DBS0235609	mutagenesis method	Homologous Recombination
+DBS0235609	mutant type	exogenous deletion with insertion
+DBS0235609	synonym	cluA-18
+DBS0236617	mutagenesis method	N-Methyl-N-Nitro-N-Nitrosoguanidine
+DBS0236617	mutant type	endogenous mutation
+DBS0236617	synonym	NP105
+DBS0236866	mutagenesis method	Random Insertion
+DBS0236866	synonym	Gly-ras
+DBS0236620	mutagenesis method	N-Methyl-N-Nitro-N-Nitrosoguanidine
+DBS0236620	mutant type	endogenous mutation
+DBS0236620	synonym	NP111
+DBS0236621	mutagenesis method	N-Methyl-N-Nitro-N-Nitrosoguanidine
+DBS0236621	mutant type	endogenous mutation
+DBS0236621	synonym	NP112
+DBS0236626	mutagenesis method	N-Methyl-N-Nitro-N-Nitrosoguanidine
+DBS0236626	mutant type	endogenous mutation
+DBS0236626	synonym	NP124
+DBS0236630	mutagenesis method	N-Methyl-N-Nitro-N-Nitrosoguanidine
+DBS0236630	mutant type	endogenous mutation
+DBS0236630	synonym	NP134
+DBS0236685	mutagenesis method	N-Methyl-N-Nitro-N-Nitrosoguanidine
+DBS0236685	mutant type	endogenous mutation
+DBS0349920	mutant type	exogenous mutation
+DBS0349899	mutant type	exogenous mutation
+DBS0349899	synonym	pten-/pakA- + PakA-GFP
+DBS0349919	mutagenesis method	Extrachromosomal
+DBS0349919	mutant type	exogenous mutation
+DBS0349919	synonym	mlkA-/GFP-Myosin
+DBS0349920	mutagenesis method	Extrachromosomal
+DBS0349920	mutant type	exogenous mutation
+DBS0349920	synonym	aarA-/GFP-Myosin
+DBS0349921	mutagenesis method	Extrachromosomal
+DBS0349921	mutant type	exogenous mutation
+DBS0349710	mutagenesis method	Extrachromosomal
+DBS0349863	mutagenesis method	Homologous Recombination
+DBS0349863	mutant type	endogenous insertion
+DBS0349863	synonym	wash-null

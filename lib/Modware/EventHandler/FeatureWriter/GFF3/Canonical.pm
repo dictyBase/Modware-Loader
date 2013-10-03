@@ -62,7 +62,7 @@ sub write_reference {
     {
         push @$dbxrefs, $xref_row->db->name . ':' . $xref_row->accession;
     }
-    $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
+    $hashref->{attributes}->{Dbxref} = $dbxrefs if @$dbxrefs;
     $output->print( gff3_format_feature($hashref) );
 }
 

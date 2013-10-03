@@ -10,13 +10,15 @@ use utf8;
 with 'Modware::Role::Chado::Helper::BCS::WithDataStash';
 
 has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has 'app_instance' =>
+    ( is => 'rw', isa => 'Modware::Load::Command::adhocobo2chado' );
 
 has 'chado' => (
     is      => 'rw',
     isa     => 'Bio::Chado::Schema',
-    trigger => sub { 
-         my ($self, $schema) = @_; 
-         $self->load_engine($schema) 
+    trigger => sub {
+        my ( $self, $schema ) = @_;
+        $self->load_engine($schema);
     }
 );
 has 'cv_namespace' =>
@@ -26,7 +28,7 @@ has 'db_namespace' =>
 
 # revisit
 sub load_engine {
-    my ($self, $schema) = @_;
+    my ( $self, $schema ) = @_;
     $self->meta->make_mutable;
     my $engine = 'Modware::Loader::Adhoc::Role::Ontology::Chado::With'
         . ucfirst lc( $self->chado->storage->sqlt_type );
@@ -42,10 +44,12 @@ sub update_or_create_term {
     if ($term_from_db) {
         $self->_update_term( $term_from_db, $term );
         $self->logger->debug( 'update term ', $term->id );
+        return [ 'update', $term ];
     }
     else {
-        $self->_insert_term($term);
+        $term_from_db = $self->_insert_term($term);
         $self->logger->debug( 'insert term ', $term->id );
+        return [ 'insert', $term_from_db ];
     }
 }
 
@@ -58,16 +62,6 @@ sub _update_term {
             }
         );
     }
-}
-
-sub load_namespaces {
-    my ( $self, $ontology ) = @_;
-    my $global_cv = $self->chado->resultset('Cv::Cv')
-        ->find_or_create( { name => $ontology->default_namespace } );
-    my $global_db = $self->chado->resultset('General::Db')
-        ->find_or_create( { name => '_global' } );
-    $self->cv_namespace($global_cv);
-    $self->db_namespace($global_db);
 }
 
 sub _insert_term {
@@ -94,6 +88,29 @@ sub _insert_term {
     $insert_hash->{name} = $term->name ? $term->name : $term->id;
 
     return $self->chado->resultset('Cv::Cvterm')->create($insert_hash);
+}
+
+sub load_namespaces {
+    my ( $self, $ontology ) = @_;
+    my $global_cv = $self->chado->resultset('Cv::Cv')
+        ->find_or_create( { name => $ontology->default_namespace } );
+    my $global_db = $self->chado->resultset('General::Db')
+        ->find_or_create( { name => '_global' } );
+    $self->cv_namespace($global_cv);
+    $self->db_namespace($global_db);
+    $self->find_or_create_namespaces;
+}
+
+sub find_or_create_namespaces {
+    my ($self) = @_;
+    $self->find_or_create_dbrow('internal');
+    $self->find_or_create_cvrow($_) for qw/cvterm_property_type synonym_type/;
+    $self->find_or_create_cvterm_namespace($_)
+        for
+        qw/comment alt_id xref cyclic reflexive transitive anonymous domain range/;
+    $self->find_or_create_cvterm_namespace( $_, 'synonym_type' )
+        for qw/EXACT BROAD NARROW RELATED/;
+
 }
 
 sub create_relationship {
@@ -137,211 +154,148 @@ sub create_relationship {
     $logger->debug( "created relationship ",
         $relation->type, " between ",
         $relation->tail->id, " and ", $relation->head->id );
-        return $row;
+    return $row;
 }
 
-#Not getting to be used for the time being
-
-sub keep_state_in_cache {
-    my ($self) = @_;
-    $self->add_to_cache( $self->insert_hashref );
+sub delete_comment {
+    my ( $self, $term_from_db ) = @_;
+    $term_from_db->delete_related(
+        'cvtermprops',
+        { 'type.name' => 'comment', 'cv.name' => 'cvterm_property_type' },
+        { join        => [          { 'type'  => 'cv' } ] }
+    );
 }
 
-sub clear_current_state {
-    my ($self) = @_;
-    $self->clear_stashes;
-    $self->clear_node;
-}
-
-sub store_cache {
-    my ( $self, $cache ) = @_;
-    my $chado = $self->manager->chado;
-
-    my $index;
-    try {
-        $chado->txn_do(
-            sub {
-                #$chado->resultset( $self->resultset )->populate($cache);
-                for my $i ( 0 .. scalar @$cache - 1 ) {
-                    $index = $i;
-                    $chado->resultset( $self->resultset )
-                        ->create( $cache->[$i] );
-                }
+sub create_comment {
+    my ( $self, $term, $term_from_db ) = @_;
+    if ( my $comment = $term->comment ) {
+        $term_from_db->create_related(
+            'cvtermprops',
+            {   value   => $comment,
+                type_id => $self->find_or_create_cvterm_namespace( 'comment',
+                    'cvterm_property_type' )->cvterm_id
             }
         );
     }
-    catch {
-        warn "error in creating: $_";
-        croak Dumper $cache->[$index];
-    };
 }
 
-sub handle_alt_ids {
-    my ($self) = @_;
-    my $node = $self->node;
-    return if !$node->alt_ids;
-    for my $alt_id ( @{ $node->alt_ids } ) {
-        if ( $self->do_parse_id and $self->has_idspace($alt_id) ) {
+sub delete_alt_ids {
+    my ( $self, $term_from_db ) = @_;
+    my @dbxrefs
+        = $term_from_db->search_related( 'cvterm_dbxrefs', {} )
+        ->search_related(
+        'dbxrefs',
+        {   db_id => {
+                -in => [
+                    $term_from_db->dbxref->db_id,
+                    $self->find_or_create_db_id( $self->cv_namespace->name )
+                ]
+            }
+        }
+        );
+    $_->delete for @dbxrefs;
+}
+
+sub create_alt_ids {
+    my ( $self, $term, $term_from_db ) = @_;
+    my $set = $term->alt_id;
+    for my $alt_id ( $set->get_set ) {
+        if ( $self->has_idspace($alt_id) ) {
             my ( $db, $id ) = $self->parse_id($alt_id);
-            $self->add_to_insert_cvterm_dbxrefs(
+            $term_from_db->create_related(
+                'cvterm_dbxrefs',
                 {   dbxref => {
                         accession => $id,
                         db_id     => $self->find_or_create_db_id($db)
                     }
                 }
             );
-
         }
         else {
-            $self->add_to_insert_cvterm_dbxrefs(
+            $term_from_db->create_related(
+                'cvterm_dbxrefs',
                 {   dbxref => {
                         accession => $alt_id,
-                        db_id     => $self->dbrow->db_id
+                        db_id     => $self->find_or_create_db_id(
+                            $self->cv_namespace->name
+                        )
                     }
                 }
             );
         }
     }
-    return Modware::Loader::Response->new(
-        is_success => 1,
-        message    => 'All alt_ids are processed for ' . $node->id
-    );
-
 }
 
-sub handle_xrefs {
-    my ($self) = @_;
-    my $xref_hash = $self->node->xref_h;
-
-XREF:
-    for my $key ( keys %$xref_hash ) {
-        my $xref = $xref_hash->{$key};
-        my ( $dbxref_id, $db_id, $accession );
-        if (    $self->do_parse_id
-            and $self->has_idspace( $xref->id )
-            and $xref->id !~ /^http/ )
-        {
-            my ( $db, $id ) = $self->parse_id( $xref->id );
-            $db_id = $self->find_or_create_db_id($db);
-            if ( !$db or !$id ) {
-
-                #xref not getting parsed
-                $self->current_logger->warn(
-                    "cannot parse xref $xref for " . $self->node->id );
-                next XREF;
-            }
-            $accession = $id;
-            $dbxref_id = $self->find_dbxref_id(
-                db     => $db_id,
-                dbxref => $id
-            );
-
-        }
-        else {
-            $db_id     = $self->dbrow->db_id;
-            $accession = $xref->id;
-            $dbxref_id = $self->find_dbxref_id(
-                db     => $db_id,
-                dbxref => $accession
-            );
-        }
-        ## the dbxref lookup is done as multiple nodes can share them
-
-        if ($dbxref_id) {    ## -- shared dbxrefs present in database
-            $self->add_to_insert_cvterm_dbxrefs(
-                { dbxref_id => $dbxref_id } );
-        }
-        elsif ( $self->xref_is_tracked($accession) ) {
-            ## -- shared dbxrefs in cache: not stored in the database yet
-            $self->add_to_xref_cache( $accession,
-                [ $self->node->label, $db_id ] );
-        }
-        else {               ## -- new dbxref not either in cache or database
-            my $insert_hash
-                = { dbxref => { accession => $accession, db_id => $db_id } };
-            $self->add_to_insert_cvterm_dbxrefs($insert_hash);
-            $self->add_to_xref_tracker( $accession, 1 );
-        }
-    }
-    return Modware::Loader::Response->new(
-        is_success => 1,
-        message    => 'All dbxrefs are processed for ' . $self->node->id
+sub delete_synonyms {
+    my ( $self, $term_from_db ) = @_;
+    $term_from_db->delete_related(
+        'cvtermsynonyms',
+        {   'cv.name'   => 'synonym_type',
+            'type.name' => { -in => [qw/BROAD EXACT NARROW RELATED/] }
+        },
+        { join => [ { 'type' => 'cv' } ] }
     );
 }
 
-sub handle_comment {
-    my ($self) = @_;
-    my $node = $self->node;
-    return if !$node->comment;
-    $self->add_to_insert_cvtermprop_cvterms(
-        {   value   => $node->comment,
-            type_id => $self->find_or_create_cvterm_id(
-                db     => 'internal',
-                dbxref => 'comment',
-                cvterm => 'comment',
-                cv     => 'cvterm_property_type'
-            )
-        }
-    );
-    return Modware::Loader::Response->new(
-        is_success => 1,
-        message    => 'comments are processed for ' . $node->id
-    );
-}
-
-sub handle_rel_prop {
-    my ( $self, $prop, $value ) = @_;
-    my $node = $self->node;
-    return if !$node->$prop;
-    $self->add_to_insert_cvtermprop_cvterms(
-        {   value => $value ? $node->$prop : 1,
-            type_id => $self->find_or_create_cvterm_id(
-                db     => 'internal',
-                dbxref => $prop,
-                cvterm => $prop,
-                cv     => 'cvterm_property_type'
-            )
-        }
-    );
-
-    return Modware::Loader::Response->new(
-        is_success => 1,
-        message    => "relation property $prop processed for " . $node->id
-    );
-}
-
-sub process_xref_cache {
-    my ($self) = @_;
-    my $cache;
-    my $chado = $self->manager->chado;
-ACCESSION:
-    for my $acc ( $self->manager->cached_xref_entries ) {
-        my $data = $self->manager->get_from_xref_cache($acc);
-        my $rs   = $chado->resultset('General::Dbxref')
-            ->search( { accession => $acc, db_id => $data->[1] } );
-        next ACCESSION if !$rs->count;
-
-        my $cvterm = $chado->resultset('Cv::Cvterm')->find(
-            {   name        => $data->[0],
-                is_obsolete => 0,
-                cv_id       => $self->manager->cv_namespace->cv_id
+sub create_synonyms {
+    my ( $self, $term, $term_from_db ) = @_;
+    for my $syn ( $term->synonym_set ) {
+        $term_from_db->create_related(
+            'cvtermsynonyms',
+            {   synonym   => $syn->def->text,
+                type_id => $self->find_or_create_cvterm_namespace(
+                    $syn->scope, 'synonym_type'
+                )->cvterm_id
             }
         );
-        next ACCESSION if !$cvterm;
-        push @$cache,
-            {
-            cvterm_id => $cvterm->cvterm_id,
-            dbxref_id => $rs->first->dbxref_id
-            };
-
-        $self->manager->remove_from_xref_cache($acc);
     }
+}
 
-    $chado->txn_do(
-        sub {
-            $chado->resultset('Cv::CvtermDbxref')->populate($cache);
+sub delete_xrefs {
+    my ( $self, $term_from_db ) = @_;
+    my @dbxrefs
+        = $term_from_db->search_related( 'cvterm_dbxrefs', {} )
+        ->search_related(
+        'dbxrefs',
+        {   db_id => {
+                -not_in => [
+                    $term_from_db->dbxref->db_id,
+                    $self->find_or_create_db_id( $self->cv_namespace->name )
+                ]
+            }
         }
-    ) if defined $cache;
+        );
+    $_->delete for @dbxrefs;
+}
+
+sub create_xrefs {
+    my ( $self, $term, $term_from_db ) = @_;
+    my $set = $term->xref_set;
+    for my $xref ( $set->get_set ) {
+        if ( $self->has_idspace( $xref->name ) ) {
+            my ( $db, $id ) = $self->parse_id( $xref->name );
+            $term_from_db->create_related(
+                'cvterm_dbxrefs',
+                {   dbxref => {
+                        accession => $id,
+                        db_id     => $self->find_or_create_db_id($db)
+                    }
+                }
+            );
+        }
+        else {
+            $term_from_db->create_related(
+                'cvterm_dbxrefs',
+                {   dbxref => {
+                        accession => $xref->name,
+                        db_id     => $self->find_or_create_db_id(
+                            $self->cv_namespace->name
+                        )
+                    }
+                }
+            );
+        }
+    }
 }
 
 with 'Modware::Loader::Adhoc::Role::Ontology::Helper';

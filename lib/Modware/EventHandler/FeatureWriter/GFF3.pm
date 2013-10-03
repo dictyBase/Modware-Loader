@@ -90,7 +90,7 @@ sub _dbrow2gff3hash {
         $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
         push @$dbxrefs, $dbname . ':' . $xref_row->accession;
     }
-    $hashref->{attributes}->{Dbxref} = $dbxrefs if defined @$dbxrefs;
+    $hashref->{attributes}->{Dbxref} = $dbxrefs if  @$dbxrefs;
     return $hashref;
 }
 
