@@ -8,6 +8,8 @@ __END__
 
 Modware::Loader -  Command line apps for Chado relational database 
 
+=head1 DESCRIPTION
+
 L<Chado|http://gmod.org/wiki/Introduction_to_Chado> is an open-source modular database
 schema for biological data. This distribution provides L<MooseX::App::Cmd> based command
 line applications to import and export biological data from Chado database.
@@ -57,25 +59,10 @@ Modware-Loader L<release pages|https://github.com/dictyBase/Modware:Loader/relea
 
 =back
 
-
 =head3 Using Build.PL,  cpan and friends
 
 Just follow the instuctions in the B<INSTALL> file.
 
-
-=head1 Quick start
-
-Run any one of the following command
-
-=over
-
-<<<<<<< HEAD
-    git checkout git://github.com/dictyBase/Modware-Loader.git
-    cpanm -n Dist::Zilla
-    dzil listdeps --author --missing | cpanm -n
-    dzil install
-
-=back
 
 =head1 Build Status
 
@@ -90,7 +77,13 @@ Run any one of the following command
 </a>
 
 =end HTML
-=======
+
+=head1 Documentation
+
+Run any one of the following command
+
+=over
+
 =item modware-export
 
 =item modware-load
@@ -103,13 +96,60 @@ Run any one of the following command
 
 Then follow the instructions to run any of the subcommand. Invoking the subcommand will display further help which is more or less self-explanatory.
 
+=head2 Quick example
 
-=head1 Documentation/Examples
+Run one of the command
+
+      $_> modware-load 
+
+        Available commands:
+
+            commands: list the application's commands
+                help: display a command's help screen
+
+           adhocobo2chado:  Load an adhoc ontology in chado database 
+                obo2chado:  Load ontology from obo flat file to chado database
+         oboclosure2chado:  Populate cvtermpath in chado database
+       bioportalobo2chado:  Load ontology from NCBO bioportal to chado database
+           dictygaf2chado:  Load GO annotations from GAF file to chado database
+        dropontofromchado:  Drop ontology from chado database (use sparingly)
+                 gb2chado:  Populate oracle chado database from genbank file
+         gbassembly2chado:  Load genome assembly from genbank to oracle chado database
+
+
+Run one subcommand
+
+      $_> modware-load obo2chado
+
+        modware-load obo2chado [-?chilpu] [long options...]
+           -i --input             Name of the obo file
+           --dry_run              Dry run do not save anything in database
+           -h -? --usage --help   Prints this usage information.
+           --pg_schema            Name of postgresql schema where the ontology
+                                  will be loaded, default is public, obviously
+                                  ignored for other backend
+           --sqllib               Path to sql library in INI format, by default
+                                  picked up from the shared lib folder. Mostly a
+                                  developer option.
+           --attr --attribute     Additional database attribute
+           --pass -p --password   database password
+
+
+Execute the subcommand
+
+      $_> modware-load obo2chado --dsn 'dbi:Pg:database=mychado'  -u tucker -p tucker -i go.obo
+
+B<Done.>
+
+
+=head2 Tutorials/Blog posts
 
 =over
 
 =item L<Exporting annotations|http://dictybase.github.io/blog/2013/03/06/exporting-discoideum-annotations/>
 
 =item L<Converting  tblastn alignments to GFF3 format|http://dictybase.github.io/refining-tblastn-protein-alignments/index.html>
+
+=item L<Design pattern of chado loader|http://dictybase.github.io/blog/2013/09/18/chado-loader-design>
 
 =back
