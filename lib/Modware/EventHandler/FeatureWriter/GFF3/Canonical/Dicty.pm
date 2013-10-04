@@ -21,14 +21,15 @@ has '_gene_cache' => (
 # Module implementation
 #
 sub write_gene {
-    my ( $self, $event, $seq_id, $dbrow, $synonyms ) = @_;
-    my $hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id );
-    $hash->{attributes}->{Alias} = $synonyms if $synonyms;
-    $self->output->print( gff3_format_feature($hash) );
+    # my ( $self, $event, $seq_id, $dbrow, $synonyms ) = @_;
+    # my $hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id );
+    # $hash->{attributes}->{Alias} = $synonyms if $synonyms;
+    # $self->output->print( gff3_format_feature($hash) );
+	return;
 }
 
 sub write_transcript {
-    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
+    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow, $synonyms ) = @_;
     my $output  = $self->output;
     my $gene_id = $self->_chado_feature_id($parent_dbrow);
     my $term;
@@ -61,6 +62,7 @@ sub write_transcript {
 
         if ( !$self->has_gene_in_cache($gene_id) ) {
             my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $event, $seq_id );
+			$gene_hash->{attributes}->{Alias} = $synonyms if $synonyms;
             $output->print( gff3_format_feature($gene_hash) );
             $self->add_gene_in_cache( $gene_id, 1 );
         }

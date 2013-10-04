@@ -135,7 +135,7 @@ REFERENCE:
                 TRANSCRIPT:
                     while ( my $trow = $rs2->next ) {
                         $self->emit(
-                            'write_transcript' => ( $ref_id, $grow, $trow ) );
+                            'write_transcript' => ( $ref_id, $grow, $trow, $synonyms ) );
 
                         $self->emit( 'read_exon' => $trow );
                         if ( $self->has_response ) {

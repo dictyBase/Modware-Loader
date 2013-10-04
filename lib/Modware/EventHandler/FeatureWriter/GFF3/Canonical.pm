@@ -79,7 +79,7 @@ sub write_gene {
 }
 
 sub write_transcript {
-    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
+    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow, $synonyms ) = @_;
     my $gene_id = $self->_chado_feature_id($parent_dbrow);
     my $hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id, $gene_id );
     $self->output->print( gff3_format_feature($hash) );
