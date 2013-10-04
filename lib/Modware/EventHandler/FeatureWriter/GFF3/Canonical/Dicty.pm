@@ -21,22 +21,26 @@ has '_gene_cache' => (
 # Module implementation
 #
 sub write_gene {
-    return;
+    # my ( $self, $event, $seq_id, $dbrow, $synonyms ) = @_;
+    # my $hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id );
+    # $hash->{attributes}->{Alias} = $synonyms if $synonyms;
+    # $self->output->print( gff3_format_feature($hash) );
+	return;
 }
 
 sub write_transcript {
-    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
+    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow, $synonyms ) = @_;
     my $output  = $self->output;
     my $gene_id = $self->_chado_feature_id($parent_dbrow);
     my $term;
 
     #check cache
-    if ($event->has_cvrow_id($dbrow->type_id)) {
-    	$term = $event->get_cvrow_by_id($dbrow->type_id)->name;
+    if ( $event->has_cvrow_id( $dbrow->type_id ) ) {
+        $term = $event->get_cvrow_by_id( $dbrow->type_id )->name;
     }
-    else { #if not fills it up
-    	$term = $dbrow->type->name;
-    	$event->set_cvrow_by_id($dbrow->type_id, $dbrow->type);
+    else {    #if not fills it up
+        $term = $dbrow->type->name;
+        $event->set_cvrow_by_id( $dbrow->type_id, $dbrow->type );
     }
 
     if ( $term eq 'pseudogene' ) {
@@ -48,7 +52,7 @@ sub write_transcript {
                 = $self->pseudorow2gff3hash( $parent_dbrow, $seq_id, '',
                 'pseudogene' );
             $output->print( gff3_format_feature($pseudogene_hash) );
-            $self->add_gene_in_cache($gene_id,  1);
+            $self->add_gene_in_cache( $gene_id, 1 );
         }
         my $trans_hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $gene_id,
             'pseudogenic_transcript' );
@@ -57,9 +61,10 @@ sub write_transcript {
     else {
 
         if ( !$self->has_gene_in_cache($gene_id) ) {
-            my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $event,  $seq_id );
+            my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $event, $seq_id );
+			$gene_hash->{attributes}->{Alias} = $synonyms if $synonyms;
             $output->print( gff3_format_feature($gene_hash) );
-            $self->add_gene_in_cache($gene_id, 1);
+            $self->add_gene_in_cache( $gene_id, 1 );
         }
 
         #transcript
@@ -73,12 +78,12 @@ sub write_exon {
     my $output   = $self->output;
     my $trans_id = $self->_chado_feature_id($parent_dbrow);
     my $hash;
-    if ( $event->get_cvrow_by_id($parent_dbrow->type_id)->name eq 'pseudogene' ) {
+    if ( $event->get_cvrow_by_id( $parent_dbrow->type_id )->name eq 'pseudogene' ) {
         $hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $trans_id,
             'pseudogenic_exon' );
     }
     else {
-        $hash = $self->_dbrow2gff3hash( $dbrow, $event,  $seq_id, $trans_id );
+        $hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id, $trans_id );
     }
     $output->print( gff3_format_feature($hash) );
 }
@@ -129,8 +134,12 @@ sub pseudorow2gff3hash {
         $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
         push @$dbxrefs, $dbname . ':' . $xref_row->accession;
     }
-    $hashref->{attributes}->{Dbxref} = $dbxrefs if @$dbxrefs;
+    $hashref->{attributes}->{Dbxref} = $dbxrefs if $dbxrefs;
     return $hashref;
+}
+
+sub write_synonym {
+    return;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -22,6 +22,7 @@ has_events
 has_events
     qw/read_gene write_gene read_transcript write_transcript read_exon write_exon/;
 has_events qw/read_cds write_cds read_polypeptide write_polypeptide/;
+has_events qw/read_synonym write_synonym/;
 
 has 'resource' => (
     is       => 'rw',
@@ -117,14 +118,24 @@ REFERENCE:
             my $rs = $self->response;
         GENE:
             while ( my $grow = $rs->next ) {
-                $self->emit( 'write_gene' => ( $ref_id, $grow ) );
+                $self->emit( 'read_synonym' => $grow );
+                my $synonyms;
+                if ( $self->has_response ) {
+                    my $syn_rs = $self->response;
+
+                SYNONYM:
+                    while ( my $synrow = $syn_rs->next ) {
+                        push @$synonyms, $synrow->synonym->name;
+                    }
+                }
+                $self->emit( 'write_gene' => ( $ref_id, $grow, $synonyms ) );
                 $self->emit( 'read_transcript' => $grow );
                 if ( $self->has_response ) {
                     my $rs2 = $self->response;
                 TRANSCRIPT:
                     while ( my $trow = $rs2->next ) {
                         $self->emit(
-                            'write_transcript' => ( $ref_id, $grow, $trow ) );
+                            'write_transcript' => ( $ref_id, $grow, $trow, $synonyms ) );
 
                         $self->emit( 'read_exon' => $trow );
                         if ( $self->has_response ) {

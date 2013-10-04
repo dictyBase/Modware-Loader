@@ -34,8 +34,8 @@ sub read_transcript_by_source {
         { join        => 'type' }
         )->search_related(
         'subject',
-        {   'type_2.name' => { -in => [ 'mRNA', 'pseudogene' ] },
-            'dbxref.accession' => $self->source, 
+        {   'type_2.name'      => { -in => [ 'mRNA', 'pseudogene' ] },
+            'dbxref.accession' => $self->source,
             'is_deleted'       => 0,
             'db.name'          => 'GFF_source'
         },
@@ -100,6 +100,13 @@ sub read_exon {
         { join          => 'type' }
         );
     $event->response($rs);
+}
+
+sub read_synonym {
+    my ( $self, $event, $dbrow ) = @_;
+    my $syn_rs = $dbrow->search_related( 'feature_synonyms', {},
+        { join => 'alternate_names' } );
+    $event->response($syn_rs);
 }
 
 __PACKAGE__->meta->make_immutable;
