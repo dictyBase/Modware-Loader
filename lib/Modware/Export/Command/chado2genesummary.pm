@@ -112,6 +112,27 @@ sub _build_pub_id_pmid {
     return $hash;
 }
 
+has _proper_names => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    traits  => [qw/Hash/],
+    default => sub {
+        {   PF           => 'Petra Fey',
+            CGM_DDB_PFEY => 'Petra Fey',
+            RD           => 'Robert Dodson',
+            CGM_DDB_BOBD => 'Robert Dodson',
+            PG           => 'Pascale Gaudet',
+            CGM_DDB_PASC => 'Pascale Gaudet',
+            CGM_DDB_KPIL => 'Karen Kestin'
+        };
+    },
+    handles => {
+        get_author_name => 'get',
+        has_author_name => 'defined'
+    },
+    lazy => 1,
+);
+
 sub execute {
     my ($self) = @_;
 
@@ -151,9 +172,12 @@ sub execute {
         my $wiki
             = $self->convert_xml_to_mediawiki( $para_rs->paragraph_text );
         my $ddbg_id = $fp->[0];
-        my $outstr  = sprintf "%s\t%s\t%s\n",
-            $ddbg_id, $para_rs->written_by,
-            $wiki;
+        my $author
+            = ( $self->has_author_name( $para_rs->written_by ) )
+            ? $self->get_author_name( $para_rs->written_by )
+            : $para_rs->written_by;
+
+        my $outstr = sprintf "%s\t%s\t%s\n", $ddbg_id, $author, $wiki;
         $self->output_handler->print($outstr);
     }
     $self->output_handler->close();
@@ -167,9 +191,10 @@ sub convert_xml_to_mediawiki {
     my $xml_parser = XML::Twig->new();
     my $xml        = $xml_parser->parse($paragraph);
     for my $gene ( $xml->descendants('locus') ) {
-        my $to_replace = $gene->sprint();
-        my $replace_with
-            = "<a href=\"/gene/$gene->att('gene_id')\">$gene->att('name')</a>";
+        my $ddbg_id      = $gene->att('gene_id');
+        my $gene_symbol  = $gene->att('name');
+        my $to_replace   = $gene->sprint();
+        my $replace_with = "<a href=\"/gene/$ddbg_id\">$gene_symbol</a>";
         $paragraph =~ s/$to_replace/$replace_with/;
     }
     for my $go ( $xml->descendants('go') ) {
@@ -190,8 +215,9 @@ sub convert_xml_to_mediawiki {
         }
         if ($pmid) {
             my $to_replace = $ref->sprint();
+            my $ref_text   = $ref->text;
             my $replace_with
-                = "<a href=\"http://www.ncbi.nlm.nih.gov/pubmed/$pmid\">$ref->text</a>";
+                = "<a href=\"http://www.ncbi.nlm.nih.gov/pubmed/$pmid\">$ref_text</a>";
 
             # Regex metacharacters can exist in reference tags, thus \Q...\E
             $paragraph =~ s/\Q$to_replace\E/$replace_with/;
@@ -201,12 +227,13 @@ sub convert_xml_to_mediawiki {
                     . $ref->att('reference_no') );
         }
     }
-    return $self->trim( $self->wiki_converter->html2wiki($paragraph) );
+    my $html = $self->trim($paragraph);
+    return $self->wiki_converter->html2wiki($html);
 }
 
 sub trim {
     my ( $self, $s ) = @_;
-    $s =~ s/\n\r/ /g;
+    $s =~ s/[\n\r]//g;
     $s =~ s/\t/ /g;
     $s =~ s/^\s+//g;
     $s =~ s/\s+$//g;
@@ -222,11 +249,11 @@ __END__
 Modware::Export::Command::chado2genesummary - Export gene summary for GFF3 sequence features
 
 =head1 SYNOPSIS
+
 =head1 DESCRIPTION
 
 Command to export gene summaries & curation status notes to MediaWiki format. 
 Currently, it is in XML with custom implicit tags which are rendered as link on the front-end. 
 This command replaces such tags/links with proper 'href' for efficient conversion to MediaWiki.
 
-=head1 VERSION
-=over
+=cut
