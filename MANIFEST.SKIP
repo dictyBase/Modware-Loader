@@ -8,5 +8,7 @@
 \blocal/
 \b.carton/
 \bgaf_check/
+\bdata_dump/
+\bcarton\.lock\b
 \b_build/
 
