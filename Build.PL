@@ -45,6 +45,7 @@ my %module_build_args = (
     "Email::Valid" => "0.184",
     "File::Find::Rule" => "0.32",
     "HTML::WikiConverter" => "0.68",
+    "HTML::WikiConverter::MediaWiki" => "0.59",
     "Log::Log4perl" => "1.40",
     "MooseX::App::Cmd" => "0.09",
     "MooseX::Attribute::Dependent" => "v1.1.2",
