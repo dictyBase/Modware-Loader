@@ -28,11 +28,13 @@ subtest 'existence of organism in datastore' => sub {
         genus   => 'Homo'
     );
     ok( $datasource->exists_in_datastore($schema),
-        'should have Homo sapiens in datastore' );
+        'should have Homo sapiens in datastore'
+    );
     $datasource
         = Modware::DataSource::Chado::Organism->new( common_name => 'mouse' );
     ok( $datasource->exists_in_datastore($schema),
-         'should have mouse in datastore' );
+        'should have mouse in datastore'
+    );
     drop_schema();
 };
 

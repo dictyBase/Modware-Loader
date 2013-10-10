@@ -1,0 +1,17 @@
+[create_table_temp_feature]
+    CREATE TABLE temp_feature (
+           seqid varchar(256) NOT NULL,
+           source_dbxref_id integer NOT NULL,
+           type_id integer NOT NULL,
+           start integer NOT NULL,
+           end integer NOT NULL,
+           score real,
+           strand integer,
+           phase integer
+    )
+
+[create_table_temp_feature_attr]
+    CREATE TABLE temp_feature_attr (
+           attribute varchar(1024) NOT NULL,
+           value text NOT NULL
+    )
