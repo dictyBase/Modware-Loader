@@ -4,7 +4,7 @@
       "Siddhartha Basu <biosidd@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.300039, CPAN::Meta::Converter version 2.132140",
+   "generated_by" : "Dist::Zilla version 4.300039, CPAN::Meta::Converter version 2.132661",
    "license" : [
       "perl_5"
    ],
@@ -54,6 +54,8 @@
             "Email::Simple" : "2.10",
             "Email::Valid" : "0.184",
             "File::Find::Rule" : "0.32",
+            "HTML::WikiConverter" : "0.68",
+            "HTML::WikiConverter::MediaWiki" : "0.59",
             "Log::Log4perl" : "1.40",
             "MooseX::App::Cmd" : "0.09",
             "MooseX::Attribute::Dependent" : "v1.1.2",
@@ -69,6 +71,7 @@
             "Sub::Uplevel" : "0.24",
             "Text::CSV" : "1.32",
             "Tie::Cache" : "0.17",
+            "XML::Twig" : "3.44",
             "perl" : "5.010"
          }
       },
