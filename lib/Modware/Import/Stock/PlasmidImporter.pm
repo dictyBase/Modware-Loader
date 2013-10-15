@@ -2,11 +2,17 @@
 package Modware::Import::Stock::PlasmidImporter;
 
 use strict;
+use feature 'say';
 
+use Bio::SeqIO;
 use Carp;
+use Digest::MD5 qw(md5_hex);
+use File::Temp;
+use IO::String;
 use LWP::Simple qw/head/;
 use Moose;
 use namespace::autoclean;
+use Path::Class::Dir;
 use Text::CSV;
 
 use Modware::Import::Stock::DataTransformer;
@@ -239,7 +245,7 @@ sub import_inventory {
         )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data / 6
+                . ( scalar @stock_data / 6 )
                 . " plasmid inventory entries. Missed $missed entries" );
     }
     return;
@@ -284,6 +290,87 @@ sub import_images {
         $self->logger->info(
             "Imported " . scalar @stock_data . " plasmid map entries." );
     }
+    return;
+}
+
+sub import_plasmid_sequence {
+    my ( $self, $data_dir ) = @_;
+    $self->logger->info("Importing plasmid sequences");
+
+    croak "Please load plasmid data first!"
+        if !$self->utils->is_stock_loaded('plasmid');
+
+# my $dbh = $self->schema->storage->dbh;
+# my $stock_ids
+#     = $dbh->selectall_arrayref(
+#     qq{SELECT s.uniquename FROM stock s JOIN cvterm typ ON typ.cvterm_id = s.type_id WHERE typ.name = 'plasmid'}
+#     );
+
+    my $seq_dir = Path::Class::Dir->new($data_dir);
+    while ( my $file = $seq_dir->next ) {
+        my $fasta_seq_io;
+
+        # say $file->basename;
+        if ( $file->basename =~ m/^DBP[0-9]{7}.genbank/ ) {
+            my $gb_seq_io = Bio::SeqIO->new(
+                -file   => $file->stringify,
+                -format => 'genbank'
+            );
+
+            my $tmp_fasta_file = File::Temp->new(
+                UNLINK => 0,
+                EXLOCK => 0,
+                SUFFIX => '.fa'
+            );
+
+            my $string   = undef;
+            my $stringio = IO::String->new($string);
+            $fasta_seq_io = Bio::SeqIO->new(
+                -fh     => $stringio,
+                -format => 'fasta'
+            );
+            print $string;
+            while ( my $gb_seq = $gb_seq_io->next_seq() ) {
+                $fasta_seq_io->write_seq($gb_seq);
+            }
+            while ( my $fasta = $fasta_seq_io->next_seq ) {
+                say $file->basename . "\t" . $fasta->id;
+            }
+        }
+        elsif ( $file->basename =~ m/^DBP[0-9]{7}.fasta/ ) {
+            $fasta_seq_io = Bio::SeqIO->new(
+                -file   => $file->stringify,
+                -format => 'fasta'
+            );
+        }
+        else {
+            next;
+        }
+        $self->_load_fasta($fasta_seq_io) if $fasta_seq_io;
+    }
+    File::Temp::cleanup();
+    return;
+}
+
+sub _load_fasta {
+    my ( $self, $seqio ) = @_;
+    my $type_id = $self->find_cvterm('plasmid');
+    while ( my $seq = $seqio->next_seq ) {
+        my $stock_name = $self->find_stock_name( $seq->id );
+        my $name       = $seq->id;
+        $name = $stock_name if $stock_name;
+        say sprintf "%s\t%s\t%s\t%d\t%d", $name, $seq->id,
+            md5_hex( $seq->seq ), $seq->length, $type_id;
+        my $feature = {
+            name        => $name,
+            uniquename  => $seq->id,
+            residues    => $seq->seq,
+            seqlen      => $seq->length,
+            md5checksum => md5_hex( $seq->seq ),
+            type_id     => $type_id
+        };
+    }
+
 }
 
 1;

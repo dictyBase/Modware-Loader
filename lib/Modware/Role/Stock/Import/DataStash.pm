@@ -154,6 +154,20 @@ sub find_stock {
     return;
 }
 
+sub find_stock_name {
+    my ( $self, $id ) = @_;
+    if ( $self->has_stock_row($id) ) {
+        return $self->get_stock_row($id)->name;
+    }
+    my $row = $self->schema->resultset('Stock::Stock')
+        ->search( { uniquename => $id }, {} );
+    if ( $row->count > 0 ) {
+        $self->set_stock_row( $id, $row->first );
+        return $self->get_stock_row($id)->name;
+    }
+    return;
+}
+
 has '_pub_row' => (
     is      => 'rw',
     isa     => 'HashRef',
@@ -264,9 +278,10 @@ sub find_or_create_genotype {
     }
     else {
         my $stock_rs = $self->find_stock($dbs_id);
-		if (!$stock_rs) {
-			return;
-		}
+        if ( !$stock_rs ) {
+            return;
+        }
+
         # my $genotype_uniquename = $self->generate_uniquename('DSC_G');
         my $genotype_uniquename
             = $self->utils->nextval( 'genotype', 'DSC_G' );
