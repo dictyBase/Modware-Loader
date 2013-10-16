@@ -1,17 +1,41 @@
 [create_table_temp_feature]
     CREATE TABLE temp_feature (
-           seqid varchar(256) NOT NULL,
            source_dbxref_id integer NOT NULL,
            type_id integer NOT NULL,
-           start integer NOT NULL,
-           end integer NOT NULL,
-           score real,
-           strand integer,
-           phase integer
+           organism_id integer NOT NULL,
+           id varchar(56) NOT NULL
+           name varchar(256)
+           residue text
     )
 
-[create_table_temp_feature_attr]
-    CREATE TABLE temp_feature_attr (
-           attribute varchar(1024) NOT NULL,
-           value text NOT NULL
+
+[create_table_temp_featureloc]
+    CREATE TABLE temp_featureloc (
+           id varchar(56) NOT NULL,
+           seqid varchar(20) NOT NULL,
+           start int NOT NULL,
+           end int NOT NULL,
+           strand int,
+           phase int
+    )
+
+[create_table_temp_analysisfeature]
+    CREATE TABLE temp_analysisfeature (
+           id varchar(56) NOT NULL,
+           score double,
+           analysis_id smallint NOT NULL
+    )
+
+[create_table_temp_feature_synonym]
+    CREATE TABLE temp_feature_synonym (
+           id varchar(56) NOT NULL,
+           alias varchar(255) NOT NULL,
+           type_id integer NOT NULL
+    )
+
+[create_table_temp_feature_relationship]
+    CREATE TABLE temp_feature_relationship (
+           id varchar(56) NOT NULL,
+           child_id varchar(56) NOT NULL,
+           type_id integer NOT NULL
     )
