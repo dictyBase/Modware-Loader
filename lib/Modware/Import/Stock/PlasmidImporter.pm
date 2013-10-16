@@ -300,15 +300,10 @@ sub import_plasmid_sequence {
     croak "Please load plasmid data first!"
         if !$self->utils->is_stock_loaded('plasmid');
 
-# my $dbh = $self->schema->storage->dbh;
-# my $stock_ids
-#     = $dbh->selectall_arrayref(
-#     qq{SELECT s.uniquename FROM stock s JOIN cvterm typ ON typ.cvterm_id = s.type_id WHERE typ.name = 'plasmid'}
-#     );
-
     my $seq_dir = Path::Class::Dir->new($data_dir);
     while ( my $file = $seq_dir->next ) {
         my $fasta_seq_io;
+        ( my $dbp_id = $file->basename ) =~ s/.[a-z]{5,7}$//;
 
         # say $file->basename;
         if ( $file->basename =~ m/^DBP[0-9]{7}.genbank/ ) {
@@ -323,19 +318,17 @@ sub import_plasmid_sequence {
                 SUFFIX => '.fa'
             );
 
-            my $string   = undef;
-            my $stringio = IO::String->new($string);
-            $fasta_seq_io = Bio::SeqIO->new(
-                -fh     => $stringio,
+            my $fasta_seq_out = Bio::SeqIO->new(
+                -file   => ">$tmp_fasta_file",
                 -format => 'fasta'
             );
-            print $string;
             while ( my $gb_seq = $gb_seq_io->next_seq() ) {
-                $fasta_seq_io->write_seq($gb_seq);
+                $fasta_seq_out->write_seq($gb_seq);
             }
-            while ( my $fasta = $fasta_seq_io->next_seq ) {
-                say $file->basename . "\t" . $fasta->id;
-            }
+            $fasta_seq_io = Bio::SeqIO->new(
+                -file   => $tmp_fasta_file,
+                -format => 'fasta'
+            );
         }
         elsif ( $file->basename =~ m/^DBP[0-9]{7}.fasta/ ) {
             $fasta_seq_io = Bio::SeqIO->new(
@@ -344,31 +337,68 @@ sub import_plasmid_sequence {
             );
         }
         else {
+            $self->logger->warn(
+                $file->basename . " does not have a DBP-ID" );
             next;
         }
-        $self->_load_fasta($fasta_seq_io) if $fasta_seq_io;
+        $self->_load_fasta( $fasta_seq_io, $dbp_id ) if $fasta_seq_io;
     }
     File::Temp::cleanup();
     return;
 }
 
 sub _load_fasta {
-    my ( $self, $seqio ) = @_;
+    my ( $self, $seqio, $dbp_id ) = @_;
     my $type_id = $self->find_cvterm('plasmid');
+    my $organism_id
+        = $self->find_or_create_organism('Dictyostelium discoideum');
     while ( my $seq = $seqio->next_seq ) {
-        my $stock_name = $self->find_stock_name( $seq->id );
-        my $name       = $seq->id;
+        my $stock_name = $self->find_stock_name($dbp_id);
+        my $name       = $dbp_id;
         $name = $stock_name if $stock_name;
-        say sprintf "%s\t%s\t%s\t%d\t%d", $name, $seq->id,
-            md5_hex( $seq->seq ), $seq->length, $type_id;
+        my $dbxref_accession = $seq->id;
+        $dbxref_accession = $dbp_id if $dbxref_accession =~ m/unknown/;
+
+        my $dbxref_id;
+        if ( $dbxref_accession eq $dbp_id ) {
+            $self->db('dictyBase');
+            $dbxref_id = $self->find_or_create_dbxref($dbxref_accession);
+        }
+        else {
+            $self->db('GenBank');
+            $dbxref_id = $self->find_or_create_dbxref($dbxref_accession);
+        }
+        my @data;
         my $feature = {
             name        => $name,
-            uniquename  => $seq->id,
+            uniquename  => $dbp_id,
             residues    => $seq->seq,
             seqlen      => $seq->length,
             md5checksum => md5_hex( $seq->seq ),
-            type_id     => $type_id
+            type_id     => $type_id,
+            dbxref_id   => $dbxref_id,
+            organism_id => $organism_id
         };
+        push @data, $feature;
+        my $feat_rs = $self->schema->resultset('Sequence::Feature')
+            ->populate( \@data );
+        my $stock_id = $self->find_stock($dbp_id);
+        if ( $feat_rs and $stock_id ) {
+            my $feature_id = @{$feat_rs}[0]->feature_id;
+            my $sp_type_id
+                = $self->find_cvterm( 'plasmid_vector', 'sequence' );
+            $self->schema->resultset('Stock::Stockprop')->create(
+                {   stock_id => $stock_id,
+                    type_id  => $sp_type_id,
+                    value    => $feature_id
+                }
+            );
+        }
+        else {
+            $self->logger->warn(
+                'Sequence present but no stock entry for ' . $dbp_id );
+        }
+
     }
 
 }
