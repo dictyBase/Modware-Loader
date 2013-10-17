@@ -394,6 +394,59 @@ sub _load_fasta {
     return;
 }
 
+sub import_genes {
+
+    my ( $self, $input ) = @_;
+    $self->logger->info("Importing data from $input");
+
+    croak "Please load plasmid data first!"
+        if !$self->utils->is_stock_loaded('plasmid');
+
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
+    my $csv = Text::CSV->new( { binary => 1 } )
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
+    $csv->sep_char("\t");
+
+    my $type_id = $self->find_or_create_cvterm( 'has_part', 'sequence' );
+    my @stock_props;
+    my $rank             = 0;
+    my $previous_stock_id = 0;
+    while ( my $line = $io->getline() ) {
+        if ( $csv->parse($line) ) {
+            my @fields = $csv->fields();
+            if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
+                $self->logger->debug(
+                    "Line starts with $fields[0]. Expected DBS ID");
+                next;
+            }
+
+            my $plasmid_genes;
+            $plasmid_genes->{stock_id} = $self->find_stock( $fields[0] );
+            if ( !$plasmid_genes->{stock_id} ) {
+                $self->logger->debug("Failed import of props for $fields[0]");
+                next;
+            }
+            $plasmid_genes->{type_id} = $type_id;
+            $rank = 0 if $previous_stock_id ne $plasmid_genes->{stock_id};
+            $plasmid_genes->{value} = $fields[1];
+            $plasmid_genes->{rank}  = $rank;
+            push @stock_props, $plasmid_genes;
+            $rank              = $rank + 1;
+            $previous_stock_id = $plasmid_genes->{stock_id};
+        }
+    }
+    $io->close();
+    my $missed = $csv->record_number() / 2 - scalar @stock_props;
+    if ( $self->schema->resultset('Stock::Stockprop')
+        ->populate( \@stock_props ) )
+    {
+        $self->logger->info( "Imported "
+                . scalar @stock_props
+                . " plasmid-gene entries. Missed $missed entries" );
+    }
+    return;
+}
+
 1;
 
 __END__
