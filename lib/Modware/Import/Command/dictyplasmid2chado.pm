@@ -18,8 +18,17 @@ has data => (
     is      => 'rw',
     isa     => 'ArrayRef',
     default => sub {
-        [qw/publications props inventory images/];
-    }
+        [qw/publications props inventory images sequence/];
+    },
+    documentation =>
+        'Data to be imported. Default all (publications, props, inventory, images, sequence)'
+);
+
+has seq_data_dir => (
+    is  => 'rw',
+    isa => 'Str',
+    documentation =>
+        'Path to folder with plasmid sequence files in GenBank|FastA formats'
 );
 
 has mock_pubs => (
@@ -56,15 +65,23 @@ sub execute {
     my $input_file = catfile( $self->data_dir, $prefix . 'plasmid.tsv' );
     $importer->import_stock($input_file);
     foreach my $data ( @{ $self->data } ) {
-        if ( $data ne 'images' ) {
-            my $input_file
-                = catfile( $self->data_dir, $prefix . $data . '.tsv' );
-            my $import_data = 'import_' . $data;
-            $importer->$import_data($input_file);
-        }
-        else {
+        if ( $data eq 'images' ) {
             $importer->import_images($base_image_url);
+            next;
         }
+        if ( $data eq 'sequence' ) {
+            if ( $self->seq_data_dir ) {
+                $importer->import_plasmid_sequence( $self->seq_data_dir );
+            }
+            else {
+                $self->logger->warn("seq_data_folder not set");
+            }
+            next;
+        }
+
+        my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
+        my $import_data = 'import_' . $data;
+        $importer->$import_data($input_file);
     }
 
     $guard->commit;
