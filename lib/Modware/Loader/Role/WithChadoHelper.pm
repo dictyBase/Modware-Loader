@@ -5,9 +5,57 @@ use Moose::Role;
 use Encode;
 use utf8;
 with 'Modware::Role::WithDataStash' =>
-    { create_kv_stash_for => [qw/cv cvterm db/] };
+    { create_kv_stash_for => [qw/cv cvterm db dbxref/] };
 
 requires 'schema';
+
+sub get_organism_row {
+    my ( $self, $organism ) = @_;
+    my $row
+        = $self->schema->resultset('Organism::Organism')
+        ->find(
+        { species => $organism->species, genus => $organism->genus } );
+    return $row if $row;
+}
+
+sub 
+
+sub find_cvterm_row {
+    my ( $self, $cvterm, $cv ) = @_;
+    my $key = $cv . '-' . $cvterm;
+    if ( $self->has_cvterm_row($key) ) {
+        return $self->get_cvterm_row($key);
+    }
+    my $row = $self->schema->resultset('Cv::Cvterm')
+        ->find( { name => $cvterm, 'cv.name' => $cv }, { join => 'cv' } );
+    if ($row) {
+        $self->set_cvterm_row( $key, $row );
+        return $row;
+    }
+}
+
+sub find_or_create_dbxref_row {
+    my ( $self, $dbxref, $db ) = @_;
+    if ( $self->has_dbxref_row($dbxref) ) {
+        return $self->get_dbxref_row($dbxref);
+    }
+    my $row = $self->schema->resultset('General::Dbxref')->find(
+        {   'accession' => $dbxref,
+            'db.name'   => $db
+        },
+        { join => 'db' }
+    );
+
+    if ($row) {
+        $self->set_dbxref_row( $dbxref, $row );
+    }
+    else {
+        $row = $self->schema->resultset('General::Dbxref')
+            ->create( { accession => $dbxref, db => { name => $db } } );
+        $self->set_dbxref_row( $dbxref, $row );
+    }
+    return $row;
+}
 
 sub find_or_create_dbrow {
     my ( $self, $db ) = @_;
