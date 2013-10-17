@@ -18,9 +18,7 @@ has data => (
     is      => 'rw',
     isa     => 'ArrayRef',
     default => sub {
-
-        # [qw/publications props inventory images/];
-        [qw/sequence/];
+        [qw/publications props inventory images sequence/];
     },
     documentation =>
         'Data to be imported. Default all (publications, props, inventory, images, sequence)'

@@ -304,21 +304,13 @@ sub import_plasmid_sequence {
     while ( my $file = $seq_dir->next ) {
         my $fasta_seq_io;
         ( my $dbp_id = $file->basename ) =~ s/.[a-z]{5,7}$//;
-
-        # say $file->basename;
         if ( $file->basename =~ m/^DBP[0-9]{7}.genbank/ ) {
             my $gb_seq_io = Bio::SeqIO->new(
                 -file   => $file->stringify,
                 -format => 'genbank'
             );
-
-            my $tmp_fasta_file = File::Temp->new(
-                UNLINK => 0,
-                EXLOCK => 0,
-                SUFFIX => '.fa'
-            );
-
-            my $fasta_seq_out = Bio::SeqIO->new(
+            my $tmp_fasta_file = File::Temp->new();
+            my $fasta_seq_out  = Bio::SeqIO->new(
                 -file   => ">$tmp_fasta_file",
                 -format => 'fasta'
             );
@@ -398,9 +390,8 @@ sub _load_fasta {
             $self->logger->warn(
                 'Sequence present but no stock entry for ' . $dbp_id );
         }
-
     }
-
+    return;
 }
 
 1;
