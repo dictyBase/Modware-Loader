@@ -18,7 +18,7 @@ has data => (
     is      => 'rw',
     isa     => 'ArrayRef',
     default => sub {
-        [qw/publications props inventory images sequence/];
+        [qw/publications props inventory images genes sequence/];
     },
     documentation =>
         'Data to be imported. Default all (publications, props, inventory, images, sequence)'
@@ -35,6 +35,8 @@ has mock_pubs => (
     is      => 'rw',
     isa     => 'Bool',
     default => 0,
+    documentation =>
+        'Mock publications, pub data is not populated. Default 0. Should be used only for testing code'
 );
 
 sub execute {
