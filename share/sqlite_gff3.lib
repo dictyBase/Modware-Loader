@@ -5,9 +5,15 @@
            organism_id integer NOT NULL,
            id varchar(56) NOT NULL
            name varchar(256)
-           residue text
     )
 
+[create_table_temp_featureseq]
+    CREATE TABLE temp_featureseq (
+           id varchar(56) NOT NULL,
+           residue text NOT NULL,
+           md5 varchar(128) NOT NULL,
+           seqlen int NOT NULL
+    )
 
 [create_table_temp_featureloc]
     CREATE TABLE temp_featureloc (
