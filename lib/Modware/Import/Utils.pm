@@ -21,7 +21,7 @@ sub prune_stock {
             my ( $storage, $dbh ) = @_;
             my $sth;
             for my $table (
-                qw/stock stockprop stock_cvterm stock_pub stock_genotype genotype phenotype environment stock_relationship phenstatement phenotypeprop/
+                qw/feature stock stockprop stock_cvterm stock_pub stock_genotype genotype phenotype environment stock_relationship phenstatement phenotypeprop/
                 )
             {
                 $sth = $dbh->prepare(qq{DELETE FROM $table});

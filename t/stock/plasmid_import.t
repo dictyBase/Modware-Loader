@@ -23,7 +23,7 @@ SKIP: {
         }
     );
     my $logger = Log::Log4perl->get_logger('My::TestChado');
-	use_ok('Modware::Import::Utils');
+    use_ok('Modware::Import::Utils');
     my $utils
         = Modware::Import::Utils->new( schema => $schema, logger => $logger );
 
@@ -64,6 +64,22 @@ SKIP: {
         ->search( { 'type.name' => 'plasmid' },
         { join => { 'stock' => 'type' } } );
     is( $plasmid_prop_rs->count, 85, 'Should have 85 stockprop entries' );
+
+    dies_ok { $importer->import_plasmid_sequence( $importer->seq_data_dir ) }
+    'Should die as seq_data_dir not set';
+
+    $importer->find_or_create_cvterm( 'plasmid_vector', 'sequence' );
+    lives_ok {
+        $importer->import_plasmid_sequence(
+            $data_dir->subdir('plasmid_sequence') );
+    }
+    'Should import plasmid sequences';
+
+    # has_db( $schema, 'GenBank',   'should have GenBank in db table' );
+
+    my $feat_rs = $schema->resultset('Sequence::Feature')
+        ->search( { uniquename => { -like => '%DBP0%' } } );
+    is( $feat_rs->count, 2, 'Should have 2 plasmid sequence features' );
 
     drop_schema();
 }
