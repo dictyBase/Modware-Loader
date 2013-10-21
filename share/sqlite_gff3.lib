@@ -36,7 +36,8 @@
     CREATE TABLE temp_feature_synonym (
            id varchar(56) NOT NULL,
            alias varchar(255) NOT NULL,
-           type_id integer NOT NULL
+           type_id integer NOT NULL,
+           pub_id integer NOT NULL
     )
 
 [create_table_temp_feature_relationship]
