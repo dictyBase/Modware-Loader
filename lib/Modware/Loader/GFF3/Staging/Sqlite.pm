@@ -1,9 +1,11 @@
 package Modware::Loader::GFF3::Staging::Sqlite;
 use namespace::autoclean;
 use Moose;
-use Modware::Spec::Analysis;
-with 'Modware::Role::WithDataStash' =>
-    { 'create_stash_for' => [qw/feature/] };
+use Modware::Spec::GFF3::Analysis;
+with 'Modware::Role::WithDataStash' => {
+    'create_stash_for'    => [qw/feature analysis/],
+    'create_kv_stash_for' => [qw/analysis/]
+};
 
 has 'schema' => (
     is  => 'rw',
@@ -12,11 +14,20 @@ has 'schema' => (
 
 has 'logger'   => ( is => 'rw', isa  => 'Log::Log4perl::Logger' );
 has 'organism' => ( is => 'rw', does => 'Modware::Role::WithOrganism' );
-has 'organism_id' => (
-    is      => 'rw',
-    isa     => 'Int',
+has [qw/organism_id analysis_id/] => (
+    is  => 'rw',
+    isa => 'Int',
 );
-has 'analysis_spec' => ( is => 'rw', isa => 'Modware::Spec::Analysis', predicate => 'has_analysis_spec');
+has 'analysis_spec' => (
+    is        => 'rw',
+    isa       => 'Modware::Spec::GFF3::Analysis',
+    predicate => 'has_analysis_spec'
+);
+has 'synonym_spec' => (
+    is => 'rw',
+    isa => 'Modware::Spec::GFF3::Synonym',
+    predicate => 'has_synonym_spec'
+);
 
 sub create_tables {
     my ($self) = @_;
@@ -28,8 +39,21 @@ sub create_tables {
 sub initialize {
     my ($self) = @_;
     $self->organism_id(
-        $self->get_organism_row( $self->organism )->organism_id
-    );
+        $self->get_organism_row( $self->organism )->organism_id );
+    return if !$self->has_analysis_spec;
+
+    my $spec = $self->analysis_spec;
+    my $rowhash = { program => $spec->program };
+    for my $attr (qw/sourcename programversion/) {
+        $rowhash->{$attr} = $spec->$attr if $spec->$attr;
+    }
+    my $row = $self->schema->resultset('Companalysis::Analysis')
+        ->find_or_new($rowhash);
+    if ( !$row->in_storgae ) {
+        $row->name( $spec->name ) if $spec->name;
+        $row->insert();
+    }
+    $self->analysis_id( $row->analysis_id );
 }
 
 sub drop_tables {
@@ -58,16 +82,53 @@ sub bulk_load {
 #}
 sub add_data {
     my ( $self, $gff_hashref ) = @_;
-    my $feature_hash = $self->get_insert_feature_hash($gff_hashref);
+    my $feature_hash = $self->make_feature_hash($gff_hashref);
     $self->add_to_feature_cache($feature_hash);
 }
 
-sub get_insert_analysisfeature_hash {
+sub make_feature_synonym_hash {
     my ( $self, $gff_hashref, $feature_hash ) = @_;
-    return if not defined $gff_hashref->{score};
 }
 
-sub get_insert_featureloc_hash {
+sub make_analysisfeature_hash {
+    my ( $self, $gff_hashref, $feature_hash ) = @_;
+    return if not defined $gff_hashref->{score};
+    my $insert_hash;
+    if ( $self->analysis_id ) {
+        $insert_hash = {
+            id          => $feature_hash->{id},
+            score       => $gff_hashref->{score},
+            analysis_id => $self->analysis_id
+        };
+        return $insert_hash;
+    }
+    my $analysis_key
+        = $gff_hashref->{source} . '-' . $gff_hashref->{type} . '-1.0';
+    my $analysis_id;
+    if ( $self->has_analysis_row($analysis_key) ) {
+        $analysis_id = $self->get_analysis_row($analysis_key)->analysis_id;
+    }
+    else {
+        my $analysis_row
+            = $self->schema->resultset('Companalysis::Analysis')->create(
+            {   program => $gff_hashref->{source} . '-'
+                    . $gff_hashref->{type},
+                name => $gff_hashref->{source} . '-' . $gff_hashref->{type},
+                programversion => '1.0'
+            }
+            );
+        $self->set_analysis_row( $analysis_key, $analysis_row );
+        $analysis_id = $analysis_row->analysis_id;
+    }
+    $insert_hash = {
+        id          => $feature_hash->{id},
+        score       => $gff_hashref->{score},
+        analysis_id => $analysis_id
+    };
+    $insert_hash;
+}
+
+sub make_featureloc_hash {
     my ( $self, $gff_hashref, $feature_hash ) = @_;
     my $insert_hash = {
         id    => $feature_hash->{id},
@@ -83,7 +144,7 @@ sub get_insert_featureloc_hash {
     return $insert_hash;
 }
 
-sub get_insert_feature_hash {
+sub make_feature_hash {
     my ( $self, $gff_hashref ) = @_;
     my $insert_hash->{source_dbxref_id}
         = $self->find_or_create_dbxref_row( $gff_hashref->{source},
