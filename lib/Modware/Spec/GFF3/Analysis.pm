@@ -1,4 +1,4 @@
-package Modware::Spec::Analysis;
+package Modware::Spec::GFF3::Analysis;
 use namespace::autoclean;
 use Moose;
 
