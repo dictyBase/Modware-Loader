@@ -43,6 +43,20 @@
 [create_table_temp_feature_relationship]
     CREATE TABLE temp_feature_relationship (
            id varchar(56) NOT NULL,
-           child_id varchar(56) NOT NULL,
+           parent_id varchar(56) NOT NULL,
            type_id integer NOT NULL
+    )
+
+[create_table_temp_feature_dbxref]
+    CREATE TABLE temp_feature_dbxref (
+           id varchar(56) NOT NULL,
+           dbxref varchar(256) NOT NULL,
+           db_id integer NOT NULL
+    )
+
+[create_table_temp_featureprop]
+    CREATE TABLE temp_featureprop (
+           id varchar(56) NOT NULL,
+           type_id integer NOT NULL,
+           property text NOT NULL
     )
