@@ -34,7 +34,6 @@ sub import_stock {
         $stockcollection_id
             = $self->create_stockcollection( 'Dicty Stockcenter', $type_id );
     }
-    $self->logger->debug( "Stockcollection " . $stockcollection_id );
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
