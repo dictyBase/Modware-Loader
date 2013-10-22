@@ -34,14 +34,12 @@ sub import_stock {
 
     my $type_id
         = $self->find_or_create_cvterm( 'plasmid', 'dicty_stockcenter' );
-    my $stockcollection_rs
-        = $self->schema->resultset('Stock::Stockcollection')->find_or_create(
-        {   type_id    => $type_id,
-            name       => 'dicty_stockcenter',
-            uniquename => $self->utils->nextval( 'stockcollection', 'DSC' )
-        }
-        );
-    my $stockcollection_id = $stockcollection_rs->stockcollection_id;
+    my $stockcollection_id = 0;
+    $stockcollection_id = $self->find_stockcollection('Dicty Stockcenter');
+    if ( !$stockcollection_id ) {
+        $stockcollection_id
+            = $self->create_stockcollection( 'Dicty Stockcenter', $type_id );
+    }
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
@@ -409,7 +407,7 @@ sub import_genes {
 
     my $type_id = $self->find_or_create_cvterm( 'has_part', 'sequence' );
     my @stock_props;
-    my $rank             = 0;
+    my $rank              = 0;
     my $previous_stock_id = 0;
     while ( my $line = $io->getline() ) {
         if ( $csv->parse($line) ) {

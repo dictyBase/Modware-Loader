@@ -13,7 +13,7 @@ use Modware::Import::Utils;
 
 has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
-has utils => ( is => 'rw', isa => 'Modware::Import::Utils' );
+has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
 
 with 'Modware::Role::Stock::Import::DataStash';
 
@@ -28,14 +28,12 @@ sub import_stock {
 
     my $type_id
         = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
-    my $stockcollection_rs
-        = $self->schema->resultset('Stock::Stockcollection')->find_or_create(
-        {   type_id    => $type_id,
-            name       => 'dicty_stockcenter',
-            uniquename => $self->utils->nextval( 'stockcollection', 'DSC' )
-        }
-        );
-    my $stockcollection_id = $stockcollection_rs->stockcollection_id;
+    my $stockcollection_id = 0;
+    $stockcollection_id = $self->find_stockcollection('Dicty Stockcenter');
+    if ( !$stockcollection_id ) {
+        $stockcollection_id
+            = $self->create_stockcollection( 'Dicty Stockcenter', $type_id );
+    }
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
@@ -53,7 +51,8 @@ sub import_stock {
             $strain->{organism_id}
                 = $self->find_or_create_organism( $fields[2] )
                 if $fields[2];
-            $strain->{description} = $self->utils->trim( $fields[3] ) if $fields[3];
+            $strain->{description} = $self->utils->trim( $fields[3] )
+                if $fields[3];
             $strain->{type_id} = $type_id;
             $strain->{stockcollection_stocks}
                 = [ { stockcollection_id => $stockcollection_id } ];
@@ -341,8 +340,9 @@ sub import_genotype {
             $data->{name} = $fields[2];
 
             # $data->{uniquename}      = $self->generate_uniquename('DSC_G');
-            $data->{uniquename}      = $self->utils->nextval( 'genotype', 'DSC_G' );
-            $data->{type_id}         = $genotype_type_id;
+            $data->{uniquename}
+                = $self->utils->nextval( 'genotype', 'DSC_G' );
+            $data->{type_id} = $genotype_type_id;
             $data->{stock_genotypes} = [ { stock_id => $stock_id } ];
             push @stock_data, $data;
         }
@@ -369,7 +369,8 @@ sub import_phenotype {
         if !$self->utils->is_ontology_loaded('Dicty Phenotypes');
     croak "Please load Dicty Environment ontology!"
         if !$self->utils->is_ontology_loaded('Dicty Environment');
-    croak "Please load genotype data first!" if !$self->utils->is_genotype_loaded();
+    croak "Please load genotype data first!"
+        if !$self->utils->is_genotype_loaded();
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
@@ -520,6 +521,8 @@ sub import_plasmid {
     my $stock_rel_type_id
         = $self->find_or_create_cvterm( 'part_of', 'stock_relation' );
 
+    my $plasmid_type_id
+        = $self->find_cvterm( 'plasmid', 'dicty_stockcenter' );
     my @stock_data;
     while ( my $line = $io->getline() ) {
         if ( $csv->parse($line) ) {
@@ -537,13 +540,42 @@ sub import_plasmid {
                     "Failed import of strain-plasmid for $fields[0]");
                 next;
             }
-            $data->{subject_id}
-                = $self->find_stock( $fields[1] );
-            if ( !$data->{subject_id} ) {
-                $self->logger->debug("Couldn't find $fields[1] plasmid");
-                next;
+            my $stock_plasmid_id;
+            if ( $fields[1] =~ m/DBP[0-9]{7}/ ) {
+                $stock_plasmid_id = $self->find_stock( $fields[1] );
             }
-            $data->{type_id} = $stock_rel_type_id;
+            else {
+                $stock_plasmid_id = $self->find_stock_by_name( $fields[1] );
+
+            }
+            if ( !$stock_plasmid_id ) {
+                $self->logger->debug(
+                    "Couldn't find $fields[1] strain-plasmid. Creating one");
+
+                my $stockcollection_id = 0;
+                $stockcollection_id
+                    = $self->find_stockcollection('Dicty Azkaban');
+                if ( !$stockcollection_id ) {
+                    $stockcollection_id
+                        = $self->create_stockcollection( 'Dicty Azkaban',
+                        $plasmid_type_id );
+                }
+
+                my $new_plasmid;
+                $new_plasmid->{name} = $fields[1];
+                $new_plasmid->{uniquename}
+                    = $self->utils->nextval( 'stock', 'DBP' );
+                $new_plasmid->{type_id}     = $plasmid_type_id;
+                $new_plasmid->{description} = 'Autocreated strain-plasmid';
+                $new_plasmid->{stockcollection_stocks}
+                    = [ { stockcollection_id => $stockcollection_id } ];
+
+                my $plasmid_rs = $self->schema->resultset('Stock::Stock')
+                    ->find_or_create($new_plasmid);
+                $stock_plasmid_id = $plasmid_rs->stock_id;
+            }
+            $data->{subject_id} = $stock_plasmid_id;
+            $data->{type_id}    = $stock_rel_type_id;
             push @stock_data, $data;
         }
     }
