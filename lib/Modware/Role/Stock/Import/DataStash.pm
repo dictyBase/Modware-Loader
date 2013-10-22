@@ -334,8 +334,6 @@ sub find_or_create_phenotype {
         = $self->find_or_create_cvterm( 'curator note', 'dicty_stockcenter' );
 
     my $phenotype_hash;
-
-  # $phenotype_hash->{uniquename}    = $self->generate_uniquename('DSC_PHEN');
     $phenotype_hash->{uniquename}
         = $self->utils->nextval( 'phenotype', 'DSC_PHEN' );
     $phenotype_hash->{observable_id} = $cvterm_phenotype;
@@ -352,6 +350,31 @@ sub find_or_create_phenotype {
         $self->set_phenotype( $phenotype_term, $phenotype_rs );
         return $self->get_phenotype($phenotype_term)->phenotype_id;
     }
+}
+
+sub find_stockcollection {
+    my ( $self, $name ) = @_;
+    my $rs = $self->schema->resultset('Stock::Stockcollection')
+        ->search( { name => $name } );
+    if ( $rs->count > 0 ) {
+        return $rs->first->stockcollection_id;
+    }
+    return;
+}
+
+sub create_stockcollection {
+    my ( $self, $name, $type_id ) = @_;
+    my $stockcollection_rs
+        = $self->schema->resultset('Stock::Stockcollection')->create(
+        {   type_id    => $type_id,
+            name       => $name,
+            uniquename => $self->utils->nextval( 'stockcollection', 'DSC' )
+        }
+        );
+    if ($stockcollection_rs) {
+        return $stockcollection_rs->stockcollection_id;
+    }
+    return;
 }
 
 1;
