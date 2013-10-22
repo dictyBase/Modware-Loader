@@ -22,12 +22,11 @@ has data => (
         'Option to dump all data (default) or (plasmid, inventory, genbank, publications, genes, props)'
 );
 
-has 'sequence' => (
-    is      => 'rw',
-    isa     => 'Bool',
-    default => 0,
+has 'seq_data_dir' => (
+    is  => 'rw',
+    isa => 'Str',
     documentation =>
-        'Option to fetch sequence in Genbank format and write to file'
+        'Folder with raw plasmid sequences with sub-folders fasta/genbank'
 );
 
 sub execute {
@@ -227,8 +226,8 @@ sub execute {
 
     }
 
-    if ( $gb_dbp_hash and $self->sequence ) {
-        $self->export_seq($gb_dbp_hash);
+    if ( $gb_dbp_hash and $self->seq_data_dir ) {
+        $self->export_seq( $gb_dbp_hash, $self->seq_data_dir );
     }
 
     for my $key ( keys $stats ) {
@@ -289,7 +288,7 @@ version 0.0.1
 
 =head1 SYNOPSIS
 
-	perl modware-dump dictyplasmid -c config.yaml --sequence
+	perl modware-dump dictyplasmid -c config.yaml --seq_data_dir <plasmid-raw-seq-folder>
 
 	perl modware-dump dictyplasmid -c config.yaml --data inventory --data genbank --data genes 
 
