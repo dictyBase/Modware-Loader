@@ -18,7 +18,25 @@ sub get_organism_row {
     return $row if $row;
 }
 
-sub 
+sub find_or_create_cvterm_row {
+    my ( $self, $options ) = @_;
+    if ( my $row
+        = $self->find_cvterm_row( $options->{cvterm}, $options->{cv} ) )
+    {
+        return $row;
+    }
+    my $key    = $options->{cv} . '-' . $options->{cvterm};
+    my $dbxref = $self->find_or_create_dbxref_row( $options->{dbxref},
+        $options->{db} );
+    my $cvterm_row = $self->resultset('Cv::Cvterm')->create(
+        {   name  => $options->{cvterm},
+            cv_id => $self->find_or_create_cvrow( $options->{cv} )->cv_id,
+            dbxref_id => $dbxref->dbxref_id
+        }
+    );
+    $self->set_cvterm_row( $key, $cvterm_row );
+    return $cvterm_row;
+}
 
 sub find_cvterm_row {
     my ( $self, $cvterm, $cv ) = @_;
@@ -112,7 +130,7 @@ sub find_or_create_cvterm_namespace {
 }
 
 sub normalize_id {
-    my ( $self, $id ) = @_;
+    my ( $self, $id, $db ) = @_;
     my ( $db_id, $accession );
     if ( $self->has_idspace($id) ) {
         my @parsed = $self->parse_id($id);
@@ -120,7 +138,8 @@ sub normalize_id {
         $accession = $parsed[1];
     }
     else {
-        $db_id     = $self->find_or_create_dbrow('internal')->db_id;
+        $db ||= 'internal';
+        $db_id     = $self->find_or_create_dbrow($db)->db_id;
         $accession = $id;
     }
     return ( $db_id, $accession );
