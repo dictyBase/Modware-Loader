@@ -154,6 +154,17 @@ sub find_stock {
     return;
 }
 
+sub find_stock_by_name {
+    my ( $self, $name ) = @_;
+    my $stock_id;
+    my $rs = $self->schema->resultset('Stock::Stock')
+        ->search( { name => $name }, {} );
+    if ( $rs->count > 0 ) {
+        $stock_id = $rs->first->stock_id;
+    }
+    return $stock_id;
+}
+
 sub find_stock_name {
     my ( $self, $id ) = @_;
     if ( $self->has_stock_row($id) ) {

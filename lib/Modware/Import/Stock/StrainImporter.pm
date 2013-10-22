@@ -540,7 +540,14 @@ sub import_plasmid {
                     "Failed import of strain-plasmid for $fields[0]");
                 next;
             }
-            my $stock_plasmid_id = $self->find_stock( $fields[1] );
+            my $stock_plasmid_id;
+            if ( $fields[1] =~ m/DBP[0-9]{7}/ ) {
+                $stock_plasmid_id = $self->find_stock( $fields[1] );
+            }
+            else {
+                $stock_plasmid_id = $self->find_stock_by_name( $fields[1] );
+
+            }
             if ( !$stock_plasmid_id ) {
                 $self->logger->debug(
                     "Couldn't find $fields[1] strain-plasmid. Creating one");
