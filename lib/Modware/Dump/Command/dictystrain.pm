@@ -408,10 +408,9 @@ sub execute {
 
 sub trim {
     my ( $self, $s ) = @_;
-    $s =~ s/\t/ /;
+    $s =~ s/\t/ /g;
+    $s =~ s/[\n|\r]//g;
     $s =~ s/^\s+//;
-    $s =~ s/\s+$//;
-    $s =~ s/[\n\r]/ /;
     $s =~ s/\s+$//;
     return $s;
 }
