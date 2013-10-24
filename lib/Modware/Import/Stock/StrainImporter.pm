@@ -363,8 +363,7 @@ sub import_genotype {
 }
 
 sub import_phenotype {
-    my ( $self, $input ) = @_;
-    $self->logger->info("Importing data from $input");
+    my ( $self, $input, $dsc_phenotypes ) = @_;
 
     croak "Please load strain data first!"
         if !$self->utils->is_stock_loaded('strain');
@@ -375,11 +374,6 @@ sub import_phenotype {
     croak "Please load genotype data first!"
         if !$self->utils->is_genotype_loaded();
 
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
-
     my $type_id
         = $self->find_or_create_cvterm( "observation", "dicty_stockcenter" );
 
@@ -387,67 +381,70 @@ sub import_phenotype {
         = $self->find_pub_by_title("Dicty Stock Center Phenotyping 2003-2008")
         or croak "Dicty Phenotypes ontology reference not available";
 
-    # my @stock_data;
-    while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
+    my @files = ( $input, $dsc_phenotypes );
+    for my $f (@files) {
+        next if !$f;
+        $self->logger->info("Importing data from $f");
+        my $io = IO::File->new( $f, 'r' ) or croak "Cannot open file: $f";
+        my $csv = Text::CSV->new( { binary => 1 } )
+            or croak "Cannot use CSV: " . Text::CSV->error_diag();
+        $csv->sep_char("\t");
 
-            my $data;
-            $data->{genotype_id}
-                = $self->find_or_create_genotype( $fields[0] );
-            if ( !$data->{genotype_id} ) {
-                $self->logger->debug("Couldn't find genotype for $fields[0]");
-                next;
-            }
-            $data->{phenotype_id}
-                = $self->find_or_create_phenotype( $fields[1], $fields[3],
-                $fields[5] );
-            if ( !$data->{phenotype_id} ) {
-                $self->logger->debug(
-                    "Couldn't find phenotype for $fields[1]");
-                next;
-            }
-            $data->{environment_id}
-                = $self->find_or_create_environment( $fields[2] );
-            if ( !$data->{environment_id} ) {
-                $self->logger->debug(
-                    "Couldn't find environment for $fields[2]");
-                next;
-            }
-            $data->{type_id} = $type_id;
-            $data->{pub_id}  = $self->find_pub( $fields[4] );
-            if ( !$data->{pub_id} ) {
-                $self->logger->debug(
-                    "Couldn't find publication for $fields[4]. Using default for phenotype"
-                );
-                $data->{pub_id} = $default_pub_id;
-            }
+        while ( my $line = $io->getline() ) {
+            if ( $csv->parse($line) ) {
+                my @fields = $csv->fields();
+                if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+                    $self->logger->debug(
+                        "Line starts with $fields[0]. Expected DBS ID");
+                    next;
+                }
 
-            # push @stock_data, $data;
-            my $pst_rs = $self->schema->resultset('Genetic::Phenstatement')
-                ->find_or_create($data);
-            if ( !$pst_rs ) {
-                $self->logger->debug(
-                    'Error creating phenstatement entry for $fields[0], $fields[1]'
-                );
+                my $data;
+                $data->{genotype_id}
+                    = $self->find_or_create_genotype( $fields[0] );
+                if ( !$data->{genotype_id} ) {
+                    $self->logger->debug(
+                        "Couldn't find genotype for $fields[0]");
+                    next;
+                }
+                $data->{phenotype_id}
+                    = $self->find_or_create_phenotype( $fields[1], $fields[3],
+                    $fields[5] );
+                if ( !$data->{phenotype_id} ) {
+                    $self->logger->debug(
+                        "Couldn't find phenotype for $fields[1]");
+                    next;
+                }
+                $data->{environment_id}
+                    = $self->find_or_create_environment( $fields[2] );
+                if ( !$data->{environment_id} ) {
+                    $self->logger->debug(
+                        "Couldn't find environment for $fields[2]");
+                    next;
+                }
+                $data->{type_id} = $type_id;
+                $data->{pub_id}  = $self->find_pub( $fields[4] );
+                if ( !$data->{pub_id} ) {
+                    my $msg
+                        = "Couldn't find publication for $fields[4]. Using default for phenotype";
+                    $msg = "No PMID provided. Using default for phenotype"
+                        if !$fields[4];
+                    $self->logger->debug($msg);
+                    $data->{pub_id} = $default_pub_id;
+                }
+
+                my $pst_rs
+                    = $self->schema->resultset('Genetic::Phenstatement')
+                    ->find_or_create($data);
+                if ( !$pst_rs ) {
+                    $self->logger->debug(
+                        "Error creating phenstatement entry for $fields[0], $fields[1]"
+                    );
+                }
             }
         }
+        $io->close();
     }
-    $io->close();
-
-    # my $missed = $csv->record_number() / 6 - scalar @stock_data;
-    # if ( $self->schema->resultset('Genetic::Phenstatement')
-    #    ->populate( \@stock_data ) )
-    # {
-    #    $self->logger->info( "Imported "
-    #            . scalar @stock_data
-    #            . " phenotype entries. Missed $missed entries" );
-    # }
     return;
 }
 
