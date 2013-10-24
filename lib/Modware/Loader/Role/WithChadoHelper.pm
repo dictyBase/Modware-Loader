@@ -28,9 +28,9 @@ sub find_or_create_cvterm_row {
     my $key    = $options->{cv} . '-' . $options->{cvterm};
     my $dbxref = $self->find_or_create_dbxref_row( $options->{dbxref},
         $options->{db} );
-    my $cvterm_row = $self->resultset('Cv::Cvterm')->create(
-        {   name  => $options->{cvterm},
-            cv_id => $self->find_or_create_cvrow( $options->{cv} )->cv_id,
+    my $cvterm_row = $self->schema->resultset('Cv::Cvterm')->create(
+        {   name      => $options->{cvterm},
+            cv_id     => $self->find_or_create_cvrow( $options->{cv} )->cv_id,
             dbxref_id => $dbxref->dbxref_id
         }
     );
@@ -45,7 +45,7 @@ sub find_cvterm_row {
         return $self->get_cvterm_row($key);
     }
     my $row = $self->schema->resultset('Cv::Cvterm')
-        ->find( { name => $cvterm, 'cv.name' => $cv }, { join => 'cv' } );
+        ->find( { 'cv.name' => $cv, 'name' => $cvterm }, { join => 'cv' } );
     if ($row) {
         $self->set_cvterm_row( $key, $row );
         return $row;
