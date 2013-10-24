@@ -2,6 +2,7 @@
 package Modware::Import::Stock::StrainImporter;
 
 use strict;
+use feature 'say';
 
 use Carp;
 use Moose;
@@ -26,6 +27,7 @@ sub import_stock {
         or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
 
+    my $num_line = 0;
     my $type_id
         = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
     my $stockcollection_id = 0;
@@ -37,6 +39,7 @@ sub import_stock {
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
+        $num_line += 1;
         if ( $csv->parse($line) ) {
             my @fields = $csv->fields();
             if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
@@ -60,7 +63,7 @@ sub import_stock {
         }
     }
     $io->close();
-    my $missed = $csv->record_number() / 4 - scalar @stock_data;
+    my $missed = $num_line - scalar @stock_data;
     if ( $self->schema->resultset('Stock::Stock')->populate( \@stock_data ) )
     {
         $self->logger->info( "Imported "
@@ -543,36 +546,42 @@ sub import_plasmid {
             my $stock_plasmid_id;
             if ( $fields[1] =~ m/DBP[0-9]{7}/ ) {
                 $stock_plasmid_id = $self->find_stock( $fields[1] );
+                if ( !$stock_plasmid_id ) {
+                    $self->logger->warn(
+                        $fields[1] . " plasmid entry not found" );
+                    next;
+                }
             }
             else {
                 $stock_plasmid_id = $self->find_stock_by_name( $fields[1] );
+                if ( !$stock_plasmid_id ) {
+                    $self->logger->debug(
+                        "Couldn't find $fields[1] strain-plasmid. Creating one"
+                    );
 
-            }
-            if ( !$stock_plasmid_id ) {
-                $self->logger->debug(
-                    "Couldn't find $fields[1] strain-plasmid. Creating one");
-
-                my $stockcollection_id = 0;
-                $stockcollection_id
-                    = $self->find_stockcollection('Dicty Azkaban');
-                if ( !$stockcollection_id ) {
+                    my $stockcollection_id = 0;
                     $stockcollection_id
-                        = $self->create_stockcollection( 'Dicty Azkaban',
-                        $plasmid_type_id );
+                        = $self->find_stockcollection('Dicty Azkaban');
+                    if ( !$stockcollection_id ) {
+                        $stockcollection_id
+                            = $self->create_stockcollection( 'Dicty Azkaban',
+                            $plasmid_type_id );
+                    }
+
+                    my $new_plasmid;
+                    $new_plasmid->{name} = $fields[1];
+                    $new_plasmid->{uniquename}
+                        = $self->utils->nextval( 'stock', 'DBP' );
+                    $new_plasmid->{type_id} = $plasmid_type_id;
+                    $new_plasmid->{description}
+                        = 'Autocreated strain-plasmid';
+                    $new_plasmid->{stockcollection_stocks}
+                        = [ { stockcollection_id => $stockcollection_id } ];
+
+                    my $plasmid_rs = $self->schema->resultset('Stock::Stock')
+                        ->find_or_create($new_plasmid);
+                    $stock_plasmid_id = $plasmid_rs->stock_id;
                 }
-
-                my $new_plasmid;
-                $new_plasmid->{name} = $fields[1];
-                $new_plasmid->{uniquename}
-                    = $self->utils->nextval( 'stock', 'DBP' );
-                $new_plasmid->{type_id}     = $plasmid_type_id;
-                $new_plasmid->{description} = 'Autocreated strain-plasmid';
-                $new_plasmid->{stockcollection_stocks}
-                    = [ { stockcollection_id => $stockcollection_id } ];
-
-                my $plasmid_rs = $self->schema->resultset('Stock::Stock')
-                    ->find_or_create($new_plasmid);
-                $stock_plasmid_id = $plasmid_rs->stock_id;
             }
             $data->{subject_id} = $stock_plasmid_id;
             $data->{type_id}    = $stock_rel_type_id;
