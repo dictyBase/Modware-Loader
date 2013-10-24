@@ -39,6 +39,14 @@ has mock_pubs => (
         'Mock publications, pub data is not populated. Default 0. Should be used only for testing code'
 );
 
+has image_url => (
+    is  => 'rw',
+    isa => 'Str',
+    default =>
+        'https://raw.github.com/dictyBase/migration-data/master/plasmid/images/',
+    documentation => 'Base URL for plasmid map images. Default github-url'
+);
+
 sub execute {
     my ($self) = @_;
 
@@ -60,15 +68,12 @@ sub execute {
     $importer->schema( $self->schema );
     $importer->utils($utils);
 
-    my $base_image_url
-        = "https://raw.github.com/dictyBase/migration-data/master/plasmid/images/";
-
     my $prefix = 'plasmid_';
     my $input_file = catfile( $self->data_dir, $prefix . 'plasmid.tsv' );
     $importer->import_stock($input_file);
     foreach my $data ( @{ $self->data } ) {
         if ( $data eq 'images' ) {
-            $importer->import_images($base_image_url);
+            $importer->import_images( $self->image_url );
             next;
         }
         if ( $data eq 'sequence' ) {
