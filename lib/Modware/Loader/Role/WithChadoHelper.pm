@@ -2,8 +2,6 @@ package Modware::Loader::Role::WithChadoHelper;
 
 use namespace::autoclean;
 use Moose::Role;
-use Encode;
-use utf8;
 with 'Modware::Role::WithDataStash' =>
     { create_kv_stash_for => [qw/cv cvterm db dbxref/] };
 

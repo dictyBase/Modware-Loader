@@ -1,4 +1,4 @@
-package Modware::Loader::Role::GFF3::WithHelper;
+package Modware::Loader::Role::WithChadoGFF3Helper;
 use Moose::Role;
 use namespace::autoclean;
 use Digest::MD5 qw/md5/;
@@ -40,7 +40,7 @@ sub initialize {
         }
         my $row = $self->schema->resultset('Companalysis::Analysis')
             ->find_or_new($rowhash);
-        if ( !$row->in_storgae ) {
+        if ( !$row->in_storage ) {
             $row->name( $spec->name ) if $spec->name;
             $row->insert();
         }
@@ -247,16 +247,15 @@ sub make_feature_stash {
     if ( defined $gff_hashref->{attributes}->{ID} ) {
         $insert_hash->{id} = $gff_hashref->{attributes}->{ID}->[0];
         if ( defined $gff_hashref->{attributes}->{Name} ) {
-            $insert_hash->{Name} = $gff_hashref->{attributes}->{Name}->[0];
+            $insert_hash->{name} = $gff_hashref->{attributes}->{Name}->[0];
         }
     }
     else {
         $insert_hash->{id}
             = 'auto-' . $gff_hashref->{attributes}->{Name}->[0];
-        $insert_hash->{Name} = $gff_hashref->{attributes}->{Name}->[0];
+        $insert_hash->{name} = $gff_hashref->{attributes}->{Name}->[0];
     }
     return $insert_hash;
-
 }
 
 1;

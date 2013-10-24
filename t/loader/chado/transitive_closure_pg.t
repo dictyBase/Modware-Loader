@@ -28,7 +28,6 @@ SKIP: {
             $chado_loader );
         my $data_dir = Path::Class::Dir->new($Bin)
             ->parent->parent->subdir('test_data');
-
         my $setup = sub {
             my $preset = module_file( 'Test::Chado', 'cvpreset.tar.bz2' );
             $schema = chado_schema( custom_fixture => $preset );

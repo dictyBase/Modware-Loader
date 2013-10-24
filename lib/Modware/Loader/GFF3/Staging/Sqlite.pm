@@ -15,7 +15,7 @@ has 'schema' => (
     isa => 'Bio::Chado::Schema',
 );
 
-has 'logger'   => ( is => 'rw', isa  => 'Log::Log4perl::Logger' );
+has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 
 sub create_tables {
     my ($self) = @_;
@@ -23,7 +23,6 @@ sub create_tables {
         $self->schema->storage->dbh->do( $self->sqlmanager->retr($elem) );
     }
 }
-
 
 sub create_synonym_pub_row {
     my ($self) = @_;
@@ -34,15 +33,16 @@ sub create_synonym_pub_row {
 
     my $pub_row = $self->schema->resultset('Pub::Pub')->create(
         {   uniquename => $rowid,
-            pubplace   => 'GFF3-loader' title =>
-                'This pubmed entry is for relating the usage of a given synonym to the publication in which it was used'
-                type_id => $self->find_or_create_cvterm_row(
+            pubplace   => 'GFF3-loader',
+            title =>
+                'This pubmed entry is for relating the usage of a given synonym to the publication in which it was used',
+            type_id => $self->find_or_create_cvterm_row(
                 {   cv     => 'pub',
                     cvterm => 'unpublished',
                     dbxref => 'unpublished',
                     db     => 'internal'
                 }
-                )->cvterm_id
+            )->cvterm_id
         }
     );
     return $pub_row;
@@ -91,20 +91,19 @@ sub add_data {
     else {
         my $feature_hashref = $self->make_feature_stash($gff_hashref);
         $self->add_to_feature_cache($feature_hashref);
-        for my $name(qw/featureloc analysisfeature feature_relationship/) {
-            my $api = 'make_'.$name.'_stash';
-            my $cache = 'add_to_'.$name.'_cache';
-            $self->$cache($self->$api($gff_hashref,$feature_hashref));
+        for my $name (qw/featureloc analysisfeature feature_relationship/) {
+            my $api   = 'make_' . $name . '_stash';
+            my $cache = 'add_to_' . $name . '_cache';
+            $self->$cache( $self->$api( $gff_hashref, $feature_hashref ) );
         }
-        for my $name(qw/feature_dbxref feature_synonym featureprop/) {
-            my $api = 'make_'.$name.'_stash';
-            my $cache = 'add_to_'.$name.'_cache';
-            my $arrayref = $self->$api($gff_hashref,$feature_hashref);
+        for my $name (qw/feature_dbxref feature_synonym featureprop/) {
+            my $api      = 'make_' . $name . '_stash';
+            my $cache    = 'add_to_' . $name . '_cache';
+            my $arrayref = $self->$api( $gff_hashref, $feature_hashref );
             $self->$cache(@$arrayref);
         }
     }
 }
-
 
 sub count_entries_in_staging {
 
@@ -112,7 +111,7 @@ sub count_entries_in_staging {
 
 with 'Modware::Loader::Role::WithStaging';
 with 'Modware::Loader::Role::WithChadoHelper';
-with 'Modware::Loader::Role::GFF3::WithHelper'
-__PACKAGE__->meta->make_immutable;
+with 'Modware::Loader::Role::WithChadoGFF3Helper'
+    __PACKAGE__->meta->make_immutable;
 1;
 
