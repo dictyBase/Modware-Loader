@@ -28,8 +28,13 @@ has data => (
 has dsc_phenotypes => (
     is            => 'rw',
     isa           => 'Str',
-    default       => undef,
     documentation => 'File with corrected stockcenter phenotypes'
+);
+
+has strain_plasmid => (
+    is            => 'rw',
+    isa           => 'Str',
+    documentation => 'File with strain-plasmids mapped to real plasmids'
 );
 
 has mock_pubs => (
@@ -68,6 +73,10 @@ sub execute {
         my $import_data = 'import_' . $data;
         if ( $data eq 'phenotype' ) {
             $importer->$import_data( $input_file, $self->dsc_phenotypes );
+            next;
+        }
+        if ( $data eq 'plasmid' ) {
+            $importer->$import_data( $input_file, $self->strain_plasmid );
             next;
         }
         $importer->$import_data($input_file);
