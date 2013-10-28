@@ -4,8 +4,9 @@ use Test::Exception;
 use File::ShareDir qw/module_file/;
 use Test::Chado qw/chado_schema drop_schema/;
 use Test::Chado::Common qw/:all/;
-use Modware::DataSource::Chado::Organism;
+use Digest::MD5 qw/md5/;
 use Modware::Spec::GFF3::Analysis;
+use Modware::DataSource::Chado::Organism;
 
 {
 
@@ -81,7 +82,7 @@ subtest 'run the setup' => sub {
     drop_schema();
 };
 
-subtest 'make staging compatible hash data structure of GFF3' => sub {
+subtest 'make staging compatible hash data structure from GFF3' => sub {
     my $tmp_schema = chado_schema( load_fixture => 1 );
     my $schema
         = Bio::Chado::Schema->connect( sub { $tmp_schema->storage->dbh } );
@@ -149,5 +150,153 @@ subtest 'make staging compatible hash data structure of GFF3' => sub {
         },
         'should have the expected featureloc hashref'
     );
+
+    $gff_hashref->{score} = 43.2;
+    my $analysis_hashref;
+    lives_ok {
+        $analysis_hashref = $helper->make_analysisfeature_stash( $gff_hashref,
+            $insert_hashref );
+    }
+    'should run make_analysisfeature_stash';
+    like( $analysis_hashref->{analysis_id},
+        qr/\d+/, 'should match analysis_id' );
+    is( $analysis_hashref->{id}, $insert_hashref->{id}, 'should have id' );
+    is( $analysis_hashref->{score},
+        $gff_hashref->{score}, 'should have score' );
+    my $analysis_row;
+    lives_ok {
+        $analysis_row = $schema->resultset('Companalysis::Analysis')
+            ->find( { analysis_id => $analysis_hashref->{analysis_id} } );
+    }
+    'should fetch analysis row from database';
+    is( $analysis_row->programversion, '1.0', 'should match programversion' );
+    is( $analysis_row->name,
+        $gff_hashref->{source} . '-' . $gff_hashref->{type},
+        'should match analysis name'
+    );
+    my $featureseq_row;
+    lives_ok {
+        $featureseq_row = $helper->make_featureseq_stash(
+            {   seq_id   => 'DDB0166986',
+                sequence => 'ATGACTCTAATATAGCACACGTGATATATAGAC'
+            }
+        );
+    }
+    'should run make_featureseq_stash';
+    is_deeply(
+        $featureseq_row,
+        {   id      => 'DDB0166986',
+            residue => 'ATGACTCTAATATAGCACACGTGATATATAGAC',
+            md5     => md5('ATGACTCTAATATAGCACACGTGATATATAGAC'),
+            seqlen  => length('ATGACTCTAATATAGCACACGTGATATATAGAC')
+        },
+        'should match the featureseq structure'
+    );
+
     drop_schema();
+};
+
+subtest 'make staging compatible array data structure from GFF3' => sub {
+    my $tmp_schema = chado_schema( load_fixture => 1 );
+    my $schema
+        = Bio::Chado::Schema->connect( sub { $tmp_schema->storage->dbh } );
+    my $helper = new_ok('MyChadoGFF3');
+    $helper->schema($schema);
+    $helper->organism(
+        Modware::DataSource::Chado::Organism->new(
+            genus   => 'Homo',
+            species => 'sapiens'
+        )
+    );
+
+    $gff_hashref = {
+        seq_id     => 'DDB0166986',
+        source     => 'dictyBase',
+        type       => 'gene',
+        start      => 3289127,
+        end        => 3312764,
+        strand     => '+',
+        attributes => {
+            ID    => ['DDB_G0273713'],
+            Name  => ['aslA-2'],
+            Alias => [ 'aslA', 'asl' ]
+        }
+    };
+    lives_ok { $helper->initialize } 'should run initialize';
+    my $insert_hashref;
+    lives_ok { $insert_hashref = $helper->make_feature_stash($gff_hashref) }
+    'should run make_feature_stash';
+    my $synonym_arrayref;
+    lives_ok {
+        $synonym_arrayref = $helper->make_feature_synonym_stash( $gff_hashref,
+            $insert_hashref );
+    }
+    'should run make_feature_synonym_stash';
+    is_deeply(
+        $synonym_arrayref,
+        [   {   id      => $insert_hashref->{id},
+                alias   => 'aslA',
+                type_id => $helper->synonym_type_id,
+                pub_id  => $helper->synonym_pub_id
+            },
+            {   id      => $insert_hashref->{id},
+                alias   => 'asl',
+                type_id => $helper->synonym_type_id,
+                pub_id  => $helper->synonym_pub_id
+            }
+        ],
+        'should match synonym arrayref structure'
+    );
+
+    push @{ $gff_hashref->{attributes}->{Dbxref} }, 'UniProtKB:P54673',
+        'EAL67965';
+    my $dbxref_arrayref;
+    lives_ok {
+        $dbxref_arrayref = $helper->make_feature_dbxref_stash( $gff_hashref,
+            $insert_hashref );
+    }
+    'should run make_feature_dbxref_stash';
+    is_deeply(
+        $dbxref_arrayref,
+        [   {   id     => $insert_hashref->{id},
+                dbxref => 'P54673',
+                db_id  => $schema->resultset('General::Db')
+                    ->find( { name => 'UniProtKB' } )->db_id
+            },
+            {   id     => $insert_hashref->{id},
+                dbxref => 'EAL67965',
+                db_id  => $schema->resultset('General::Db')
+                    ->find( { name => 'internal' } )->db_id
+            }
+        ]
+    );
+
+    push @{ $gff_hashref->{attributes}->{Note} },
+        'There are two copies of this gene';
+    push @{ $gff_hashref->{attributes}->{product} },
+        'putative acetyl-CoA synthatase';
+    my $prop_arrayref;
+    lives_ok {
+        $prop_arrayref = $helper->make_featureprop_stash( $gff_hashref,
+            $insert_hashref );
+    }
+    'should run make_featureprop_stash';
+    is_deeply(
+        $prop_arrayref,
+        [   {   id       => $insert_hashref->{id},
+                property => 'There are two copies of this gene',
+                type_id  => $schema->resultset('Cv::Cvterm')
+                    ->find(
+                    { 'cv.name' => 'feature_property', 'name' => 'Note' },
+                    { join      => 'cv' } )->cvterm_id
+            },
+            {   id       => $insert_hashref->{id},
+                property => 'putative acetyl-CoA synthatase',
+                type_id  => $schema->resultset('Cv::Cvterm')->find(
+                    { 'cv.name' => 'feature_property', 'name' => 'product' },
+                    { join      => 'cv' }
+                )->cvterm_id
+            }
+        ]
+    );
 };
