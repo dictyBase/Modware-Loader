@@ -299,4 +299,30 @@ subtest 'make staging compatible array data structure from GFF3' => sub {
             }
         ]
     );
+
+    push @{ $gff_hashref->{attributes}->{Parent} }, 'DDB_G0273713',
+        'DDB_G0273719';
+    my $frel_hashref;
+    lives_ok {
+        $frel_hashref
+            = $helper->make_feature_relationship_stash( $gff_hashref,
+            $insert_hashref );
+    }
+    'should run make_relationship_stash';
+    my $type_id
+        = $schema->resultset('Cv::Cvterm')
+        ->find( { 'cv.name' => 'sequence', 'name' => 'part_of' },
+        { join => 'cv' } )->cvterm_id;
+    is_deeply(
+        $frel_hashref,
+        [   {   id        => $insert_hashref->{id},
+                parent_id => 'DDB_G0273713',
+                type_id   => $type_id
+            },
+            {   id        => $insert_hashref->{id},
+                parent_id => 'DDB_G0273719',
+                type_id   => $type_id
+            },
+        ]
+    );
 };

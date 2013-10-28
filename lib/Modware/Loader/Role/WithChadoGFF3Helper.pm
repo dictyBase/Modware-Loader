@@ -2,6 +2,8 @@ package Modware::Loader::Role::WithChadoGFF3Helper;
 use Moose::Role;
 use namespace::autoclean;
 use Digest::MD5 qw/md5/;
+use feature qw/say/;
+use Data::Dumper;
 with 'Modware::Role::WithDataStash' =>
     { 'create_kv_stash_for' => [qw/analysis/] };
 
@@ -115,9 +117,13 @@ sub make_featureprop_stash {
     my ( $self, $gff_hashref, $feature_hashref ) = @_;
     my $insert_array;
     if ( defined $gff_hashref->{attributes}->{Note} ) {
-        my $type_id
-            = $self->find_or_create_cvterm_row( 'Note', 'feature_property' )
-            ->cvterm_id;
+        my $type_id = $self->find_or_create_cvterm_row(
+            {   cvterm => 'Note',
+                cv     => 'feature_property',
+                dbxref => 'Note',
+                db     => 'local'
+            }
+        )->cvterm_id;
         for my $note ( @{ $gff_hashref->{attributes}->{Note} } ) {
             push @$insert_array,
                 {
@@ -133,10 +139,14 @@ sub make_featureprop_stash {
         keys %{ $gff_hashref->{attributes} }
         )
     {
-        my $type_id
-            = $self->find_or_create_cvterm_row( $attr, 'feature_property' )
-            ->cvterm_id;
         for my $value ( @{ $gff_hashref->{attributes}->{$attr} } ) {
+            my $type_id = $self->find_or_create_cvterm_row(
+                {   cvterm => $attr,
+                    cv     => 'feature_property',
+                    dbxref => $attr,
+                    db     => 'local'
+                }
+            )->cvterm_id;
             push @$insert_array,
                 {
                 id       => $feature_hashref->{id},
@@ -145,6 +155,7 @@ sub make_featureprop_stash {
                 };
         }
     }
+    return $insert_array;
 }
 
 sub make_feature_relationship_stash {
@@ -152,14 +163,17 @@ sub make_feature_relationship_stash {
     return if not defined $gff_hashref->{attributes}->{Parent};
     my $insert_array;
     for my $parent ( @{ $gff_hashref->{attributes}->{Parent} } ) {
-        push @$insert_array,
-            {
+        push @$insert_array, {
             id        => $feature_hashref->{id},
-            parent_id => $feature_hashref->{id},
-            type_id =>
-                $self->find_or_create_cvterm_row( 'part_of', 'sequence' )
-                ->cvterm_id
-            };
+            parent_id => $parent,
+            type_id   => $self->find_or_create_cvterm_row(
+                {   cvterm => 'part_of',
+                    cv     => 'sequence',
+                    dbxref => 'part_of',
+                    db     => 'local'
+                }
+            )->cvterm_id
+        };
     }
     return $insert_array;
 }
