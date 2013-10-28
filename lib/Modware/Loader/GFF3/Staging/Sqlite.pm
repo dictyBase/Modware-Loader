@@ -56,6 +56,35 @@ sub create_indexes {
 
 sub bulk_load {
     my ($self) = @_;
+    $self->schema->storage->dbh_do(
+        sub {
+            my ( $storage, $dbh ) = @_;
+            for my $name (
+                qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
+                feature_dbxref featureprop/
+                )
+            {
+                my $table_name  = 'temp_' . $name;
+                my $index_api   = 'get_entry_from_' . $name . '_cache';
+                my $first_entry = $self->$index_api(0);
+                my @columns     = keys %$first_entry;
+                my $stmt        = sprintf(
+                    "INSERT INTO %s (%s) VALUES(%s)",
+                    $table_name,
+                    join( ',' @columns ),
+                    "?" x scalar @columns
+                );
+                my $sth           = $dbh->prepare($stmt);
+                my $count_api     = 'count_entries_in_' . $name . '_cache';
+                my $total_entries = $self->count_api;
+                for my $i ( 1 .. $total_entries ) {
+                    my $entry = $self->index_api( $i - 1 );
+                    $sth->bind_param_array( $i, [ @{$entry}{@columns} ] );
+                }
+                $sth->execute_array({}) or die $sth->errstr;
+            }
+        }
+    );
 }
 
 # Each data row is a hashref with the following structure....
