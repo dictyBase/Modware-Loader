@@ -7,7 +7,7 @@ use Data::Dumper;
 with 'Modware::Role::WithDataStash' =>
     { 'create_kv_stash_for' => [qw/analysis/] };
 
-requires 'create_synonym_pub_row';
+requires qw/create_synonym_pub_row get_unique_feature_id/;
 requires
     qw/schema find_or_create_cvterm_row normalize_id find_or_create_dbxref_row find_cvterm_row get_organism_row/;
 
@@ -26,6 +26,7 @@ has 'synonym_spec' => (
     isa       => 'Modware::Spec::GFF3::Synonym',
     predicate => 'has_synonym_spec'
 );
+has 'uniquename_prefix' => ( is => 'rw', isa => 'Str', lazy => 1, default => 'auto');
 
 sub initialize {
     my ($self) = @_;
@@ -260,13 +261,12 @@ sub make_feature_stash {
 
     if ( defined $gff_hashref->{attributes}->{ID} ) {
         $insert_hash->{id} = $gff_hashref->{attributes}->{ID}->[0];
-        if ( defined $gff_hashref->{attributes}->{Name} ) {
-            $insert_hash->{name} = $gff_hashref->{attributes}->{Name}->[0];
-        }
     }
     else {
         $insert_hash->{id}
-            = 'auto-' . $gff_hashref->{attributes}->{Name}->[0];
+            = $self->uniquename_prefix . $self->get_unique_feature_id;
+    }
+    if (defined $gff_hashref->{attributes}->{Name}) {
         $insert_hash->{name} = $gff_hashref->{attributes}->{Name}->[0];
     }
     return $insert_hash;

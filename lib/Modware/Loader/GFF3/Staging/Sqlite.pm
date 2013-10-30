@@ -24,6 +24,14 @@ sub create_tables {
     }
 }
 
+sub get_unique_feature_id {
+    my ($self) = @_;
+    my $dbh   = $self->schema->storage->dbh;
+    my @row   = $dbh->selectrow_array("SELECT max(rowid) FROM feature");
+    my $rowid = @row ? $row[0] + 1 : 1;
+    return $rowid;
+}
+
 sub create_synonym_pub_row {
     my ($self) = @_;
 

@@ -15,6 +15,8 @@ use Modware::DataSource::Chado::Organism;
 
     has 'schema' => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 
+    sub get_unique_feature_id { return 1555557 }
+
     sub create_synonym_pub_row {
         my ($self) = @_;
         my $row = $self->schema->resultset('Pub::Pub')->create(
@@ -94,6 +96,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
             species => 'sapiens'
         )
     );
+    lives_ok { $helper->initialize } 'should run initialize';
     my $gff_hashref = {
         seq_id     => 'DDB0166986',
         source     => 'Sequencing Center',
@@ -105,7 +108,6 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
             Name => ['chr1']
         }
     };
-    lives_ok { $helper->initialize } 'should run initialize';
     my $insert_hashref;
     lives_ok { $insert_hashref = $helper->make_feature_stash($gff_hashref) }
     'should run make_feature_stash';
@@ -117,7 +119,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
     delete $gff_hashref->{attributes}->{ID};
     lives_ok { $insert_hashref = $helper->make_feature_stash($gff_hashref) }
     'should run make_feature_stash';
-    is( $insert_hashref->{id}, 'auto-chr1',
+    is( $insert_hashref->{id}, 'auto1555557',
         'should have auto prefix for id value' );
 
     $gff_hashref = {
