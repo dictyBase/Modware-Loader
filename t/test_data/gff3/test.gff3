@@ -1,6 +1,6 @@
 ##gff-version 3
 ##sequence-region Contig1 1 37450
-Contig1 confirmed   contig  1 37450 .   .   .   ID=Contig1
+Contig1	confirmed	contig	1	37450	.	.	.	ID=Contig1
 Contig1	confirmed	transcript	1001	2000	42	+	.	ID=trans-1;Name=abc-1;Alias=xyz-2;Note=function+unknown
 Contig1	confirmed	exon	1001	1100	.	+	.	Parent=trans-1
 Contig1	confirmed	exon	1201	1300	.	+	.	Parent=trans-1
@@ -14,7 +14,6 @@ Contig1	confirmed	transcript	30001	31000	.	-	.	ID=trans-2;Name=trans-2;Alias=xyz
 Contig1	confirmed	exon	30001	30100	.	-	.	Parent=trans-2;Alias=abc-1;Note=function+unknown;index=1
 Contig1	confirmed	exon	30701	30800	.	-	.	Parent=trans-2
 Contig1	confirmed	exon	30801	31000	.	-	.	Parent=trans-2
-# three-tiered gene
 Contig1	confirmed	gene	2000	3000	.	.	.	ID=tier0;Name=gene3;expressed=yes;in_process=1
 Contig1	confirmed	mRNA	2000	3000	.	+	.	Parent=tier0;ID=tier0.1;expressed=yes;Name=gene3.a;index=1
 Contig1	confirmed	mRNA	2500	3000	.	+	.	Parent=tier0;ID=tier0.2;Name=gene3.b
@@ -29,14 +28,11 @@ Contig1	confirmed	CDS	2300	2400	.	+	0	Parent=tier0.2,tier0.1;Name=shared_exon
 Contig1	confirmed	CDS	2500	2800	.	+	0	Parent=tier0.2
 Contig1	confirmed	three_prime_UTR	2801	2900	.	+	.	Parent=tier0.2;ID=utr1
 Contig1	confirmed	three_prime_UTR	2910	3000	.	+	.	Parent=tier0.2;ID=utr1
-# test multiple parentage handling
-Contig1	test	gparent	2500	2550	.	+	.	ID=gparent1;Name=gparent1
-Contig1	test	parent	2500	2550	.	+	.	ID=parent1;Name=parent1;Parent=gparent1
-Contig1	test	parent	2501	2551	.	+	.	ID=parent2;Name=parent2;Parent=gparent1
-Contig1	test	child	2500	2550	.	+	0	ID=child1;Parent=parent1,parent2;Name=child1
-Contig1	test	child	2501	2551	.	+	1	ID=child2;Parent=parent1,parent2;Name=child2
-
-# processed_transcript
+Contig1	test	biological_region	2500	2550	.	+	.	ID=gparent1;Name=gparent1
+Contig1	test	gene	2500	2550	.	+	.	ID=parent1;Name=parent1;Parent=gparent1
+Contig1	test	polypeptide	2501	2551	.	+	.	ID=parent2;Name=parent2;Parent=gparent1
+Contig1	test	pseudogene	2500	2550	.	+	0	ID=child1;Parent=parent1,parent2;Name=child1
+Contig1	test	pseudogenic_region	2501	2551	.	+	1	ID=child2;Parent=parent1,parent2;Name=child2
 ##sequence-region Contig3 1 50000
 Contig3	clone	assembly_component	1	50000	.	.	.	ID=Contig3
 Contig3	confirmed	mRNA	32000	35000	.	+	.	ID=trans-8
@@ -45,16 +41,11 @@ Contig3	confirmed	CDS	32101	33000	.	+	.	Parent=trans-8
 Contig3	confirmed	CDS	34000	34500	.	+	.	Parent=trans-8
 Contig3	confirmed	CDS	34600	34900	.	+	.	Parent=trans-8
 Contig3	confirmed	UTR	34901	35000	.	+	.	Parent=trans-8
-
-# associative attributes
-# these are not intended to have any implied parent/child relationship, but their attributes can be
-# used to group them arbitrarily.
 ##sequence-region Contig4 1 50000
 Contig4	clone	assembly_component	1	50000	.	.	.	ID=Contig4
 Contig4	confirmed	gene	32000	35000	.	+	.	ID=thing1;gene=gene-9
 Contig4	confirmed	mRNA	32000	35000	.	+	.	ID=thing2;mRNA=trans-9;gene=gene-9
 Contig4	confirmed	CDS	32000	35000	.	+	.	ID=thing3;mRNA=trans-9
-# test out DNA loading
 ##FASTA
 >Contig1
 ttcttcgacactaagaaccatgccccatgtcacgacttcaccctcattgacgagcgttgt

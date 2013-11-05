@@ -1,6 +1,7 @@
 package Modware::Loader::GFF3::Staging::Sqlite;
 use namespace::autoclean;
 use Digest::MD5 qw/md5/;
+use feature qw/say/;
 use Moose;
 use Modware::Spec::GFF3::Analysis;
 with 'Modware::Role::WithDataStash' => {
@@ -26,18 +27,17 @@ sub create_tables {
 
 sub get_unique_feature_id {
     my ($self) = @_;
-    my $dbh   = $self->schema->storage->dbh;
-    my @row   = $dbh->selectrow_array("SELECT max(rowid) FROM feature");
-    my $rowid = @row ? $row[0] + 1 : 1;
+    my $dbh    = $self->schema->storage->dbh;
+    my @row    = $dbh->selectrow_array("SELECT max(rowid) FROM feature");
+    my $rowid = defined $row[0] ? $row[0] + 1 : 1;
     return $rowid;
 }
 
 sub create_synonym_pub_row {
     my ($self) = @_;
-
-    my $dbh   = $self->schema->storage->dbh;
-    my @row   = $dbh->selectrow_array("SELECT max(rowid) FROM pub");
-    my $rowid = @row ? $row[0] + 1 : 1;
+    my $dbh    = $self->schema->storage->dbh;
+    my @row    = $dbh->selectrow_array("SELECT max(rowid) FROM pub");
+    my $rowid = defined $row[0] ? $row[0] + 1 : 1;
 
     my $pub_row = $self->schema->resultset('Pub::Pub')->create(
         {   uniquename => $rowid,
@@ -64,35 +64,34 @@ sub create_indexes {
 
 sub bulk_load {
     my ($self) = @_;
-    $self->schema->storage->dbh_do(
-        sub {
-            my ( $storage, $dbh ) = @_;
-            for my $name (
-                qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
-                feature_dbxref featureprop/
-                )
-            {
-                my $table_name  = 'temp_' . $name;
-                my $index_api   = 'get_entry_from_' . $name . '_cache';
-                my $first_entry = $self->$index_api(0);
-                my @columns     = keys %$first_entry;
-                my $stmt        = sprintf(
-                    "INSERT INTO %s (%s) VALUES(%s)",
-                    $table_name,
-                    join( ',' @columns ),
-                    "?" x scalar @columns
-                );
-                my $sth           = $dbh->prepare($stmt);
-                my $count_api     = 'count_entries_in_' . $name . '_cache';
-                my $total_entries = $self->count_api;
-                for my $i ( 1 .. $total_entries ) {
-                    my $entry = $self->index_api( $i - 1 );
-                    $sth->bind_param_array( $i, [ @{$entry}{@columns} ] );
-                }
-                $sth->execute_array({}) or die $sth->errstr;
-            }
+    my $dbh = $self->schema->storage->dbh;
+    for my $name (
+        qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
+        feature_dbxref featureprop/
+        )
+    {
+        my $table_name  = 'temp_' . $name;
+        my $index_api   = 'get_entry_from_' . $name . '_cache';
+        my $count_api   = 'count_entries_in_' . $name . '_cache';
+        next if !$self->$count_api;
+
+        my $first_entry = $self->$index_api(0);
+        my @columns     = keys %$first_entry;
+        my $stmt        = sprintf(
+            "INSERT INTO %s(%s) VALUES(%s)",
+            $table_name,
+            join( ',', @columns ),
+            join( ',', map {'?'} 0 .. $#columns )
+        );
+        my $sth     = $dbh->prepare($stmt);
+        my $itr_api = 'entries_in_' . $name . '_cache';
+
+        for my $i ( 0 .. $#columns ) {
+            $sth->bind_param_array( $i + 1,
+                [ map { $_->{ $columns[$i] } } $self->$itr_api ] );
         }
-    );
+        $sth->execute_array( {} ) or die $sth->errstr;
+    }
 }
 
 # Each data row is a hashref with the following structure....
@@ -128,12 +127,12 @@ sub add_data {
     else {
         my $feature_hashref = $self->make_feature_stash($gff_hashref);
         $self->add_to_feature_cache($feature_hashref);
-        for my $name (qw/featureloc analysisfeature feature_relationship/) {
+        for my $name (qw/featureloc analysisfeature/) {
             my $api   = 'make_' . $name . '_stash';
             my $cache = 'add_to_' . $name . '_cache';
             $self->$cache( $self->$api( $gff_hashref, $feature_hashref ) );
         }
-        for my $name (qw/feature_dbxref feature_synonym featureprop/) {
+        for my $name (qw/feature_dbxref feature_synonym featureprop feature_relationship/) {
             my $api      = 'make_' . $name . '_stash';
             my $cache    = 'add_to_' . $name . '_cache';
             my $arrayref = $self->$api( $gff_hashref, $feature_hashref );
@@ -148,7 +147,8 @@ sub count_entries_in_staging {
 
 with 'Modware::Loader::Role::WithStaging';
 with 'Modware::Loader::Role::WithChadoHelper';
-with 'Modware::Loader::Role::WithChadoGFF3Helper'
-    __PACKAGE__->meta->make_immutable;
+with 'Modware::Loader::Role::WithChadoGFF3Helper';
+
+__PACKAGE__->meta->make_immutable;
 1;
 

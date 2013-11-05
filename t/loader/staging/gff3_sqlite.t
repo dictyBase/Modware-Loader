@@ -33,8 +33,8 @@ $loader->organism(
     )
 );
 my $test_input
-    = Path::Class::Dir->new($Bin)->parent->subdir('test_data')->subdir('gff3')
-    ->openr('test.gff3');
+    = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_data')->subdir('gff3')
+    ->file('test.gff3')->openr;
 lives_ok { $loader->initialize } 'should initialize';
 lives_ok { $loader->create_tables } 'should create staging tables';
 lives_ok {
@@ -43,12 +43,12 @@ lives_ok {
         if ( $line =~ /^#{2,}/ ) {
             my $hashref = gff3_parse_directive($line);
             if ( $hashref->{directive} eq 'FASTA' ) {
-
-                #slurp the rest of line
+                last;
             }
         }
         else {
-            $loader->add_data( gff3_parse_feature($line) );
+            my $feature_hashref = gff3_parse_feature($line);
+            $loader->add_data( $feature_hashref );
         }
     }
 }

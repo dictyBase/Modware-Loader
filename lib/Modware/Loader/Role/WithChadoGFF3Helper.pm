@@ -26,7 +26,8 @@ has 'synonym_spec' => (
     isa       => 'Modware::Spec::GFF3::Synonym',
     predicate => 'has_synonym_spec'
 );
-has 'uniquename_prefix' => ( is => 'rw', isa => 'Str', lazy => 1, default => 'auto');
+has 'uniquename_prefix' =>
+    ( is => 'rw', isa => 'Str', lazy => 1, default => 'auto' );
 
 sub initialize {
     my ($self) = @_;
@@ -164,7 +165,8 @@ sub make_feature_relationship_stash {
     return if not defined $gff_hashref->{attributes}->{Parent};
     my $insert_array;
     for my $parent ( @{ $gff_hashref->{attributes}->{Parent} } ) {
-        push @$insert_array, {
+        push @$insert_array,
+            {
             id        => $feature_hashref->{id},
             parent_id => $parent,
             type_id   => $self->find_or_create_cvterm_row(
@@ -174,7 +176,7 @@ sub make_feature_relationship_stash {
                     db     => 'local'
                 }
             )->cvterm_id
-        };
+            };
     }
     return $insert_array;
 }
@@ -251,9 +253,12 @@ sub make_featureloc_stash {
 
 sub make_feature_stash {
     my ( $self, $gff_hashref ) = @_;
-    my $insert_hash->{source_dbxref_id}
-        = $self->find_or_create_dbxref_row( $gff_hashref->{source},
-        'GFF_source' )->dbxref_id;
+    my $insert_hash;
+    if ( defined $gff_hashref->{source} ) {
+        $insert_hash->{source_dbxref_id}
+            = $self->find_or_create_dbxref_row( $gff_hashref->{source},
+            'GFF_source' )->dbxref_id;
+    }
     $insert_hash->{type_id}
         = $self->find_cvterm_row( $gff_hashref->{type}, 'sequence' )
         ->cvterm_id;
@@ -266,7 +271,7 @@ sub make_feature_stash {
         $insert_hash->{id}
             = $self->uniquename_prefix . $self->get_unique_feature_id;
     }
-    if (defined $gff_hashref->{attributes}->{Name}) {
+    if ( defined $gff_hashref->{attributes}->{Name} ) {
         $insert_hash->{name} = $gff_hashref->{attributes}->{Name}->[0];
     }
     return $insert_hash;

@@ -3,7 +3,7 @@
            source_dbxref_id integer NOT NULL,
            type_id integer NOT NULL,
            organism_id integer NOT NULL,
-           id varchar(56) NOT NULL
+           id varchar(56) NOT NULL,
            name varchar(256)
     )
 
