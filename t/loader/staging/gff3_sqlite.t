@@ -10,6 +10,7 @@ use File::ShareDir qw/module_dir/;
 use Modware::Loader;
 use SQL::Library;
 use Log::Log4perl qw/:easy/;
+use Bio::GFF3::LowLevel qw/gff3_parse_feature gff3_parse_directive/;
 use Modware::DataSource::Chado::Organism;
 
 Test::Chado->ignore_tc_env(1);    #make it sqlite specific
@@ -25,54 +26,32 @@ Log::Log4perl->easy_init($ERROR);
 $loader->schema($schema);
 $loader->sqlmanager($sqllib);
 $loader->logger( get_logger('MyStaging::Loader') );
-$loader->organism(        Modware::DataSource::Chado::Organism->new(
-            genus   => 'Homo',
-            species => 'sapiens'
-        )
+$loader->organism(
+    Modware::DataSource::Chado::Organism->new(
+        genus   => 'Homo',
+        species => 'sapiens'
+    )
 );
-
-is( $schema->source('Staging::Cvtermpath')->from,
-    'temp_cvtermpath', 'should load the resultsource' );
-
-my $test_handler
-    = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_data')
-    ->subdir('obo_closure')->file('eco.inf')->openr;
-
+my $test_input
+    = Path::Class::Dir->new($Bin)->parent->subdir('test_data')->subdir('gff3')
+    ->openr('test.gff3');
+lives_ok { $loader->initialize } 'should initialize';
 lives_ok { $loader->create_tables } 'should create staging tables';
 lives_ok {
-    while ( my $row = $test_handler->getline() ) { $loader->add_data($row) }
+
+    while ( my $line = $test_input->getline ) {
+        if ( $line =~ /^#{2,}/ ) {
+            my $hashref = gff3_parse_directive($line);
+            if ( $hashref->{directive} eq 'FASTA' ) {
+
+                #slurp the rest of line
+            }
+        }
+        else {
+            $loader->add_data( gff3_parse_feature($line) );
+        }
+    }
 }
-'should add all rows to loader';
-
-is( $loader->count_entries_in_cvtermpath_cache,
-    1525, 'should have 1525 entries in cache' );
-lives_ok { $loader->bulk_load } 'should load to staging';
-is_deeply(
-    $loader->count_entries_in_staging,
-    { 'temp_cvtermpath' => 1525 },
-    'should have correct entries in staging table'
-);
-is( $schema->resultset('Staging::Cvtermpath')->count(
-        { 'subject_accession' => '0000114', 'type_accession' => 'is_a' }
-    ),
-    6,
-    '0000114 accession should have 6 entries'
-);
-is( $schema->resultset('Staging::Cvtermpath')
-        ->count( { 'type_accession' => 'used_in' } ),
-    164,
-    'should have 164 entries for used_in type'
-);
-
-my $row = $schema->resultset('Staging::Cvtermpath')
-    ->search( { 'type_accession' => 'used_in' }, { rows => 1 } )->first;
-is( $schema->resultset('General::Db')->find( { db_id => $row->type_db_id } )
-        ->name,
-    'eco',
-    'should match the default namespace'
-);
-
+'should add_data';
+lives_ok { $loader->bulk_load } 'should bulk load';
 drop_schema();
-$test_handler->close;
-$schema->storage->disconnect;
-
