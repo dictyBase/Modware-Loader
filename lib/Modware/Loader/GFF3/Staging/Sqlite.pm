@@ -83,6 +83,7 @@ sub bulk_load {
             join( ',', @columns ),
             join( ',', map {'?'} 0 .. $#columns )
         );
+        say $stmt;
         my $sth     = $dbh->prepare($stmt);
         my $itr_api = 'entries_in_' . $name . '_cache';
 
