@@ -8,7 +8,7 @@ Contig1	confirmed	exon	1401	1450	.	+	.	Parent=trans-1
 Contig1	confirmed	CDS	1051	1100	.	+	0	Parent=trans-1
 Contig1	confirmed	CDS	1201	1300	.	+	2	Parent=trans-1
 Contig1	confirmed	CDS	1401	1440	.	+	0	Parent=trans-1
-Contig1	tc1	transposable_element	5001	6000	.	+	.	ID=c128.1;Name=c128.1
+Contig1	tc1	transposable_element	5001	6000	13.5	+	.	ID=c128.1;Name=c128.1
 Contig1	tc1	transposable_element	8001	9000	.	-	.	ID=c128.2;Name=c128.2
 Contig1	confirmed	transcript	30001	31000	.	-	.	ID=trans-2;Name=trans-2;Alias=xyz-2;Note=Terribly+interesting
 Contig1	confirmed	exon	30001	30100	.	-	.	Parent=trans-2;Alias=abc-1,abc-9;Note=function+unknown
@@ -43,7 +43,7 @@ Contig3	confirmed	CDS	34600	34900	.	+	.	Parent=trans-8
 Contig3	confirmed	UTR	34901	35000	.	+	.	Parent=trans-8
 ##sequence-region Contig4 1 50000
 Contig4	clone	assembly_component	1	50000	.	.	.	ID=Contig4
-Contig4	confirmed	gene	32000	35000	.	+	.	ID=thing1;gene=gene-9
+Contig4	confirmed	gene	32000	35000	.	+	.	ID=thing1;gene=gene-9;Name=9th-gene
 Contig4	confirmed	mRNA	32000	35000	.	+	.	ID=thing2;mRNA=trans-9;gene=gene-9;Dbxref=WB:WBGene00008220,ENSEMBL:ENSP00000265949
 Contig4	confirmed	CDS	32000	35000	.	+	.	ID=thing3;mRNA=trans-9
 ##FASTA
