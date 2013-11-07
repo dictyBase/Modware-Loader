@@ -62,6 +62,14 @@ sub drop_tables {
 sub create_indexes {
 }
 
+sub table2columns {
+    my ( $self, $dbh, $table_name ) = @_;
+    my $sth = $dbh->prepare("PRAGMA table_info($table_name)");
+    $sth->execute;
+    my $names = $sth->fetchall_arrayref( [1] );
+    return map {$_->[0]} @$names;
+}
+
 sub bulk_load {
     my ($self) = @_;
     my $dbh = $self->schema->storage->dbh;
@@ -70,26 +78,32 @@ sub bulk_load {
         feature_dbxref featureprop/
         )
     {
-        my $table_name  = 'temp_' . $name;
-        my $index_api   = 'get_entry_from_' . $name . '_cache';
-        my $count_api   = 'count_entries_in_' . $name . '_cache';
+        my $table_name = 'temp_' . $name;
+        my $index_api  = 'get_entry_from_' . $name . '_cache';
+        my $count_api  = 'count_entries_in_' . $name . '_cache';
         next if !$self->$count_api;
 
         my $first_entry = $self->$index_api(0);
-        my @columns     = keys %$first_entry;
+        my @columns     = $self->table2columns( $dbh, $table_name );
         my $stmt        = sprintf(
             "INSERT INTO %s(%s) VALUES(%s)",
             $table_name,
             join( ',', @columns ),
             join( ',', map {'?'} 0 .. $#columns )
         );
-        say $stmt;
         my $sth     = $dbh->prepare($stmt);
         my $itr_api = 'entries_in_' . $name . '_cache';
 
         for my $i ( 0 .. $#columns ) {
-            $sth->bind_param_array( $i + 1,
-                [ map { $_->{ $columns[$i] } } $self->$itr_api ] );
+            $sth->bind_param_array(
+                $i + 1,
+                [   map {
+                        defined $_->{ $columns[$i] }
+                            ? $_->{ $columns[$i] }
+                            : undef
+                    } $self->$itr_api
+                ]
+            );
         }
         $sth->execute_array( {} ) or die $sth->errstr;
     }
@@ -133,7 +147,10 @@ sub add_data {
             my $cache = 'add_to_' . $name . '_cache';
             $self->$cache( $self->$api( $gff_hashref, $feature_hashref ) );
         }
-        for my $name (qw/feature_dbxref feature_synonym featureprop feature_relationship/) {
+        for my $name (
+            qw/feature_dbxref feature_synonym featureprop feature_relationship/
+            )
+        {
             my $api      = 'make_' . $name . '_stash';
             my $cache    = 'add_to_' . $name . '_cache';
             my $arrayref = $self->$api( $gff_hashref, $feature_hashref );
