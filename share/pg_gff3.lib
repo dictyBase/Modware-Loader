@@ -1,0 +1,63 @@
+[create_table_temp_feature]
+    CREATE TEMP TABLE temp_feature (
+           source_dbxref_id integer NOT NULL,
+           type_id integer NOT NULL,
+           organism_id integer NOT NULL,
+           id varchar(56) NOT NULL,
+           name varchar(256)
+    )
+
+[create_table_temp_featureseq]
+    CREATE TEMP TABLE temp_featureseq (
+           id varchar(56) NOT NULL,
+           residue text NOT NULL,
+           md5 varchar(128) NOT NULL,
+           seqlen integer NOT NULL
+    )
+
+[create_table_temp_featureloc]
+    CREATE TEMP TABLE temp_featureloc (
+           id varchar(56) NOT NULL,
+           seqid varchar(20) NOT NULL,
+           start integer NOT NULL,
+           "end" integer NOT NULL,
+           strand integer,
+           phase integer
+    )
+
+[create_table_temp_analysisfeature]
+    CREATE TEMP TABLE temp_analysisfeature (
+           id varchar(56) NOT NULL,
+           score real,
+           analysis_id smallint NOT NULL
+    )
+
+[create_table_temp_feature_synonym]
+    CREATE TEMP TABLE temp_feature_synonym (
+           id varchar(56) NOT NULL,
+           alias varchar(255) NOT NULL,
+           type_id integer NOT NULL,
+           pub_id integer NOT NULL
+    )
+
+[create_table_temp_feature_relationship]
+    CREATE TEMP TABLE temp_feature_relationship (
+           id varchar(56) NOT NULL,
+           parent_id varchar(56) NOT NULL,
+           type_id integer NOT NULL
+    )
+
+[create_table_temp_feature_dbxref]
+    CREATE TEMP TABLE temp_feature_dbxref (
+           id varchar(56) NOT NULL,
+           dbxref varchar(256) NOT NULL,
+           db_id integer NOT NULL
+    )
+
+[create_table_temp_featureprop]
+    CREATE TEMP TABLE temp_featureprop (
+           id varchar(56) NOT NULL,
+           type_id integer NOT NULL,
+           property text NOT NULL
+    )
+
