@@ -12,6 +12,7 @@ use Modware::Loader;
 use SQL::Library;
 use Log::Log4perl qw/:easy/;
 use Bio::GFF3::LowLevel qw/gff3_parse_feature gff3_parse_directive/;
+use Bio::SeqIO;
 use Modware::DataSource::Chado::Organism;
 
 Test::Chado->ignore_tc_env(1);    #make it sqlite specific
@@ -52,7 +53,12 @@ lives_ok {
         if ( $line =~ /^#{2,}/ ) {
             my $hashref = gff3_parse_directive($line);
             if ( $hashref->{directive} eq 'FASTA' ) {
-                last;
+                my $seqio = Bio::SeqIO->new(-fh => $test_input, -format => 'fasta');
+                while (my $seq = $seqio->next_seq) {
+                    $hashref->{seq_id} = $seq->id;
+                    $hashref->{sequence} = $seq->seq;
+                    $loader->add_data($hashref);
+                }
             }
         }
         else {
@@ -149,5 +155,15 @@ row_ok(
         "SELECT * from temp_featureprop where id = 'trans-2' AND property LIKE 'Terribly%' AND type_id = (SELECT cvterm_id FROM cvterm where name = 'Note')",
     result      => 1,
     description => 'should have Note feature property'
+);
+row_ok(
+    sql => "SELECT seqlen from temp_featureseq",
+    result => 3,
+    description => "should have three sequence entries"
+);
+row_ok(
+    sql => "SELECT seqlen from temp_featureseq where id = 'Contig4'",
+    result => 1,
+    description => "should have one sequence entry for Contig4"
 );
 drop_schema();

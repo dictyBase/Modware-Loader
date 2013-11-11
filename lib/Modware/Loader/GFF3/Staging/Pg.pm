@@ -65,7 +65,8 @@ sub table2columns {
     my ( $self, $dbh, $table_name ) = @_;
     my $names = $dbh->selectall_arrayref(
         qq{SELECT distinct(column_name) FROM information_schema.columns where table_name = ?},
-        {Slice => {}}, ($table_name)
+        { Slice => {} },
+        ($table_name)
     );
     return map { $_->{column_name} } @$names;
 }
@@ -93,16 +94,15 @@ sub bulk_load {
         my $itr_api = 'entries_in_' . $name . '_cache';
         for my $row ( $self->$itr_api ) {
             my @copydata;
-            for my $cname(@columns) {
-                if (defined $row->{$cname}) {
-                    push @copydata,$row->{$cname};
+            for my $cname (@columns) {
+                if ( defined $row->{$cname} ) {
+                    push @copydata, $row->{$cname};
                 }
                 else {
-                    push @copydata,'' ;
+                    push @copydata, '';
                 }
             }
-            $dbh->pg_putcopydata(
-                join( "\t", @copydata ) . "\n" );
+            $dbh->pg_putcopydata( join( "\t", @copydata ) . "\n" );
         }
         $dbh->pg_putcopyend();
     }
@@ -133,7 +133,7 @@ sub bulk_load {
 sub add_data {
     my ( $self, $gff_hashref ) = @_;
     if ( exists $gff_hashref->{directive} ) {
-        if ( exists $gff_hashref->{directive}->{FASTA} ) {
+        if ( $gff_hashref->{directive} eq 'FASTA' ) {
             $self->add_to_featureseq_cache(
                 $self->make_featureseq_stash($gff_hashref) );
         }

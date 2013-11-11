@@ -11,6 +11,7 @@ use Modware::Loader;
 use SQL::Library;
 use Log::Log4perl qw/:easy/;
 use Bio::GFF3::LowLevel qw/gff3_parse_feature gff3_parse_directive/;
+use Bio::SeqIO;
 use Modware::DataSource::Chado::Organism;
 
 use_ok 'Modware::Loader::GFF3::Staging::Pg';
@@ -54,7 +55,15 @@ SKIP: {
             if ( $line =~ /^#{2,}/ ) {
                 my $hashref = gff3_parse_directive($line);
                 if ( $hashref->{directive} eq 'FASTA' ) {
-                    last;
+                    my $seqio = Bio::SeqIO->new(
+                        -fh     => $test_input,
+                        -format => 'fasta'
+                    );
+                    while ( my $seq = $seqio->next_seq ) {
+                        $hashref->{seq_id}   = $seq->id;
+                        $hashref->{sequence} = $seq->seq;
+                        $loader->add_data($hashref);
+                    }
                 }
             }
             else {
@@ -153,6 +162,16 @@ SKIP: {
         result      => 1,
         description => 'should have Note feature property'
     );
+    row_ok(
+        sql         => "SELECT seqlen from temp_featureseq",
+        result      => 3,
+        description => "should have three sequence entries"
+    );
+    row_ok(
+        sql    => "SELECT seqlen from temp_featureseq where id = 'Contig4'",
+        result => 1,
+        description => "should have one sequence entry for Contig4"
+    );
     drop_schema();
     $test_input->close;
-};
+}

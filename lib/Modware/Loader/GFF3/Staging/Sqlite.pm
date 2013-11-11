@@ -134,7 +134,7 @@ sub bulk_load {
 sub add_data {
     my ( $self, $gff_hashref ) = @_;
     if ( exists $gff_hashref->{directive} ) {
-        if ( exists $gff_hashref->{directive}->{FASTA} ) {
+        if ( $gff_hashref->{directive} eq 'FASTA' ) {
             $self->add_to_featureseq_cache(
                 $self->make_featureseq_stash($gff_hashref) );
         }
