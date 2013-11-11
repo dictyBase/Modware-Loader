@@ -93,16 +93,8 @@ sub bulk_load {
         $dbh->do($stmt);
         my $itr_api = 'entries_in_' . $name . '_cache';
         for my $row ( $self->$itr_api ) {
-            my @copydata;
-            for my $cname (@columns) {
-                if ( defined $row->{$cname} ) {
-                    push @copydata, $row->{$cname};
-                }
-                else {
-                    push @copydata, '';
-                }
-            }
-            $dbh->pg_putcopydata( join( "\t", @copydata ) . "\n" );
+            $dbh->pg_putcopydata(
+                join( "\t", map { $row->{$_} // '' } @columns ) . "\n" );
         }
         $dbh->pg_putcopyend();
     }
