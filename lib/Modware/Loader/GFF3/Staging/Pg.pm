@@ -86,15 +86,23 @@ sub bulk_load {
         my $first_entry = $self->$index_api(0);
         my @columns     = $self->table2columns( $dbh, $table_name );
         my $stmt        = sprintf(
-            "COPY %s(%s) FROM STDIN",
+            "COPY %s(%s) FROM STDIN NULL AS ''",
             $table_name, join( ',', @columns ),
         );
-        say $stmt;
         $dbh->do($stmt);
         my $itr_api = 'entries_in_' . $name . '_cache';
         for my $row ( $self->$itr_api ) {
+            my @copydata;
+            for my $cname(@columns) {
+                if (defined $row->{$cname}) {
+                    push @copydata,$row->{$cname};
+                }
+                else {
+                    push @copydata,'' ;
+                }
+            }
             $dbh->pg_putcopydata(
-                join( "\t", map { $row->{$_} // undef } @columns ) . "\n" );
+                join( "\t", @copydata ) . "\n" );
         }
         $dbh->pg_putcopyend();
     }

@@ -147,7 +147,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
         {   id     => 'DDB_G0273713',
             seqid  => 'DDB0166986',
             start  => 3289126,
-            end    => 3312764,
+            stop    => 3312764,
             strand => 1
         },
         'should have the expected featureloc hashref'

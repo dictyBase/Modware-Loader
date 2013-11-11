@@ -4,7 +4,6 @@ use Test::Chado qw/:schema/;
 use Test::DatabaseRow;
 use FindBin qw/$Bin/;
 use Path::Class::Dir;
-use IO::File;
 use Bio::Chado::Schema;
 use File::Spec::Functions;
 use File::ShareDir qw/module_dir/;
@@ -112,7 +111,7 @@ SKIP: {
     );
     row_ok(
         sql =>
-            "SELECT * from temp_featureloc where seqid = 'Contig1' AND id = 'trans-1' AND start = 1000 AND end = 2000 AND strand = 1",
+            "SELECT * from temp_featureloc where seqid = 'Contig1' AND id = 'trans-1' AND start = 1000 AND stop = 2000 AND strand = 1",
         results     => 1,
         description => 'should have featureloc with id trans-1'
     );

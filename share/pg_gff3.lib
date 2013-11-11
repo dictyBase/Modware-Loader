@@ -20,7 +20,7 @@
            id varchar(56) NOT NULL,
            seqid varchar(20) NOT NULL,
            start integer NOT NULL,
-           "end" integer NOT NULL,
+           stop integer NOT NULL,
            strand integer,
            phase integer
     )

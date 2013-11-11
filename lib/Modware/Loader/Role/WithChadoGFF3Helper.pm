@@ -241,7 +241,7 @@ sub make_featureloc_stash {
         id    => $feature_hashref->{id},
         seqid => $gff_hashref->{seq_id},
         start => $gff_hashref->{start} - 1,    #zero based coordinate in chado
-        end   => $gff_hashref->{end}
+        stop   => $gff_hashref->{end}
     };
     if ( defined $gff_hashref->{strand} ) {
         $insert_hash->{strand} = $gff_hashref->{strand} eq '+' ? 1 : -1;
