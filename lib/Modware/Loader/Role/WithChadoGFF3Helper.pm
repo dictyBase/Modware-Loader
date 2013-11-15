@@ -88,6 +88,22 @@ sub initialize {
     $self->synonym_pub_id( $synonym_pub_row->pub_id );
 }
 
+sub make_feature_target_stash {
+    my ( $self, $gff_hashref, $feature_hashref ) = @_;
+    return if not defined $gff_hashref->{attributes}->{Target};
+    my @target = split /\s+/, $gff_hashref->{attributes}->{Target}->[0];
+    my $insert_hashref = {
+        id        => $feature_hashref->{id},
+        target_id => $target[0],
+        start     => $target[1],
+        stop      => $target[2]
+    };
+    if ( scalar @target == 4 ) {
+        $insert_hashref->{strand} = $target[3] eq '+' ? 1 : -1;
+    }
+    return $insert_hashref;
+}
+
 sub make_featureseq_stash {
     my ( $self, $gff_seq_hashref ) = @_;
     my $insert_hash = {
@@ -118,21 +134,25 @@ sub make_feature_dbxref_stash {
 sub make_featureprop_stash {
     my ( $self, $gff_hashref, $feature_hashref ) = @_;
     my $insert_array;
-    if ( defined $gff_hashref->{attributes}->{Note} ) {
-        my $type_id = $self->find_or_create_cvterm_row(
-            {   cvterm => 'Note',
-                cv     => 'feature_property',
-                dbxref => 'Note',
-                db     => 'local'
+    for my $reserved_attr (qw/Note Gap/) {
+        if ( defined $gff_hashref->{attributes}->{$reserved_attr} ) {
+            my $type_id = $self->find_or_create_cvterm_row(
+                {   cvterm => $reserved_attr,
+                    cv     => 'feature_property',
+                    dbxref => $reserved_attr,
+                    db     => 'local'
+                }
+            )->cvterm_id;
+            for my $value (
+                @{ $gff_hashref->{attributes}->{$reserved_attr} } )
+            {
+                push @$insert_array,
+                    {
+                    id       => $feature_hashref->{id},
+                    property => $value,
+                    type_id  => $type_id
+                    };
             }
-        )->cvterm_id;
-        for my $note ( @{ $gff_hashref->{attributes}->{Note} } ) {
-            push @$insert_array,
-                {
-                id       => $feature_hashref->{id},
-                property => $note,
-                type_id  => $type_id
-                };
         }
     }
 
@@ -241,7 +261,7 @@ sub make_featureloc_stash {
         id    => $feature_hashref->{id},
         seqid => $gff_hashref->{seq_id},
         start => $gff_hashref->{start} - 1,    #zero based coordinate in chado
-        stop   => $gff_hashref->{end}
+        stop  => $gff_hashref->{end}
     };
     if ( defined $gff_hashref->{strand} ) {
         $insert_hash->{strand} = $gff_hashref->{strand} eq '+' ? 1 : -1;

@@ -60,3 +60,12 @@
            type_id integer NOT NULL,
            property text NOT NULL
     )
+
+[create_table_temp_feature_target]
+    CREATE TABLE temp_feature_target(
+           id varchar(56) NOT NULL,
+           target_id varchar(56) NOT NULL,
+           start integer NOT NULL,
+           stop integer NOT NULL,
+           strand integer
+    )

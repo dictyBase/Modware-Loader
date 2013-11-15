@@ -97,6 +97,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
         )
     );
     lives_ok { $helper->initialize } 'should run initialize';
+
     my $gff_hashref = {
         seq_id     => 'DDB0166986',
         source     => 'Sequencing Center',
@@ -147,7 +148,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
         {   id     => 'DDB_G0273713',
             seqid  => 'DDB0166986',
             start  => 3289126,
-            stop    => 3312764,
+            stop   => 3312764,
             strand => 1
         },
         'should have the expected featureloc hashref'
@@ -176,6 +177,19 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
         $gff_hashref->{source} . '-' . $gff_hashref->{type},
         'should match analysis name'
     );
+
+    $gff_hashref->{attributes}->{Target} = ['BC0456 178 1828 +'];
+    my $target_hashref;
+    lives_ok {
+        $target_hashref = $helper->make_feature_target_stash( $gff_hashref,
+            $insert_hashref );
+    }
+    'should run make_feature_target_stash';
+    is( $target_hashref->{stop},      1828,     'should match target stop' );
+    is( $target_hashref->{target_id}, 'BC0456', 'should match target id' );
+    is( $target_hashref->{strand},    1,        'should match strand' );
+    is( $target_hashref->{start},     178,      'should match target start' );
+
     my $featureseq_row;
     lives_ok {
         $featureseq_row = $helper->make_featureseq_stash(
@@ -277,6 +291,7 @@ subtest 'make staging compatible array data structure from GFF3' => sub {
         'There are two copies of this gene';
     push @{ $gff_hashref->{attributes}->{product} },
         'putative acetyl-CoA synthatase';
+    push @{ $gff_hashref->{attributes}->{Gap} }, 'M3 I1 M2 F1 M4';
     my $prop_arrayref;
     lives_ok {
         $prop_arrayref = $helper->make_featureprop_stash( $gff_hashref,
@@ -290,6 +305,13 @@ subtest 'make staging compatible array data structure from GFF3' => sub {
                 type_id  => $schema->resultset('Cv::Cvterm')
                     ->find(
                     { 'cv.name' => 'feature_property', 'name' => 'Note' },
+                    { join      => 'cv' } )->cvterm_id
+            },
+            {   id       => $insert_hashref->{id},
+                property => 'M3 I1 M2 F1 M4',
+                type_id  => $schema->resultset('Cv::Cvterm')
+                    ->find(
+                    { 'cv.name' => 'feature_property', 'name' => 'Gap' },
                     { join      => 'cv' } )->cvterm_id
             },
             {   id       => $insert_hashref->{id},
