@@ -2,12 +2,13 @@ package Modware::Loader::GFF3::Staging::Sqlite;
 use namespace::autoclean;
 use Digest::MD5 qw/md5/;
 use feature qw/say/;
+use Data::Dumper;
 use Moose;
 use Modware::Spec::GFF3::Analysis;
 with 'Modware::Role::WithDataStash' => {
     'create_stash_for' => [
         qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
-            feature_dbxref featureprop/
+            feature_dbxref featureprop feature_target/
     ]
 };
 
@@ -75,7 +76,7 @@ sub bulk_load {
     my $dbh = $self->schema->storage->dbh;
     for my $name (
         qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
-        feature_dbxref featureprop/
+        feature_dbxref featureprop feature_target/
         )
     {
         my $table_name = 'temp_' . $name;
@@ -142,7 +143,7 @@ sub add_data {
     else {
         my $feature_hashref = $self->make_feature_stash($gff_hashref);
         $self->add_to_feature_cache($feature_hashref);
-        for my $name (qw/featureloc analysisfeature/) {
+        for my $name (qw/featureloc analysisfeature feature_target/) {
             my $api   = 'make_' . $name . '_stash';
             my $cache = 'add_to_' . $name . '_cache';
             $self->$cache( $self->$api( $gff_hashref, $feature_hashref ) );
