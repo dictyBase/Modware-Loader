@@ -22,7 +22,7 @@ for my $name (qw/term synonym/) {
     for my $type (qw/get set has delete/) {
         push @apis, $type . '_' . $name . '_row';
     }
-    for my $type (qw/add_to clean entries_in count_entries_in/) {
+    for my $type (qw/add_to clean entries_in count_entries_in get_entry_from/) {
         push @apis, $type . '_' . $name . '_cache';
     }
 }
