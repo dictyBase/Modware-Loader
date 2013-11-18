@@ -43,9 +43,9 @@ lives_ok { $loader->initialize } 'should initialize';
 lives_ok { $loader->create_tables } 'should create staging tables';
 row_ok(
     sql =>
-        "SELECT name FROM sqlite_master where type = 'table' AND tbl_name like 'temp%'",
+        "SELECT name FROM sqlite_temp_master where type = 'table' AND tbl_name like 'temp%'",
     results     => 9,
-    description => 'should have created 8 staging tables'
+    description => 'should have created 9 staging tables'
 );
 lives_ok {
 
