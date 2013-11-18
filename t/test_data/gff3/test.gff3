@@ -46,6 +46,11 @@ Contig4	clone	assembly_component	1	50000	.	.	.	ID=Contig4
 Contig4	confirmed	gene	32000	35000	.	+	.	ID=thing1;gene=gene-9;Name=9th-gene
 Contig4	confirmed	mRNA	32000	35000	.	+	.	ID=thing2;mRNA=trans-9;gene=gene-9;Dbxref=WB:WBGene00008220,ENSEMBL:ENSP00000265949
 Contig4	confirmed	CDS	32000	35000	.	+	.	ID=thing3;mRNA=trans-9
+##sequence-region ctg123 1 1497228
+ctg123	.	chromosome	1	1497228	.	.	.	ID=ctg123
+ctg123	.	EST_match	1200	9000	.	+	.	ID=EST00001
+ctg123	.	match_part	1200	3200	2.2e-30	+	.	ID=match00002;Parent=EST00001;Target=EST_A 5 506 -;Gap=M301 D1499 M201
+ctg123	.	match_part	7000	9000	7.4e-32	+	.	ID=match00003;Parent=EST00001;Target=EST_B 1 502 -;Gap=M101 D1499 M401
 ##FASTA
 >Contig1
 ttcttcgacactaagaaccatgccccatgtcacgacttcaccctcattgacgagcgttgt
