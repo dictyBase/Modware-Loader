@@ -44,7 +44,7 @@ lives_ok { $loader->create_tables } 'should create staging tables';
 row_ok(
     sql =>
         "SELECT name FROM sqlite_master where type = 'table' AND tbl_name like 'temp%'",
-    results     => 8,
+    results     => 9,
     description => 'should have created 8 staging tables'
 );
 lives_ok {
@@ -69,27 +69,27 @@ lives_ok {
 }
 'should add_data';
 is( $loader->count_entries_in_feature_cache,
-    44, 'should have 44 entries in feature cache' );
+    48, 'should have 48 entries in feature cache' );
 is( $loader->count_entries_in_analysisfeature_cache,
-    4, 'should have 4 entries in analysis feature cache' );
+    6, 'should have 6 entries in analysis feature cache' );
 is( $loader->count_entries_in_featureloc_cache,
-    44, 'should have 44 entries in featureloc cache' );
+    48, 'should have 48 entries in featureloc cache' );
 is( $loader->count_entries_in_feature_synonym_cache,
     4, 'should have 4 entries in feature synonym cache' );
 is( $loader->count_entries_in_feature_relationship_cache,
-    34, 'should have 34 entries in feature relationship cache' );
+    36, 'should have 36 entries in feature relationship cache' );
 is( $loader->count_entries_in_feature_dbxref_cache,
     5, 'should have 5 entries in feature dbxref cache' );
 is( $loader->count_entries_in_featureprop_cache,
-    10, 'should have 10 entries in featureprop cache' );
+    12, 'should have 12 entries in featureprop cache' );
 lives_ok { $loader->bulk_load } 'should bulk load';
 row_ok(
     sql => [
         "SELECT * from temp_feature where organism_id = ?",
         $loader->organism_id
     ],
-    results     => 44,
-    description => 'should have 44 feature entries'
+    results     => 48,
+    description => 'should have 48 feature entries'
 );
 row_ok(
     sql         => "SELECT * from temp_feature where id = 'trans-1'",
@@ -165,5 +165,16 @@ row_ok(
     sql => "SELECT seqlen from temp_featureseq where id = 'Contig4'",
     result => 1,
     description => "should have one sequence entry for Contig4"
+);
+row_ok(
+    sql => "SELECT * from temp_feature_target where id = 'match00002'",
+    result => 2,
+    description => "should have 2 entries in staging target table"
+);
+row_ok(
+    sql =>
+        "SELECT * from temp_featureprop where id = 'match00002' and type_id = (SELECT cvterm_id FROM cvterm where name = 'Gap')",
+    result      => 2,
+    description => 'should have Gap feature properties for ctg123'
 );
 drop_schema();
