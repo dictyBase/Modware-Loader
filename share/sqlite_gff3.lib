@@ -1,6 +1,6 @@
 [create_table_temp_feature]
     CREATE TABLE temp_feature (
-           source_dbxref_id integer NOT NULL,
+           source_dbxref_id integer,
            type_id integer NOT NULL,
            organism_id integer NOT NULL,
            id varchar(56) NOT NULL,
