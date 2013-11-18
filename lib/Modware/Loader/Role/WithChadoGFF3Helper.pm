@@ -229,8 +229,10 @@ sub make_analysisfeature_stash {
         };
         return $insert_hash;
     }
+
+    my $source = $gff_hashref->{source} // 'auto';
     my $analysis_key
-        = $gff_hashref->{source} . '-' . $gff_hashref->{type} . '-1.0';
+        = $source . '-' . $gff_hashref->{type} . '-1.0';
     my $analysis_id;
     if ( $self->has_analysis_row($analysis_key) ) {
         $analysis_id = $self->get_analysis_row($analysis_key)->analysis_id;
@@ -238,9 +240,9 @@ sub make_analysisfeature_stash {
     else {
         my $analysis_row
             = $self->schema->resultset('Companalysis::Analysis')->create(
-            {   program => $gff_hashref->{source} . '-'
+            {   program => $source . '-'
                     . $gff_hashref->{type},
-                name => $gff_hashref->{source} . '-' . $gff_hashref->{type},
+                name => $source . '-' . $gff_hashref->{type},
                 programversion => '1.0'
             }
             );
