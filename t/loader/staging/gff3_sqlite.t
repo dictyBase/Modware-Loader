@@ -38,7 +38,7 @@ local $Test::DatabaseRow::dbh = $schema->storage->dbh;
 
 my $test_input
     = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_data')
-    ->subdir('gff3')->file('test.gff3')->openr;
+    ->subdir('gff3')->file('test1.gff3')->openr;
 lives_ok { $loader->initialize } 'should initialize';
 lives_ok { $loader->create_tables } 'should create staging tables';
 row_ok(
