@@ -1,3 +1,7 @@
+[create_table_temp_new_feature_ids]
+    CREATE TEMP TABLE new_feature_ids (
+           id varchar(56) NOT NULL
+    )
 [create_table_temp_feature]
     CREATE TEMP TABLE temp_feature (
            source_dbxref_id integer,
@@ -69,3 +73,69 @@
            stop integer NOT NULL,
            strand integer
     )
+
+[insert_new_feature_id]
+    INSERT INTO new_feature_id(id)
+        SELECT tmpf.id FROM temp_feature tmpf
+        LEFT JOIN feature ON
+            tmpf.id = feature.uniquename
+        WHERE feature.uniquename is NULL
+
+[insert_new_feature]
+    INSERT INTO 
+        feature(dbxref_id,type_id,organism_id,uniquename,name,residues,
+           md5checksum, seqlen)
+           SELECT tmpf.source_dbxref_id,tmpf.type_id,tmpf.organism_id,
+               tmpf.id,tmpf.name,tmpfseq.residue,tmpfseq.md5,tmpfseq.seqlen
+            FROM temp_feature tmpf
+            INNER JOIN temp_featureseq tmpfseq ON
+               tmpf.id = tmpfseq.id
+            INNER JOIN new_feature_id ON
+               tmpf.id = new_feature_id.id
+
+[insert_new_featureloc]
+    INSERT INTO 
+        featureloc(feature_id,srcfeature_id,fmin,fmax,strand,phase)
+           SELECT
+               feat.feature_id,srcfeat.feature_id,tmpfloc.start,tmpfloc.stop,
+               tmpfloc.strand,tmpfloc.phase
+           FROM temp_featureloc tmpfloc
+           INNER JOIN new_feature_id ON
+               new_feature_id.id = tmpfloc.id
+           INNER JOIN feature feat ON
+               feature.uniquename = new_feature_id.id
+           INNER JOIN feature srcfeat ON
+               srcfeature.uniquename = tmpfloc.seqid
+
+[insert_new_analysisfeature]
+    INSERT INTO analysisfeature(feature_id,significance,analysis_id)
+           SELECT feat.feature_id, tmpaf.score,tmpaf.analysis_id
+           FROM temp_analysisfeature tmpaf 
+           INNER JOIN new_feature_id ON
+               new_feature_id.id = tmpaf.id
+           INNER JOIN feature feat ON
+               feature.uniquename = new_feature_id.id
+
+[insert_new_synonym]
+    INSERT INTO synonym(name,type_id,synonym_sgml)
+           SELECT tmpfs.alias,tmpfs.type_id,tmpfs.alias
+           FROM temp_feature_synonym tmpfs
+           INNER JOIN new_feature_id ON
+               new_feature_id.id = tmpfs.id
+           INNER JOIN feature ON
+               feature.uniquename = new_feature_id.id
+
+[insert_new_feature_synonym]
+    INSERT INTO feature_synonym(feature_id,synonym_id,pub_id)
+           SELECT feat.feature_id,syn.synonym_id,tmpfs.pub_id
+           FROM temp_feature_synonym tmpfs
+           INNER JOIN synonym syn ON
+               tmpfs.alias = syn.alias
+           INNER JOIN new_feature_id ON
+               tmpfs.id = new_feature_id.id
+           INNER JOIN feature feat ON
+               new_feature_id.id = feat.uniquename
+
+[insert_new_temp_feature_relationship]
+    INSERT into feature_relationship
+           
