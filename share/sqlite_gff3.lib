@@ -137,5 +137,58 @@
                new_feature_id.id = feat.uniquename
 
 [insert_new_temp_feature_relationship]
-    INSERT into feature_relationship
+    INSERT into feature_relationship(object_id,subject_id,type_id)
+           SELECT pfeat.feature_id,cfeat.feature_id,tmpfr.type_id
+           FROM temp_feature_relationship tmpfr
+           INNER JOIN new_feature_id ON
+               new_feature_id.id = tmpfr.id
+           INNER JOIN feature cfeat ON
+               cfeat.uniquename = new_feature_id.id
+           INNER JOIN feature pfeat ON
+               pfeat.uniquename = tmpfr.parent_id
+
+[insert_new_dbxref]
+    INSERT INTO dbxref(accession,db_id)
+           SELECT tmpfd.dbxref,tmpfd.db_id 
+           FROM temp_feature_dbxref tmpfd
+           INNER JOIN new_feature_id ON
+               new_feature_id.id = tmpfd.id
+           INNER JOIN feature ON
+               feature.uniquename = new_feature_id.id
+
+[insert_new_feature_dbxref]
+    INSERT INTO feature_dbxref(feature_id,dbxref_id)
+        SELECT dbxref.dbxref_id,feature.feature_id FROM dbxref
+        INNER JOIN temp_feature_dbxref tmpfd ON
+           (
+               dbxref.accession = tmpfd.dbxref
+               AND
+               dbxref.db_id = tmpfd.db_id
+           )
+        INNER JOIN new_feature_id ON
+           new_feature_id.id = tmpfd.id
+        INNER JOIN feature ON
+           new_feature_id.id = feature.uniquename
+
+[insert_new_featureprop]
+    INSERT INTO featureprop(feature_id,value,type_id)
+        SELECT feat.feature_id,tmpfp.property,tmpfp.type_id
+        FROM temp_featureprop tmpfp
+        INNER JOIN new_feature_id ON
+           tmpfp.id = new_feature_id.id
+        INNER JOIN feature feat ON
+           feat.uniquename = new_feature_id.id
+
+[insert_new_feature_target]
+    INSERT INTO featureloc(feature_id,srcfeature_id,fmin,fmax,rank)
+           SELECT
+               feat.feature_id,srcfeat.feature_id,tmpft.start,
+               tmpft.stop,tmpft.strand,1 FROM temp_feature_target tmpft
+           INNER JOIN new_feature_id ON
+               tmpft.id = new_feature_id.id
+           INNER JOIN feature feat ON
+               feat.uniquename = new_feature_id.id
+
+
+           
            

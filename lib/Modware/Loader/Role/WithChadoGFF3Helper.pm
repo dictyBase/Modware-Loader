@@ -91,12 +91,23 @@ sub initialize {
 sub make_feature_target_stash {
     my ( $self, $gff_hashref, $feature_hashref ) = @_;
     return if not defined $gff_hashref->{attributes}->{Target};
-    my @target = split /\s+/, $gff_hashref->{attributes}->{Target}->[0];
+
     my $insert_hashref = {
-        id        => $feature_hashref->{id},
-        target_id => $target[0],
-        start     => $target[1],
-        stop      => $target[2]
+        id    => $feature_hashref->{id},
+        seqid => $gff_hashref->{seq_id},
+        start => $gff_hashref->{start} - 1,    #zero based coordinate in chado
+        stop  => $gff_hashref->{end}
+    };
+    if ( defined $gff_hashref->{strand} ) {
+        $insert_hashref->{strand} = $gff_hashref->{strand} eq '+' ? 1 : -1;
+    }
+    $insert_hashref->{phase} = $gff_hashref->{phase}
+        if defined $gff_hashref->{phase};
+
+    my @target = split /\s+/, $gff_hashref->{attributes}->{Target}->[0];
+        $insert_hashref->{target_id} = $target[0] ;
+        $insert_hashref->{start}     = $target[1] - 1;
+        $insert_hashref->{stop}      = $target[2];
     };
     if ( scalar @target == 4 ) {
         $insert_hashref->{strand} = $target[3] eq '+' ? 1 : -1;
@@ -259,18 +270,21 @@ sub make_analysisfeature_stash {
 
 sub make_featureloc_stash {
     my ( $self, $gff_hashref, $feature_hashref ) = @_;
-    my $insert_hash = {
+    #In case of Target attribute present the reference feature location should be linked with target feature.
+    #So, this should be skipped
+    return if defined $gff_hashref->{attributes}->{Target};
+    my $insert_hashref = {
         id    => $feature_hashref->{id},
         seqid => $gff_hashref->{seq_id},
         start => $gff_hashref->{start} - 1,    #zero based coordinate in chado
         stop  => $gff_hashref->{end}
     };
     if ( defined $gff_hashref->{strand} ) {
-        $insert_hash->{strand} = $gff_hashref->{strand} eq '+' ? 1 : -1;
+        $insert_hashref->{strand} = $gff_hashref->{strand} eq '+' ? 1 : -1;
     }
-    $insert_hash->{phase} = $gff_hashref->{phase}
+    $insert_hashref->{phase} = $gff_hashref->{phase}
         if defined $gff_hashref->{phase};
-    return $insert_hash;
+    return $insert_hashref;
 }
 
 sub make_feature_stash {
