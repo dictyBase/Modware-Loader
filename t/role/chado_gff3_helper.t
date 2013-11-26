@@ -183,8 +183,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
     $gff_hashref->{attributes}->{Target} = ['BC0456 178 1828 +'];
     my $target_hashref;
     lives_ok {
-        $target_hashref = $helper->make_feature_target_stash( $gff_hashref,
-            $insert_hashref );
+        $target_hashref = $helper->make_feature_target_stash( $gff_hashref, );
     }
     'should run make_feature_target_stash';
     my $expected_target_hashref = {
@@ -204,7 +203,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
             id               => $insert_hashref->{id},
             name             => $insert_hashref->{name}
         },
-        feature_analysis => $analysis_hashref,
+        analysisfeature => $analysis_hashref,
         featureloc       => $featureloc_hashref,
         query_featureloc => {
             id     => $insert_hashref->{id},

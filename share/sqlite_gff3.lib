@@ -29,6 +29,17 @@
            phase int
     )
 
+[create_table_temp_featureloc_target]
+    CREATE TEMP TABLE temp_featureloc (
+           id varchar(56) NOT NULL,
+           seqid varchar(20) NOT NULL,
+           start int NOT NULL,
+           stop int NOT NULL,
+           strand int,
+           rank int NOT NULL,
+           phase int
+    )
+
 [create_table_temp_analysisfeature]
     CREATE TEMP TABLE temp_analysisfeature (
            id varchar(56) NOT NULL,

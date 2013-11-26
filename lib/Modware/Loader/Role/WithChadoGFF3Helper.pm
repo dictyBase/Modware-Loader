@@ -90,7 +90,7 @@ sub initialize {
 }
 
 sub make_feature_target_stash {
-    my ( $self, $gff_hashref, $feature_hashref ) = @_;
+    my ( $self, $gff_hashref ) = @_;
     return if not defined $gff_hashref->{attributes}->{Target};
 
     my @target = split /\s+/, $gff_hashref->{attributes}->{Target}->[0];
@@ -135,7 +135,7 @@ sub make_feature_target_stash {
         $afeature_hashref );
 
     #analysis for score column
-    $insert_hashref->{feature_analysis}
+    $insert_hashref->{analysisfeature}
         = $self->make_analysisfeature_stash( $gff_hashref,
         $afeature_hashref );
 
