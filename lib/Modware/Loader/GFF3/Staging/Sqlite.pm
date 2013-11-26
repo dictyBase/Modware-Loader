@@ -8,16 +8,16 @@ use Modware::Spec::GFF3::Analysis;
 with 'Modware::Role::WithDataStash' => {
     'create_stash_for' => [
         qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
-            feature_dbxref featureprop feature_target/
+            feature_dbxref featureprop featureloc_target/
     ]
 };
 
+has 'target_type' => ( is => 'rw', isa => 'Str' );
+has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 has 'schema' => (
     is  => 'rw',
     isa => 'Bio::Chado::Schema',
 );
-
-has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 
 sub create_tables {
     my ($self) = @_;
@@ -68,7 +68,7 @@ sub table2columns {
     my $sth = $dbh->prepare("PRAGMA table_info($table_name)");
     $sth->execute;
     my $names = $sth->fetchall_arrayref( [1] );
-    return map {$_->[0]} @$names;
+    return map { $_->[0] } @$names;
 }
 
 sub bulk_load {
@@ -76,7 +76,7 @@ sub bulk_load {
     my $dbh = $self->schema->storage->dbh;
     for my $name (
         qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
-        feature_dbxref featureprop feature_target/
+        feature_dbxref featureprop featureloc_target/
         )
     {
         my $table_name = 'temp_' . $name;
@@ -140,10 +140,22 @@ sub add_data {
                 $self->make_featureseq_stash($gff_hashref) );
         }
     }
+    elsif ( exists $gff_hashref->{attributes}->{Target} ) {
+        my $target_hashref = $self->make_feature_target_stash($gff_hashref);
+        $self->add_to_feature_cache( $target_hashref->{target_hashref} );
+        $self->add_to_feature_cache( $target_hashref->{alignment_hashref} );
+        $self->add_to_analysisfeature_cache(
+            $target_hashref->{analysisfeature} );
+        $self->add_to_featureloc_cache( $target_hashref->{featureloc} );
+        $self->add_to_feature_target_cache(
+            $target_hashref->{query_featureloc} );
+        $self->add_to_feature_relationship_cache(
+            @{ $target_hashref->{feature_relationship} } );
+    }
     else {
         my $feature_hashref = $self->make_feature_stash($gff_hashref);
         $self->add_to_feature_cache($feature_hashref);
-        for my $name (qw/featureloc analysisfeature feature_target/) {
+        for my $name (qw/featureloc analysisfeature/) {
             my $api   = 'make_' . $name . '_stash';
             my $cache = 'add_to_' . $name . '_cache';
             $self->$cache( $self->$api( $gff_hashref, $feature_hashref ) );
