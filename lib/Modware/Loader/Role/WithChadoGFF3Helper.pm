@@ -7,7 +7,7 @@ use Data::Dumper;
 with 'Modware::Role::WithDataStash' =>
     { 'create_kv_stash_for' => [qw/analysis/] };
 
-requires qw/create_synonym_pub_row get_unique_feature_id/;
+requires qw/create_synonym_pub_row get_unique_feature_id target_type/;
 requires
     qw/schema find_or_create_cvterm_row normalize_id find_or_create_dbxref_row find_cvterm_row get_organism_row/;
 
@@ -28,6 +28,7 @@ has 'synonym_spec' => (
 );
 has 'uniquename_prefix' =>
     ( is => 'rw', isa => 'Str', lazy => 1, default => 'auto' );
+
 
 sub initialize {
     my ($self) = @_;
@@ -92,25 +93,67 @@ sub make_feature_target_stash {
     my ( $self, $gff_hashref, $feature_hashref ) = @_;
     return if not defined $gff_hashref->{attributes}->{Target};
 
-    my $insert_hashref = {
-        id    => $feature_hashref->{id},
-        seqid => $gff_hashref->{seq_id},
-        start => $gff_hashref->{start} - 1,    #zero based coordinate in chado
-        stop  => $gff_hashref->{end}
-    };
-    if ( defined $gff_hashref->{strand} ) {
-        $insert_hashref->{strand} = $gff_hashref->{strand} eq '+' ? 1 : -1;
-    }
-    $insert_hashref->{phase} = $gff_hashref->{phase}
-        if defined $gff_hashref->{phase};
-
     my @target = split /\s+/, $gff_hashref->{attributes}->{Target}->[0];
-        $insert_hashref->{target_id} = $target[0] ;
-        $insert_hashref->{start}     = $target[1] - 1;
-        $insert_hashref->{stop}      = $target[2];
+
+    #target feature
+    my ( $insert_hashref, $tfeature_hashref );
+    if ( defined $gff_hashref->{source} ) {
+        $tfeature_hashref->{source_dbxref_id}
+            = $self->find_or_create_dbxref_row( $gff_hashref->{source},
+            'GFF_source' )->dbxref_id;
+    }
+    $tfeature_hashref->{type_id}
+        = $self->find_cvterm_row( $self->target_type, 'sequence' )->cvterm_id;
+    $tfeature_hashref->{organism_id}      = $self->organism_id;
+    $tfeature_hashref->{id} = $target[0] ;
+    $insert_hashref->{target_hashref}     = $tfeature_hashref;
+
+    #alignment feature
+    my $afeature_hashref;
+    if ( defined $tfeature_hashref->{source_dbxref_id} ) {
+        $afeature_hashref->{source_dbxref_id}
+            = $tfeature_hashref->{source_dbxref_id};
+    }
+    $afeature_hashref->{type_id}
+        = $self->find_cvterm_row( $gff_hashref->{type}, 'sequence' )->cvterm_id;
+    $afeature_hashref->{organism_id} = $self->organism_id;
+    if ( defined $gff_hashref->{attributes}->{ID} ) {
+        $afeature_hashref->{id} = $gff_hashref->{attributes}->{ID}->[0];
+    }
+    else {
+        $afeature_hashref->{id}
+            = $self->uniquename_prefix . $self->get_unique_feature_id;
+    }
+    if ( defined $gff_hashref->{attributes}->{Name} ) {
+        $afeature_hashref->{name} = $gff_hashref->{attributes}->{Name}->[0];
+    }
+    $insert_hashref->{alignment_hashref} = $afeature_hashref;
+
+    #relationship
+    $insert_hashref->{feature_relationship}
+        = $self->make_feature_relationship_stash( $gff_hashref,
+        $afeature_hashref );
+
+    #analysis for score column
+    $insert_hashref->{feature_analysis}
+        = $self->make_analysisfeature_stash( $gff_hashref,
+        $afeature_hashref );
+
+    #default featureloc with rank 0
+    $insert_hashref->{featureloc}
+        = $self->make_featureloc_stash( $gff_hashref, $afeature_hashref );
+
+    #query featureloc with rank 1
+    $insert_hashref->{query_featureloc} = {
+        id    => $afeature_hashref->{id},
+        seqid => $target[0],
+        start => $target[1],
+        stop  => $target[2],
+        rank  => 1
     };
     if ( scalar @target == 4 ) {
-        $insert_hashref->{strand} = $target[3] eq '+' ? 1 : -1;
+        $insert_hashref->{query_featureloc}->{strand}
+            = $target[3] eq '+' ? 1 : -1;
     }
     return $insert_hashref;
 }
@@ -242,8 +285,7 @@ sub make_analysisfeature_stash {
     }
 
     my $source = $gff_hashref->{source} // 'auto';
-    my $analysis_key
-        = $source . '-' . $gff_hashref->{type} . '-1.0';
+    my $analysis_key = $source . '-' . $gff_hashref->{type} . '-1.0';
     my $analysis_id;
     if ( $self->has_analysis_row($analysis_key) ) {
         $analysis_id = $self->get_analysis_row($analysis_key)->analysis_id;
@@ -251,9 +293,8 @@ sub make_analysisfeature_stash {
     else {
         my $analysis_row
             = $self->schema->resultset('Companalysis::Analysis')->create(
-            {   program => $source . '-'
-                    . $gff_hashref->{type},
-                name => $source . '-' . $gff_hashref->{type},
+            {   program        => $source . '-' . $gff_hashref->{type},
+                name           => $source . '-' . $gff_hashref->{type},
                 programversion => '1.0'
             }
             );
@@ -270,9 +311,6 @@ sub make_analysisfeature_stash {
 
 sub make_featureloc_stash {
     my ( $self, $gff_hashref, $feature_hashref ) = @_;
-    #In case of Target attribute present the reference feature location should be linked with target feature.
-    #So, this should be skipped
-    return if defined $gff_hashref->{attributes}->{Target};
     my $insert_hashref = {
         id    => $feature_hashref->{id},
         seqid => $gff_hashref->{seq_id},
