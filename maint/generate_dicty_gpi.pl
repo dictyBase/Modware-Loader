@@ -3,8 +3,6 @@ package generate_dicty_gpi;
 
 use strict;
 use feature 'say';
-
-use Carp;
 use Bio::Chado::Schema;
 use IO::String;
 use Modware::Legacy::Schema;
@@ -12,6 +10,8 @@ use Moose;
 use namespace::autoclean;
 use Text::CSV;
 use Time::Piece;
+use autodie qw/open close/;
+use Modware::DataSource::Chado::BCS::Engine::Oracle;
 with 'MooseX::Getopt';
 
 has output => (
@@ -22,9 +22,10 @@ has output => (
     documentation => 'Outfile file to write dictyBase GPI'
 );
 
-has _gpi_header => (
+has gpi_header => (
     is      => 'ro',
     isa     => 'Str',
+    traits  => [qw/NoGetopt/],
     default => sub {
         return sprintf "%s\n%s", '!gpi-version: 1.1', '!namespace: dictyBase';
     }
@@ -37,18 +38,19 @@ has [qw/dsn user password/] => (
     documentation => 'dsn, user password for Oracle Chado schema'
 );
 
-has _schema => (
+has schema => (
     is      => 'rw',
+    traits  => [qw/NoGetopt/],
     isa     => 'Bio::Chado::Schema',
     lazy    => 1,
-    builder => '_build_schema'
+    default => sub {
+        my ($self) = @_;
+        my $schema = Bio::Chado::Schema->connect( $self->dsn, $self->user,
+            $self->password, { LongReadLen => 2**25 } );
+        Modware::DataSource::Chado::BCS::Engine::Oracle->transform($schema);
+        return $schema;
+    }
 );
-
-sub _build_schema {
-    my ($self) = @_;
-    return Bio::Chado::Schema->connect( $self->dsn, $self->user,
-        $self->password, { LongReadLen => 2**25 } );
-}
 
 has [qw/legacy_dsn legacy_user legacy_password/] => (
     is            => 'rw',
@@ -57,25 +59,25 @@ has [qw/legacy_dsn legacy_user legacy_password/] => (
     documentation => 'dsn, user, password for legacy Oracle schema'
 );
 
-has _legacy_schema => (
+has legacy_schema => (
     is      => 'rw',
     isa     => 'Modware::Legacy::Schema',
+    traits  => [qw/NoGetopt/],
     lazy    => 1,
-    builder => '_build_legacy_schema'
+    default => sub {
+        my ($self) = @_;
+        return Modware::Legacy::Schema->connect(
+            $self->legacy_dsn, $self->legacy_user,
+            $self->legacy_password, { LongReadLen => 2**25 }
+        );
+    }
 );
 
-sub _build_legacy_schema {
-    my ($self) = @_;
-    return Modware::Legacy::Schema->connect(
-        $self->legacy_dsn, $self->legacy_user,
-        $self->legacy_password, { LongReadLen => 2**25 }
-    );
-}
-
-has _gene_desc => (
+has gene_desc => (
     is      => 'rw',
     isa     => 'HashRef',
     traits  => [qw/Hash/],
+    traits  => [qw/NoGetopt/],
     handles => {
         get_gene_desc => 'get',
         has_gene_desc => 'defined'
@@ -90,31 +92,32 @@ sub _build_gene_desc {
     my $rs = $self->_legacy_schema->resultset('LocusGp')
         ->search( {}, { prefetch => 'locus_gene_product' } );
 
-    my $hash;
-    my $desc;
-    my $date_created;
+    my $gene_desc_cache;
     while ( my $row = $rs->next ) {
-        if ($date_created) {
-            my $t
-                = Time::Piece->strptime(
+        if ( exists $gene_desc_cache->{ $row->locus_no } ) {
+            my $date_created = Time::Piece->strptime(
                 $row->locus_gene_product->date_created, "%d-%b-%y" );
-            if ( $date_created < $t ) {
-                $desc         = $row->locus_gene_product->gene_product;
-                $date_created = $t;
+            if ( $date_created > $gene_desc_cache->{ $row->locus_no }->[1] ) {
+                $gene_desc_cache->{ $row->locus_no }
+                    = [ $row->locus_gene_product->gene_product,
+                    $date_created ];
             }
         }
         else {
-            $desc         = $row->locus_gene_product->gene_product;
-            $date_created = Time::Piece->strptime(
-                $row->locus_gene_product->date_created, "%d-%b-%y" );
+            $gene_desc_cache->{ $row->locus_no } = [
+                $row->locus_gene_product->gene_product,
+                = Time::Piece->strptime(
+                    $row->locus_gene_product->date_created, "%d-%b-%y"
+                )
+            ];
         }
-        $hash->{ $row->locus_no } = $desc;
     }
-    return $hash;
+    return { map { $_ => $_->[0] } keys %$gene_desc_cache };
 }
 
-has _syns => (
+has syns => (
     is      => 'rw',
+    traits  => [qw/NoGetopt/],
     isa     => 'HashRef',
     traits  => [qw/Hash/],
     handles => {
@@ -127,33 +130,27 @@ has _syns => (
 
 sub _build_synonyms {
     my ($self) = @_;
-
-    my $hash;
-    my $syns = $self->_schema->storage->dbh->selectall_arrayref(
-        qq{
-		SELECT DISTINCT fsyn.feature_id, syn.name
-		FROM feature_synonym fsyn
-		JOIN synonym_ syn ON syn.synonym_id = fsyn.synonym_id
-		}
-    );
-    for my $syn ( @{$syns} ) {
-        if ( !exists $hash->{ $syn->[0] } ) {
-            $hash->{ $syn->[0] } = [];
-        }
-        push $hash->{ $syn->[0] }, $syn->[1];
-    }
-    return $hash;
+    my $synonym_cache;
+    my $rs = $self->schema->resultset('Sequence::FeatureSynonym')->search({}, {prefetch => 'alternate_names'});
+    while (my $row = $rs->next) {
+        my $syns = [map {$_->name} $row->alternate_names];
+        $synonym_cache->{$row->feature_id} = $syns if defined $syns;
+     }
+     return $synonym_cache;
 }
 
 has _taxon => (
     is      => 'ro',
     isa     => 'Str',
+    traits  => [qw/NoGetopt/],
+    lazy    => 1,
     default => 'taxon:44689'
 );
 
 has uniprot_map_file => (
-    is  => 'rw',
-    isa => 'Str',
+    is     => 'rw',
+    traits => [qw/NoGetopt/],
+    isa    => 'Str',
     default =>
         'http://dictybase.org/db/cgi-bin/dictyBase/download/download.pl?area=general&ID=DDB-GeneID-UniProt.txt',
     lazy => 1
@@ -161,8 +158,10 @@ has uniprot_map_file => (
 
 has _uniprot_map => (
     is      => 'rw',
+    traits  => [qw/NoGetopt/],
     isa     => 'HashRef',
     traits  => [qw/Hash/],
+    lazy    => 1,
     handles => {
         get_uniprot => 'get',
         has_uniprot => 'defined'
@@ -203,7 +202,7 @@ sub run {
     my ($self) = @_;
 
     my $out = IO::File->new( $self->output, 'w' );
-    $out->print( $self->_gpi_header . "\n" );
+    $out->print( $self->gpi_header . "\n" );
 
     my $feats = $self->_schema->storage->dbh->selectall_arrayref(
         qq{
