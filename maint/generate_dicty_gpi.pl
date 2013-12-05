@@ -5,10 +5,10 @@ use strict;
 use feature 'say';
 use Bio::Chado::Schema;
 use IO::String;
+use IO::Uncompress::Gunzip qw/gunzip $GunzipError/;
 use Modware::Legacy::Schema;
 use Moose;
 use namespace::autoclean;
-use Text::CSV;
 use Time::Piece;
 use autodie qw/open close/;
 use Modware::DataSource::Chado::BCS::Engine::Oracle;
@@ -35,7 +35,7 @@ has [qw/dsn user password/] => (
     is            => 'rw',
     isa           => 'Str',
     required      => 1,
-    documentation => 'dsn, user password for Oracle Chado schema'
+    documentation => 'credentials for Oracle Chado schema'
 );
 
 has schema => (
@@ -47,7 +47,8 @@ has schema => (
         my ($self) = @_;
         my $schema = Bio::Chado::Schema->connect( $self->dsn, $self->user,
             $self->password, { LongReadLen => 2**25 } );
-        Modware::DataSource::Chado::BCS::Engine::Oracle->transform($schema);
+        Modware::DataSource::Chado::BCS::Engine::Oracle->new->transform(
+            $schema);
         return $schema;
     }
 );
@@ -56,7 +57,7 @@ has [qw/legacy_dsn legacy_user legacy_password/] => (
     is            => 'rw',
     isa           => 'Str',
     required      => 1,
-    documentation => 'dsn, user, password for legacy Oracle schema'
+    documentation => 'credentials for legacy Oracle schema'
 );
 
 has legacy_schema => (
@@ -76,8 +77,7 @@ has legacy_schema => (
 has gene_desc => (
     is      => 'rw',
     isa     => 'HashRef',
-    traits  => [qw/Hash/],
-    traits  => [qw/NoGetopt/],
+    traits  => [qw/NoGetopt Hash/],
     handles => {
         get_gene_desc => 'get',
         has_gene_desc => 'defined'
@@ -89,7 +89,7 @@ has gene_desc => (
 sub _build_gene_desc {
     my ($self) = @_;
 
-    my $rs = $self->_legacy_schema->resultset('LocusGp')
+    my $rs = $self->legacy_schema->resultset('LocusGp')
         ->search( {}, { prefetch => 'locus_gene_product' } );
 
     my $gene_desc_cache;
@@ -106,20 +106,22 @@ sub _build_gene_desc {
         else {
             $gene_desc_cache->{ $row->locus_no } = [
                 $row->locus_gene_product->gene_product,
-                = Time::Piece->strptime(
+                Time::Piece->strptime(
                     $row->locus_gene_product->date_created, "%d-%b-%y"
                 )
             ];
         }
     }
-    return { map { $_ => $_->[0] } keys %$gene_desc_cache };
+    return {
+        map { $_ => $gene_desc_cache->{$_}->[0] }
+            keys %$gene_desc_cache
+    };
 }
 
 has syns => (
     is      => 'rw',
-    traits  => [qw/NoGetopt/],
+    traits  => [qw/NoGetopt Hash/],
     isa     => 'HashRef',
-    traits  => [qw/Hash/],
     handles => {
         get_synonyms => 'get',
         has_synonyms => 'defined'
@@ -131,15 +133,16 @@ has syns => (
 sub _build_synonyms {
     my ($self) = @_;
     my $synonym_cache;
-    my $rs = $self->schema->resultset('Sequence::FeatureSynonym')->search({}, {prefetch => 'alternate_names'});
-    while (my $row = $rs->next) {
-        my $syns = [map {$_->name} $row->alternate_names];
-        $synonym_cache->{$row->feature_id} = $syns if defined $syns;
-     }
-     return $synonym_cache;
+    my $rs = $self->schema->resultset('Sequence::FeatureSynonym')
+        ->search( {}, { prefetch => 'alternate_name' } );
+    while ( my $row = $rs->next ) {
+        push @{ $synonym_cache->{ $row->feature_id } },
+            $row->alternate_name->name;
+    }
+    return $synonym_cache;
 }
 
-has _taxon => (
+has taxon => (
     is      => 'ro',
     isa     => 'Str',
     traits  => [qw/NoGetopt/],
@@ -152,15 +155,14 @@ has uniprot_map_file => (
     traits => [qw/NoGetopt/],
     isa    => 'Str',
     default =>
-        'http://dictybase.org/db/cgi-bin/dictyBase/download/download.pl?area=general&ID=DDB-GeneID-UniProt.txt',
+        'http://www.geneontology.org/gp2protein/gp2protein.dictyBase.gz',
     lazy => 1
 );
 
-has _uniprot_map => (
+has uniprot_map => (
     is      => 'rw',
-    traits  => [qw/NoGetopt/],
+    traits  => [qw/NoGetopt Hash/],
     isa     => 'HashRef',
-    traits  => [qw/Hash/],
     lazy    => 1,
     handles => {
         get_uniprot => 'get',
@@ -170,32 +172,37 @@ has _uniprot_map => (
 );
 
 sub _build_uniprot_map {
-    my ($self) = @_;
-    my $hash;
+    my ($self)   = @_;
     my $ua       = LWP::UserAgent->new;
     my $response = $ua->get( $self->uniprot_map_file );
+    my $id_cache;
     if ( $response->is_success ) {
         my $content = $response->decoded_content;
-        my $csv = Text::CSV->new( { binary => 1 } )
-            or croak "Cannot use CSV: " . Text::CSV->error_diag();
-        $csv->sep_char("\t");
-        my $io = IO::String->new( $content, 'r' );
+        my $output;
+        gunzip \$content => \$output or die "gunzip failed: $GunzipError\n";
+        my $io = IO::String->new( $output, 'r' );
+        LINE:
         while ( my $line = $io->getline() ) {
-            if ( $csv->parse($line) ) {
-                my @fields = $csv->fields();
-                if ( !exists $hash->{ $fields[1] } ) {
-                    $hash->{ $fields[1] } = [];
+            next LINE if $line =~ /^!/;
+            chomp $line;
+            my ( $mod, $map ) = split /\t/, $line;
+            my ($mod_id) = ( ( split /:/, $mod ) )[1];
+            if ( $map =~ /\;/ ) {
+                for my $other ( split /\;/, $map ) {
+                    push @{ $id_cache->{$mod_id} }, $other if $other =~ /UniProt/;
                 }
-                push $hash->{ $fields[1] }, 'UniProtKB:' . $fields[3]
-                    if $fields[3];
             }
+            else {
+                push @{ $id_cache->{$mod_id} }, $map;
+            }
+
         }
         $io->close();
     }
     else {
-        croak $response->status_line;
+        die $response->status_line;
     }
-    return $hash;
+    return $id_cache;
 }
 
 sub run {
@@ -204,50 +211,41 @@ sub run {
     my $out = IO::File->new( $self->output, 'w' );
     $out->print( $self->gpi_header . "\n" );
 
-    my $feats = $self->_schema->storage->dbh->selectall_arrayref(
-        qq{
-		SELECT DISTINCT f.feature_id, d.accession, f.name, typ.name
-		FROM feature f
-		JOIN dbxref d ON d.dbxref_id = f.dbxref_id
-		JOIN cvterm typ ON typ.cvterm_id = f.type_id
-		JOIN organism o ON o.organism_id = f.organism_id
-		WHERE typ.name = 'gene'
-		AND o.common_name = 'dicty'
-		}
+    my $rs = $self->schema->resultset('Sequence::Feature')->search(
+        {   'organism.common_name' => 'dicty',
+            'type.name'            => 'gene',
+            'is_deleted'           => 0
+        },
+        { join => [qw/type organism/], prefetch => 'dbxref' }
     );
 
-    for my $feat ( @{$feats} ) {
-
-        my $gp = '';
-        $gp = $self->get_gene_desc( $feat->[0] )
-            if $self->has_gene_desc( $feat->[0] );
-
-        my $syn  = '';
-        my @syns = @{ $self->get_synonyms( $feat->[0] ) }
-            if $self->has_synonyms( $feat->[0] );
-        $syn = join( '|', @syns );
-
-        my $db_xref  = '';
-        my @uniprots = @{ $self->get_uniprot( $feat->[1] ) }
-            if $self->has_uniprot( $feat->[1] );
-        $db_xref = join( '|', @uniprots );
-
-        my $parent_obj_id = '';
-        my $gp_prop       = '';
+    my $empty_column = '';
+    GENE:
+    while ( my $row = $rs->next ) {
+        next GENE if $row->name =~ /_ps\d{0,1}$/;
+        my $feature_id = $row->feature_id;
+        my $gene_id = $row->dbxref->accession;
+        my $gp
+            = $self->has_gene_desc($feature_id)
+            ? $self->get_gene_desc($feature_id)
+            : '';
+        my $syn
+            = $self->has_synonyms($feature_id)
+            ? join( '|', @{ $self->get_synonyms($feature_id) } )
+            : '';
+        my $dbxref
+            = $self->has_uniprot($gene_id)
+            ? join( '|', @{ $self->get_uniprot($gene_id) } )
+            : '';
 
         my $outstr = sprintf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-            $feat->[1],
-            $feat->[2], $gp,
-            $syn, $feat->[3], $self->_taxon, $parent_obj_id, $db_xref,
-            $gp_prop;
+            $row->dbxref->accession,
+            $row->name, $gp,
+            $syn, 'gene', $self->taxon, $empty_column, $dbxref,
+            $empty_column;
         $out->print($outstr);
     }
     $out->close();
-    say "dicty GPI with "
-        . scalar @{$feats}
-        . " entries written to "
-        . $self->output;
-    return;
 }
 
 1;
