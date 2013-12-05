@@ -29,7 +29,6 @@ has 'synonym_spec' => (
 has 'uniquename_prefix' =>
     ( is => 'rw', isa => 'Str', lazy => 1, default => 'auto' );
 
-
 sub initialize {
     my ($self) = @_;
     ## -- set organism
@@ -104,9 +103,9 @@ sub make_feature_target_stash {
     }
     $tfeature_hashref->{type_id}
         = $self->find_cvterm_row( $self->target_type, 'sequence' )->cvterm_id;
-    $tfeature_hashref->{organism_id}      = $self->organism_id;
-    $tfeature_hashref->{id} = $target[0] ;
-    $insert_hashref->{target_hashref}     = $tfeature_hashref;
+    $tfeature_hashref->{organism_id}  = $self->organism_id;
+    $tfeature_hashref->{id}           = $target[0];
+    $insert_hashref->{target_hashref} = $tfeature_hashref;
 
     #alignment feature
     my $afeature_hashref;
@@ -115,7 +114,8 @@ sub make_feature_target_stash {
             = $tfeature_hashref->{source_dbxref_id};
     }
     $afeature_hashref->{type_id}
-        = $self->find_cvterm_row( $gff_hashref->{type}, 'sequence' )->cvterm_id;
+        = $self->find_cvterm_row( $gff_hashref->{type}, 'sequence' )
+        ->cvterm_id;
     $afeature_hashref->{organism_id} = $self->organism_id;
     if ( defined $gff_hashref->{attributes}->{ID} ) {
         $afeature_hashref->{id} = $gff_hashref->{attributes}->{ID}->[0];
@@ -142,6 +142,10 @@ sub make_feature_target_stash {
     #default featureloc with rank 0
     $insert_hashref->{featureloc}
         = $self->make_featureloc_stash( $gff_hashref, $afeature_hashref );
+
+    #Gap attribute
+    $insert_hashref->{featureprop}
+        = $self->make_featureprop_stash( $gff_hashref, $afeature_hashref );
 
     #query featureloc with rank 1
     $insert_hashref->{query_featureloc} = {

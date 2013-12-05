@@ -181,9 +181,10 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
     );
 
     $gff_hashref->{attributes}->{Target} = ['BC0456 178 1828 +'];
+    $gff_hashref->{attributes}->{Gap}    = ['M301 D1499 M401 I4'];
     my $target_hashref;
     lives_ok {
-        $target_hashref = $helper->make_feature_target_stash( $gff_hashref, );
+        $target_hashref = $helper->make_feature_target_stash($gff_hashref);
     }
     'should run make_feature_target_stash';
     my $expected_target_hashref = {
@@ -203,7 +204,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
             id               => $insert_hashref->{id},
             name             => $insert_hashref->{name}
         },
-        analysisfeature => $analysis_hashref,
+        analysisfeature  => $analysis_hashref,
         featureloc       => $featureloc_hashref,
         query_featureloc => {
             id     => $insert_hashref->{id},
@@ -213,6 +214,15 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
             rank   => 1,
             strand => 1
         },
+        featureprop => [
+            {   id       => $insert_hashref->{id},
+                property => 'M301 D1499 M401 I4',
+                type_id  => $schema->resultset('Cv::Cvterm')
+                    ->find(
+                    { 'cv.name' => 'feature_property', 'name' => 'Gap' },
+                    { join      => 'cv' } )->cvterm_id
+            }
+        ],
         feature_relationship => undef
     };
     is_deeply( $target_hashref, $expected_target_hashref,
