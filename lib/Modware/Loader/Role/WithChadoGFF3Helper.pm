@@ -150,8 +150,8 @@ sub make_feature_target_stash {
     #query featureloc with rank 1
     $insert_hashref->{query_featureloc} = {
         id    => $afeature_hashref->{id},
-        seqid => $target[0],
-        start => $target[1],
+        seqid => $target[0] ,
+        start => $target[1] - 1,
         stop  => $target[2],
         rank  => 1
     };
