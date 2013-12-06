@@ -13,8 +13,8 @@ with 'Modware::Role::WithDataStash' => {
 };
 
 has 'target_type' => ( is => 'rw', isa => 'Str' );
-has 'logger' => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
-has 'schema' => (
+has 'logger'      => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has 'schema'      => (
     is  => 'rw',
     isa => 'Bio::Chado::Schema',
 );
@@ -147,12 +147,14 @@ sub add_data {
         $self->add_to_analysisfeature_cache(
             $target_hashref->{analysisfeature} );
         $self->add_to_featureloc_cache( $target_hashref->{featureloc} );
-        $self->add_to_feature_target_cache(
+        $self->add_to_featureloc_target_cache(
             $target_hashref->{query_featureloc} );
         $self->add_to_feature_relationship_cache(
             @{ $target_hashref->{feature_relationship} } );
+        $self->add_to_featureprop_cache(
+            @{ $target_hashref->{featureprop} } );
     }
-    else {
+    else {    # Process any GFF3 line except Target attribute
         my $feature_hashref = $self->make_feature_stash($gff_hashref);
         $self->add_to_feature_cache($feature_hashref);
         for my $name (qw/featureloc analysisfeature/) {
