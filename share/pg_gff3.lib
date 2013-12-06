@@ -1,3 +1,8 @@
+[create_table_temp_new_feature_ids]
+    CREATE TEMP TABLE temp_new_feature_ids (
+           id varchar(56) NOT NULL
+    )
+
 [create_table_temp_feature]
     CREATE TEMP TABLE temp_feature (
            source_dbxref_id integer,
@@ -22,6 +27,17 @@
            start integer NOT NULL,
            stop integer NOT NULL,
            strand integer,
+           phase integer
+    )
+
+[create_table_temp_featureloc_target]
+    CREATE TEMP TABLE temp_featureloc_target (
+           id varchar(56) NOT NULL,
+           seqid varchar(20) NOT NULL,
+           start integer NOT NULL,
+           stop integer NOT NULL,
+           strand integer,
+           rank integer NOT NULL,
            phase integer
     )
 
@@ -59,14 +75,5 @@
            id varchar(56) NOT NULL,
            type_id integer NOT NULL,
            property text NOT NULL
-    )
-
-[create_table_temp_feature_target]
-    CREATE TEMP TABLE temp_feature_target(
-           id varchar(56) NOT NULL,
-           target_id varchar(56) NOT NULL,
-           start integer NOT NULL,
-           stop integer NOT NULL,
-           strand integer
     )
 
