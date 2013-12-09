@@ -27,7 +27,7 @@ Contig1	confirmed	CDS	2511	2520	.	+	0	Parent=tier0.2
 Contig1	confirmed	CDS	2300	2400	.	+	0	Parent=tier0.2,tier0.1;Name=shared_exon
 Contig1	confirmed	CDS	2500	2800	.	+	0	Parent=tier0.2
 Contig1	confirmed	three_prime_UTR	2801	2900	.	+	.	Parent=tier0.2;ID=utr1
-Contig1	confirmed	three_prime_UTR	2910	3000	.	+	.	Parent=tier0.2;ID=utr1
+Contig1	confirmed	three_prime_UTR	2910	3000	.	+	.	Parent=tier0.2;ID=utr2
 Contig1	test	biological_region	2500	2550	.	+	.	ID=gparent1;Name=gparent1
 Contig1	test	gene	2500	2550	.	+	.	ID=parent1;Name=parent1;Parent=gparent1
 Contig1	test	polypeptide	2501	2551	.	+	.	ID=parent2;Name=parent2;Parent=gparent1
