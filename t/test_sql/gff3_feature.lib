@@ -1,0 +1,78 @@
+[feature_rows]
+    SELECT feature_id FROM feature
+
+[analysisfeature_rows]
+    SELECT analysisfeature.* FROM analysisfeature
+        JOIN feature ON feature.feature_id = analysisfeature.feature_id
+        WHERE feature.uniquename = ?
+
+[feature_dbxref_rows]
+    SELECT dbxref.accession FROM dbxref
+        JOIN feature_dbxref fbxref ON
+           fbxref.dbxref_id = dbxref.dbxref_id
+        JOIN feature ON
+           feature.feature_id = fbxref.feature_id
+        WHERE feature.uniquename = ?
+
+[parent_featurerel_rows]
+    SELECT parent.uniquename FROM feature parent
+           JOIN feature_relationship frel ON
+           frel.object_id = parent.feature_id
+           JOIN feature child ON
+           frel.subject_id = child.feature_id
+           JOIN cvterm ON
+           cvterm.cvterm_id = frel.type_id
+           WHERE
+           cvterm.name = 'part_of'
+           AND
+           child.uniquename = ?
+
+[feature_synonym_rows]
+    SELECT synonym.name FROM synonym
+           JOIN feature_synonym fsyn ON
+           fsyn.synonym_id = synonym.synonym_id
+           JOIN feature ON 
+           feature.feature_id = fsyn.feature_id
+           where feature.uniquename = ?
+
+[featureprop_rows]
+    SELECT fprop.value FROM featureprop fprop
+           JOIN feature ON
+           fprop.feature_id = feature.feature_id
+           WHERE feature.uniquename = ?
+
+[featureproptype_rows]
+    SELECT fprop.value FROM featureprop fprop
+           JOIN feature ON
+           fprop.feature_id = feature.feature_id
+           JOIN cvterm ON
+           fprop.type_id = cvterm.cvterm_id
+           WHERE feature.uniquename = ?
+           AND
+           cvterm.name = ?
+
+[child_featureloc_rows]
+    SELECT child.uniquename FROM feature child
+           JOIN featureloc floc ON
+           floc.feature_id = child.feature_id
+           JOIN feature parent ON
+           floc.srcfeature_id = parent.feature_id
+           WHERE parent.uniquename = ?
+
+[feature_featureloc_rows]
+    SELECT featureloc.featureloc_id FROM featureloc
+           JOIN feature ON
+           feature.feature_id = featureloc.feature_id
+           JOIN feature parent ON
+           parent.feature_id = featureloc.srcfeature_id
+           WHERE
+           feature.uniquename = ?
+           AND
+           parent.uniquename = ?
+           AND
+           featureloc.fmin = ? 
+           AND 
+           featureloc.fmax = ?
+           AND
+           featureloc.rank = ?
+           
