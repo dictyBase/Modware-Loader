@@ -19,6 +19,8 @@ has 'schema'      => (
     isa => 'Bio::Chado::Schema',
 );
 
+has 'last_rowid' => ( is => 'rw', isa => 'Int', default => 0, lazy => 1 );
+
 sub create_tables {
     my ($self) = @_;
     for my $elem ( grep {/^create_table_temp/} $self->sqlmanager->elements ) {
@@ -31,6 +33,10 @@ sub get_unique_feature_id {
     my $dbh    = $self->schema->storage->dbh;
     my @row    = $dbh->selectrow_array("SELECT max(rowid) FROM feature");
     my $rowid = defined $row[0] ? $row[0] + 1 : 1;
+    if ( $self->last_rowid >= $rowid ) {
+        $rowid = $self->last_rowid + 1;
+    }
+    $self->last_rowid($rowid);
     return $rowid;
 }
 
