@@ -172,11 +172,10 @@ sub clear_all_caches {
         feature_dbxref featureprop featureloc_target/
         )
     {
-        my $api = 'clean_entries_in_' . $name;
+        my $api = 'clean_' . $name.'_cache';
         $self->$api;
     }
 }
-
 
 sub count_entries_in_staging {
 

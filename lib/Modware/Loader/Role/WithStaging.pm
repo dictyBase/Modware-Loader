@@ -7,7 +7,7 @@ use Moose::Role;
 
 requires
     qw(schema create_tables drop_tables create_indexes bulk_load count_entries_in_staging logger);
-requries 'clear_all_caches';
+requires 'clear_all_caches';
 
 has 'sqlmanager' => (
     is      => 'rw',
