@@ -180,6 +180,18 @@ sub add_data {
     }
 }
 
+sub clear_all_caches {
+    my ($self) = @_;
+    for my $name (
+        qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
+        feature_dbxref featureprop featureloc_target/
+        )
+    {
+        my $api = 'clean_entries_in_' . $name;
+        $self->$api;
+    }
+}
+
 sub count_entries_in_staging {
 
 }
