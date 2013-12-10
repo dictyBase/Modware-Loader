@@ -90,7 +90,7 @@ sub count_entries_in_staging {
 
 sub clear_all_caches {
     my ($self) = @_;
-    $self->clean_entries_in_cvtermpath;
+    $self->clean_cvtermpath_cache;
 }
 
 with 'Modware::Loader::Role::WithStaging';
