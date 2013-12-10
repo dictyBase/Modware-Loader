@@ -17,6 +17,8 @@ use Modware::Loader::GFF3::Staging::Sqlite;
 
 Test::Chado->ignore_tc_env(1);    #make it sqlite specific
 
+use_ok 'Modware::Loader::GFF3::Chado::Sqlite';
+
 my $tmp_schema = chado_schema( load_fixture => 1 );
 my $schema = Bio::Chado::Schema->connect( sub { $tmp_schema->storage->dbh } );
 my $sqllib = SQL::Library->new(
@@ -60,8 +62,8 @@ while ( my $line = $test_input->getline ) {
     }
 }
 $staging_loader->bulk_load;
+# setup ends
 
-use_ok 'Modware::Loader::GFF3::Chado::Sqlite';
 my $loader = new_ok 'Modware::Loader::GFF3::Chado::Sqlite';
 $loader->schema($schema);
 $loader->logger( get_logger('MyChado::Logger') );
@@ -184,5 +186,12 @@ for my $row (@$flocs2) {
             "should have featureloc entry with rank $row->[-1] to reference $row->[3] for feature $row->[2]"
     );
 }
+my %seqrow;
+row_ok(
+    sql => [$test_sql->retr('featureseq_row'), 'Contig1'],
+    store_row => \%seqrow
+);
+is($seqrow{fseq}, 'ttctt', 'should match the first five nucleotides of Contig1 feature');
 drop_schema();
+
 

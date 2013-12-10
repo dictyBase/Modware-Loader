@@ -76,3 +76,6 @@
            AND
            featureloc.rank = ?
            
+[featureseq_row]
+    SELECT substr(feature.residues,1,5) fseq FROM feature 
+           WHERE feature.uniquename = ?
