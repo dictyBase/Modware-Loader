@@ -5,7 +5,10 @@ use Log::Log4perl qw/:easy/;
 use File::Spec::Functions;
 use Modware::DataSource::Chado::Organism;
 use lib catdir( $Bin, '..', '..', 'lib' );
-with 'StagingGFF3';
+
+
+has 'backend' => ( is => 'ro', default => 'postgresql' );
+with 'TestStagingGFF3';
 
 sub BUILD {
     my ($self) = @_;
@@ -16,7 +19,6 @@ sub BUILD {
         or plan skip_all => 'DBD::Pg is needed to run this test';
 }
 
-has 'backend' => ( is => 'ro', default => 'postgresql' );
 before 'setup' => sub {
     my ($self) = @_;
     $self->setup_staging_loader;
@@ -30,4 +32,5 @@ test 'staging_tables' => sub {
     );
 };
 run_me;
+done_testing;
 

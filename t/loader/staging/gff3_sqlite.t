@@ -1,6 +1,5 @@
 use Test::DatabaseRow;
 use Test::Roo;
-use Test::More qw/no_plan/;
 use Test::Chado;
 use FindBin qw/$Bin/;
 use File::Spec::Functions;
@@ -24,4 +23,5 @@ test 'staging_tables' => sub {
     );
 };
 run_me;
+done_testing;
 
