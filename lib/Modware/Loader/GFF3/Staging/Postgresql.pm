@@ -1,4 +1,4 @@
-package Modware::Loader::GFF3::Staging::Pg;
+package Modware::Loader::GFF3::Staging::Postgresql;
 use namespace::autoclean;
 use Digest::MD5 qw/md5/;
 use feature qw/say/;
