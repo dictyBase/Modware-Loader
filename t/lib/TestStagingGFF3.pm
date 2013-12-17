@@ -14,7 +14,6 @@ use Bio::SeqIO;
 use File::Spec::Functions;
 use Log::Log4perl qw/:easy/;
 use feature qw/say/;
-use IO::File;
 use Modware::DataSource::Chado::Organism;
 
 requires 'backend';
