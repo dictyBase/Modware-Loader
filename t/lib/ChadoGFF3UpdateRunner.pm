@@ -35,7 +35,8 @@ before 'setup' => sub {
 after 'do_bulk_load' => sub {
     my ($self) = @_;
     $self->staging_loader->clear_all_caches;
-    $self->truncate_sqlite_staging_tables;
+    my $api = 'truncate_'.$self->backend.'_staging_tables';
+    $self->$api;
     $self->test_file('test2.gff3');
     $self->load_data_in_staging;
     $self->setup_chado_loader;

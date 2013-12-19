@@ -41,7 +41,7 @@ sub setup_staging_loader {
 
 sub setup_staging_env {
     my ($self) = @_;
-    my $followingloader = $self->staging_loader;
+    my $loader = $self->staging_loader;
     $loader->initialize;
     $loader->create_tables;
 }
@@ -101,6 +101,18 @@ sub truncate_sqlite_staging_tables {
         );
     for my $row (@$all) {
         $dbh->do(qq{DELETE FROM $row->[0]});
+    }
+}
+
+sub truncate_postgresql_staging_tables {
+    my ($self) = @_;
+    my $dbh = $self->schema->storage->dbh;
+        my $all
+        = $dbh->selectall_arrayref(
+            "SELECT table_name FROM information_schema.tables where table_type = 'LOCAL TEMPORARY'",
+        );
+    for my $row (@$all) {
+        $dbh->do(qq{TRUNCATE ONLY $row->[0]});
     }
 }
 
