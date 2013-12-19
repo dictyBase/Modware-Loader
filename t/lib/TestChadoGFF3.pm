@@ -118,7 +118,7 @@ test 'featureseq' => sub {
     my ($self) = @_;
     my %seqrow;
     row_ok(
-        sql       => [ $test_sql->retr('featureseq_row'), 'Contig1' ],
+        sql       => [ $self->test_sql->retr('featureseq_row'), 'Contig1' ],
         store_row => \%seqrow
     );
     is( $seqrow{fseq}, 'ttctt',

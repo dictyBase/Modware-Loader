@@ -1,5 +1,4 @@
 use Test::Roo;
-use Test::More qw/no_plan/;
 use FindBin qw/$Bin/;
 use File::Spec::Functions;
 use lib catdir( $Bin, '..', '..', 'lib' );
@@ -13,6 +12,7 @@ before 'setup' => sub {
     Test::Chado->ignore_tc_env(1);    #make it sqlite specific
     $self->setup_staging_loader;
     $self->setup_staging_env;
+    $self->test_file('test1.gff3');
     $self->load_data_in_staging;
     $self->setup_chado_loader;
 };

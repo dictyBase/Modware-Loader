@@ -41,7 +41,7 @@ sub setup_staging_loader {
 
 sub setup_staging_env {
     my ($self) = @_;
-    my $loader = $self->staging_loader;
+    my $followingloader = $self->staging_loader;
     $loader->initialize;
     $loader->create_tables;
 }
