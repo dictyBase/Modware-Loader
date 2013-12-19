@@ -36,20 +36,21 @@ sub setup_staging_loader {
         target_type => 'EST',
         organism    => $self->organism
     );
-    'should instantiate the loader';
     $self->staging_loader($loader);
 }
 
 sub setup_staging_env {
     my ($self) = @_;
     my $loader = $self->staging_loader;
-    $staging_loader->initialize;
-    $staging_loader->create_tables;
+    $loader->initialize;
+    $loader->create_tables;
 }
 
 sub load_data_in_staging {
-    my ($self)         = @_;
-    my $input          = $self->input;
+    my ($self) = @_;
+    my $input
+        = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_data')
+        ->subdir('gff3')->file( $self->test_file )->openr;
     my $staging_loader = $self->staging_loader;
     my $seqio;
     while ( my $line = $input->getline ) {
@@ -57,7 +58,7 @@ sub load_data_in_staging {
             my $hashref = gff3_parse_directive($line);
             if ( $hashref->{directive} eq 'FASTA' ) {
                 $seqio = Bio::SeqIO->new(
-                    -fh     => $test_input,
+                    -fh     => $input,
                     -format => 'fasta'
                 );
                 while ( my $seq = $seqio->next_seq ) {
@@ -91,6 +92,17 @@ sub setup_chado_loader {
     $self->loader($loader);
 }
 
+sub truncate_sqlite_staging_tables {
+    my ($self) = @_;
+    my $dbh = $self->schema->storage->dbh;
+    my $all
+        = $dbh->selectall_arrayref(
+        "SELECT name FROM sqlite_temp_master where type = 'table' AND tbl_name like 'temp%'"
+        );
+    for my $row (@$all) {
+        $dbh->do(qq{DELETE FROM $row->[0]});
+    }
+}
 
 sub do_bulk_load {
     my ($self) = @_;
@@ -113,21 +125,32 @@ sub do_bulk_load {
         },
         'should match create hash'
     );
-};
+}
+
+sub updated_bulk_load {
+    my ($self) = @_;
+    my $loader = $self->loader;
+    my $return;
+    lives_ok { $return = $loader->bulk_load } 'should load in chado';
+    is_deeply(
+        $return,
+        {   temp_new_feature         => 21,
+            new_feature              => 21,
+            new_featureloc           => 21,
+            new_featureloc_target    => 0,
+            new_analysisfeature      => 0,
+            new_feature_synonym      => 0,
+            new_synonym              => 0,
+            new_feature_relationship => 19,
+            new_feature_dbxref       => 0,
+            new_dbxref               => 0,
+            new_featureprop          => 10,
+        },
+        'should match updated hash'
+    );
+}
 
 has 'test_file' => ( is => 'rw', isa => Str );
-has 'input' => (
-    is      => 'lazy',
-    default => sub {
-        my ($self) = @_;
-        my $file
-            = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_data')
-            ->subdir('gff3')->file( $self->test_file )->openr;
-        return $file;
-        }
-
-);
-
 has 'staging_loader' => ( is => 'rw' );
 has 'loader'         => ( is => 'rw' );
 has 'schema'         => (
@@ -168,11 +191,12 @@ has 'organism' => (
 has 'test_sql' => (
     is      => 'lazy',
     default => sub {
-        return Path::Class::Dir->new($Bin)->parent->parent->subdir('test_sql')
+        my $file
+            = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_sql')
             ->file('gff3_feature.lib');
+        return SQL::Library->new( { lib => $file } );
     }
 );
-
 
 test 'bulk_load' => sub {
     my ($self) = @_;
