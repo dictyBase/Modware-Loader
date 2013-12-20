@@ -88,6 +88,11 @@ sub count_entries_in_staging {
     return $counts;
 }
 
+sub clear_all_caches {
+    my ($self) = @_;
+    $self->clean_cvtermpath_cache;
+}
+
 with 'Modware::Loader::Role::WithStaging';
 with 'Modware::Loader::Role::WithChadoHelper';
 __PACKAGE__->meta->make_immutable;

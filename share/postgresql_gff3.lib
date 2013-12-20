@@ -17,34 +17,34 @@
            id varchar(56) NOT NULL,
            residue text NOT NULL,
            md5 varchar(128) NOT NULL,
-           seqlen int NOT NULL
+           seqlen integer NOT NULL
     )
 
 [create_table_temp_featureloc]
     CREATE TEMP TABLE temp_featureloc (
            id varchar(56) NOT NULL,
            seqid varchar(20) NOT NULL,
-           start int NOT NULL,
-           stop int NOT NULL,
-           strand int,
-           phase int
+           start integer NOT NULL,
+           stop integer NOT NULL,
+           strand integer,
+           phase integer
     )
 
 [create_table_temp_featureloc_target]
     CREATE TEMP TABLE temp_featureloc_target (
            id varchar(56) NOT NULL,
            seqid varchar(20) NOT NULL,
-           start int NOT NULL,
-           stop int NOT NULL,
-           strand int,
-           rank int NOT NULL,
-           phase int
+           start integer NOT NULL,
+           stop integer NOT NULL,
+           strand integer,
+           rank integer NOT NULL,
+           phase integer
     )
 
 [create_table_temp_analysisfeature]
     CREATE TEMP TABLE temp_analysisfeature (
            id varchar(56) NOT NULL,
-           score double,
+           score real,
            analysis_id smallint NOT NULL
     )
 
@@ -76,7 +76,6 @@
            type_id integer NOT NULL,
            property text NOT NULL
     )
-
 
 [insert_temp_new_feature_ids]
     INSERT INTO temp_new_feature_ids(id)
@@ -204,4 +203,5 @@
            tmpfp.id = temp_new_feature_ids.id
         INNER JOIN feature feat ON
            feat.uniquename = temp_new_feature_ids.id
+
 

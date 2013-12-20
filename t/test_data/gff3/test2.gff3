@@ -1,0 +1,27 @@
+##gff-version 3
+##sequence-region ctg123 1 1497228
+ctg123	.	chromosome	1	1497228	.	.	.	ID=ctg123
+ctg123	.	gene	1000	9000	.	+	.	ID=gene00001;Name=EDEN
+ctg123	.	TF_binding_site	1000	1012	.	+	.	Parent=gene00001
+ctg123	.	mRNA	1050	9000	.	+	.	ID=mRNA00001;Parent=gene00001
+ctg123	.	mRNA	1050	9000	.	+	.	ID=mRNA00002;Parent=gene00001
+ctg123	.	mRNA	1300	9000	.	+	.	ID=mRNA00003;Parent=gene00001
+ctg123	.	exon	1300	1500	.	+	.	Parent=mRNA00003
+ctg123	.	exon	1050	1500	.	+	.	Parent=mRNA00001,mRNA00002
+ctg123	.	exon	3000	3902	.	+	.	Parent=mRNA00001,mRNA00003
+ctg123	.	CDS	1201	1500	.	+	0	ID=cds00001;Parent=mRNA00001
+ctg123	.	CDS	3000	3902	.	+	0	ID=cds00002;Parent=mRNA00001
+ctg123	.	CDS	5000	5500	.	+	0	ID=cds00003;Parent=mRNA00001
+##sequence-region chr04 1 66795179
+chr04	EuGene	chromosome	1	66795179	.	+	.	ID=chr04;Name=chr04	
+chr04	EuGene	gene	12512	12955	.	+	.	ID=gene:chr04.1;Name=chr04.1;length=444	
+chr04	EuGene	mRNA	12512	12955	.	+	.	ID=mRNA:chr04.1;Name=chr04.1;Parent=gene:chr04.1;nb_exon=1;length=444	
+chr04	EuGene	exon	12512	12955	.	+	0	ID=exon:chr04.1.1;Parent=mRNA:chr04.1;Ontology_term=SO:0000147	
+chr04	EuGene	CDS	12512	12955	.	+	0	ID=CDS:chr04.1.1;Parent=mRNA:chr04.1;Ontology_term=SO:0005845;est_cons=0.0;est_incons=0.0	
+###
+chr04	EuGene	gene	15510	21687	.	+	.	ID=gene:chr04.2;Name=chr04.2;length=6178	
+chr04	EuGene	mRNA	15510	21687	.	+	.	ID=mRNA:chr04.2;Name=chr04.2;Parent=gene:chr04.2;nb_exon=3;length=2799	
+chr04	EuGene	exon	15510	15947	.	+	0	ID=exon:chr04.2.1;Parent=mRNA:chr04.2;Ontology_term=SO:0000200	
+chr04	EuGene	exon	21529	21687	.	+	0	ID=exon:chr04.2.3;Parent=mRNA:chr04.2;Ontology_term=SO:0000202	
+chr04	EuGene	CDS	15510	15947	.	+	0	ID=CDS:chr04.2.1;Parent=mRNA:chr04.2;Ontology_term=SO:0000196;est_cons=72.4;est_incons=0.0	
+###

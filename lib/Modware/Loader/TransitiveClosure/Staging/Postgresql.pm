@@ -85,6 +85,12 @@ sub add_data {
     $self->add_to_cvtermpath_cache($insert_hash);
 }
 
+sub clear_all_caches {
+    my ($self) = @_;
+    $self->clean_cvtermpath_cache;
+}
+
+
 sub count_entries_in_staging {
     my ($self) = @_;
     my $counts;

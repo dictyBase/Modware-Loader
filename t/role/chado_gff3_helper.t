@@ -14,6 +14,8 @@ use Modware::DataSource::Chado::Organism;
     use Moose;
 
     has 'schema' => ( is => 'rw', isa => 'DBIx::Class::Schema' );
+    has 'target_type' =>
+        ( is => 'ro', isa => 'Str', default => 'polypeptide' );
 
     sub get_unique_feature_id { return 1555557 }
 
@@ -179,16 +181,52 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
     );
 
     $gff_hashref->{attributes}->{Target} = ['BC0456 178 1828 +'];
+    $gff_hashref->{attributes}->{Gap}    = ['M301 D1499 M401 I4'];
     my $target_hashref;
     lives_ok {
-        $target_hashref = $helper->make_feature_target_stash( $gff_hashref,
-            $insert_hashref );
+        $target_hashref = $helper->make_feature_target_stash($gff_hashref);
     }
     'should run make_feature_target_stash';
-    is( $target_hashref->{stop},      1828,     'should match target stop' );
-    is( $target_hashref->{target_id}, 'BC0456', 'should match target id' );
-    is( $target_hashref->{strand},    1,        'should match strand' );
-    is( $target_hashref->{start},     178,      'should match target start' );
+    my $expected_target_hashref = {
+        target_hashref => {
+            source_dbxref_id => $insert_hashref->{source_dbxref_id},
+            type_id          => $schema->resultset('Cv::Cvterm')
+                ->find(
+                { 'cv.name' => 'sequence', 'name' => $helper->target_type },
+                { join => 'cv' } )->cvterm_id,
+            organism_id => $insert_hashref->{organism_id},
+            id          => 'BC0456'
+        },
+        alignment_hashref => {
+            source_dbxref_id => $insert_hashref->{source_dbxref_id},
+            organism_id      => $insert_hashref->{organism_id},
+            type_id          => $insert_hashref->{type_id},
+            id               => $insert_hashref->{id},
+            name             => $insert_hashref->{name}
+        },
+        analysisfeature  => $analysis_hashref,
+        featureloc       => $featureloc_hashref,
+        query_featureloc => {
+            id     => $insert_hashref->{id},
+            seqid  => 'BC0456',
+            start  => 177,
+            stop   => 1828,
+            rank   => 1,
+            strand => 1
+        },
+        featureprop => [
+            {   id       => $insert_hashref->{id},
+                property => 'M301 D1499 M401 I4',
+                type_id  => $schema->resultset('Cv::Cvterm')
+                    ->find(
+                    { 'cv.name' => 'feature_property', 'name' => 'Gap' },
+                    { join      => 'cv' } )->cvterm_id
+            }
+        ],
+        feature_relationship => undef
+    };
+    is_deeply( $target_hashref, $expected_target_hashref,
+        'should match the target hashref' );
 
     my $featureseq_row;
     lives_ok {
