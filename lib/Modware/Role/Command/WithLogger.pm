@@ -3,7 +3,7 @@ package Modware::Role::Command::WithLogger;
 # Other modules:
 use namespace::autoclean;
 use Moose::Role;
-use Log::Log4perl;
+use Log::Log4perl qw(:no_extra_logdie_message);
 use Log::Log4perl::Appender;
 use Log::Log4perl::Appender::String;
 use Log::Log4perl::Level;
