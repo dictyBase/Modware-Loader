@@ -11,7 +11,7 @@ with 'Modware::Role::WithDataStash' => {
     ]
 };
 
-has 'target_type' => ( is => 'rw', isa => 'Str' );
+has 'target_type' => ( is => 'rw', isa => 'Str', default => 'match', lazy => 1 );
 has 'schema' => (
     is  => 'rw',
     isa => 'Bio::Chado::Schema',

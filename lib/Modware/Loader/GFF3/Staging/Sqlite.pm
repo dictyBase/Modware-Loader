@@ -12,7 +12,7 @@ with 'Modware::Role::WithDataStash' => {
     ]
 };
 
-has 'target_type' => ( is => 'rw', isa => 'Str' );
+has 'target_type' => ( is => 'rw', isa => 'Str', default => 'match', lazy => 1 );
 has 'logger'      => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 has 'schema'      => (
     is  => 'rw',
