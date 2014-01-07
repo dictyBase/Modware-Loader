@@ -50,6 +50,7 @@ has 'sqlmanager' => (
     traits  => [qw/NoGetopt/],
     default => sub {
         my ($self) = @_;
+        my $sqlmanager;
         if ( $self->has_sqllib ) {
             $sqlmanager = SQL::Library->new( { lib => $self->sqllib } );
         }
@@ -57,64 +58,53 @@ has 'sqlmanager' => (
             $sqlmanager = SQL::Library->new(
                 {   lib => module_file(
                         'Modware::Loader',
-                        lc( $schema->storage->sqlt_type ) . '_gff3.lib'
+                        lc( $self->schema->storage->sqlt_type ) . '_gff3.lib'
                     )
                 }
             );
         }
         return $sqlmanager;
-    };
+    }
 );
 
 has 'synonym_type' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'The cvterm that will be used to store the value(s) of GFF3 Alias tag. 
-                          By default, cvterm symbol is used. This cvterm will be used
-                          for all Alias'
+        'The cvterm that will be used to store the value(s) of GFF3 Alias tag. By default, cvterm symbol is used. This cvterm will be used for all Alias'
 );
 
 has 'synonym_pub_id' => (
     is  => 'rw',
     isa => 'Int',
     documentation =>
-        'A publication id that will be used in conjunction with synonym_cvterm. 
-                          By default, the loader will create a unique publication record.
-                          It will stored under pubplace GFF3-Loader in the pub table'
+        'A publication id that will be used in conjunction with synonym_cvterm. By default, the loader will create a unique publication record. It will stored under pubplace GFF3-Loader in the pub table'
 );
 
 has 'target_type' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'cvterm to use for storing the target feature. By default, match cvterm will be used.
-                          This will be used for GFF3 features with Target attribute.
-                          For proper processing of Target attribute all the aligned parts should be
-                          grouped by a prent(target_type) feature.'
+        'cvterm to use for storing the target feature. By default, match cvterm will be used. This will be used for GFF3 features with Target attribute. For proper processing of Target attribute all the aligned parts should be grouped by a prent(target_type) feature.'
 );
 
 has 'analysis_name' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'Name of the analysis that is used to generate the feature. Use the same default
-                      as that of analysis_program. Unless analysis_program is given
-                      the name will not be used.'
+        'Name of the analysis that is used to generate the feature. Use the same default as that of analysis_program. Unless analysis_program is given the name will not be used.'
 );
 
 has 'analysis_program' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'Name of program that is run for the analysis. Will only be used
-                     if there is a valid value in score column. The default is to concatenate the values
-                     of source and type columns. This value has to be set in order to use the analysis_name.'
+        'Name of program that is run for the analysis. Will only be used if there is a valid value in score column. The default is to concatenate the values of source and type columns. This value has to be set in order to use the analysis_name.'
 );
 
 sub setup_staging_loader {
     my ($self)        = @_;
-    my $backend       = ucfirst lc( $schema->storage->sqlt_type );
+    my $backend       = ucfirst lc( $self->schema->storage->sqlt_type );
     my $staging_class = 'Modware::Loader::GFF3::Staging::' . $backend;
     load $staging_class;
     my $staging_loader = $staging_class->new(
@@ -179,7 +169,7 @@ sub load_data_in_staging {
 
 sub setup_chado_loader {
     my ($self)  = @_;
-    my $backend = ucfirst lc( $schema->storage->sqlt_type );
+    my $backend = ucfirst lc( $self->schema->storage->sqlt_type );
     my $module  = 'Modware::Loader::GFF3::Chado::' . $backend;
     load $module;
     my $loader = $module->new(
@@ -187,8 +177,7 @@ sub setup_chado_loader {
         sqlmanager => $self->sqlmanager,
         logger     => $self->logger
     );
-}
-return $loader;
+    return $loader;
 }
 
 sub load_data_in_chado {
@@ -203,7 +192,7 @@ sub execute {
 
     my $staging_loader = $self->setup_staging_loader;
     $logger->debug("start loading in staging tables");
-    my $guard = $schema->txn_scope_guard;
+    my $guard = $self->schema->txn_scope_guard;
     $self->setup_staging_env($staging_loader);
     $self->load_data_in_staging($staging_loader);
 
