@@ -38,7 +38,7 @@ sub _build_organism {
     for my $api(qw/species genus common_name/) {
         $organism->$api($self->$api) if $self->$api;
     }
-    if (!$organism->exists_in_datastore) {
+    if (!$organism->exists_in_datastore($self->schema)) {
         $self->logger->error("given organism do not exist in database!!!");
         $self->logger->logdie("please create an entry before loading");
     }
