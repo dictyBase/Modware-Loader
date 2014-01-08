@@ -85,7 +85,7 @@ has 'target_type' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'cvterm to use for storing the target feature. By default, match cvterm will be used. This will be used for GFF3 features with Target attribute. For proper processing of Target attribute all the aligned parts should be grouped by a prent(target_type) feature.'
+        'cvterm to use for storing the target feature. By default, *sequence_feature* cvterm will be used. This will be used for GFF3 features with Target attribute. For proper processing of Target attribute all the aligned parts should be grouped by a prent(target_type) feature.'
 );
 
 has 'analysis_name' => (
