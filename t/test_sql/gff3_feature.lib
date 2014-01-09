@@ -1,10 +1,21 @@
-[feature_rows]
+[feature_count]
     SELECT feature_id FROM feature
 
 [analysisfeature_rows]
     SELECT analysisfeature.* FROM analysisfeature
         JOIN feature ON feature.feature_id = analysisfeature.feature_id
         WHERE feature.uniquename = ?
+
+[analysis_count]
+           SELECT analysisfeature.analysisfeature_id FROM
+               analysisfeature
+               JOIN analysis ON
+               analysis.analysis_id = analysisfeature.analysis_id
+               WHERE analysis.program = ?
+               AND 
+               analysis.name = ?
+               AND
+               analysis.programversion = ?
 
 [feature_dbxref_rows]
     SELECT dbxref.accession FROM dbxref
@@ -34,6 +45,16 @@
            JOIN feature ON 
            feature.feature_id = fsyn.feature_id
            where feature.uniquename = ?
+
+[synonym_type_count]
+    SELECT synonym.synonym_id FROM synonym
+           JOIN cvterm ON synonym.type_id = cvterm.cvterm_id
+           WHERE cvterm.name = ?
+
+[feature_synonym_count]
+           SELECT fsyn.feature_synonym_id FROM feature_synonym fsyn
+               JOIN pub ON fsyn.pub_id = pub.pub_id
+               WHERE pub.pubplace = ?
 
 [featureprop_rows]
     SELECT fprop.value FROM featureprop fprop
@@ -79,3 +100,21 @@
 [featureseq_row]
     SELECT substr(feature.residues,1,5) fseq FROM feature 
            WHERE feature.uniquename = ?
+
+[feature_rows]
+           SELECT feature.feature_id FROM feature
+               JOIN cvterm ON
+               feature.type_id = cvterm.cvterm_id
+               JOIN cv ON
+               cv.cv_id = cvterm.cv_id
+               WHERE cv.name = ?
+               AND
+               cvterm.name = ?
+
+[organism_feature_count]
+           SELECT feature.feature_id FROM feature
+               JOIN organism ON
+               organism.organism_id = feature.feature_id
+               WHERE organism.genus = ?
+               AND
+               organism.species = ?

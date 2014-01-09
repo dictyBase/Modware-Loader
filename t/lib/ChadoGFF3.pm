@@ -33,7 +33,6 @@ sub setup_staging_loader {
         schema      => $self->schema,
         sqlmanager  => $self->sqllib,
         logger      => get_logger('MyStaging::Loader'),
-        target_type => 'EST',
         organism    => $self->organism
     );
     $self->staging_loader($loader);

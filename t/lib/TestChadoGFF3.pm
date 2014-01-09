@@ -2,14 +2,25 @@ package TestChadoGFF3;
 use Test::DatabaseRow;
 use Test::Roo::Role;
 
+requires 'test_sql';
 test 'check_feature' => sub {
     my ($self) = @_;
     row_ok(
-        sql         => $self->test_sql->retr('feature_rows'),
+        sql         => $self->test_sql->retr('feature_count'),
         rows        => 50,
         description => 'should have 50 feature rows'
     );
 };
+
+test 'target_feature' => sub {
+    my ($self) = @_;
+    row_ok(
+        sql => [$self->test_sql->retr('feature_rows'),'sequence', 'sequence_feature'],
+        rows => 2,
+        description => 'should have 2 features created from Target attributes'
+    );
+};
+
 test 'feature_links' => sub {
     my ($self) = @_;
     my $test_sql = $self->test_sql;
