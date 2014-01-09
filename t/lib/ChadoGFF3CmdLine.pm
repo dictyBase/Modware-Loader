@@ -20,12 +20,13 @@ has 'dsn' => (
     is  => 'rw',
     isa => Str,
 );
-has [qw/synonym_type target_type analysis_name analysis_program/] => (
+has [
+    qw/synonym_type target_type analysis_name
+        analysis_program analysis_program_version/
+    ] => (
     is  => 'rw',
     isa => Str
-);
-has 'synonym_pub_id' => ( is => 'rw', isa => Int );
-
+    );
 has 'genus'       => ( is => 'lazy', isa => Str, default => 'Homo' );
 has 'species'     => ( is => 'lazy', isa => Str, default => 'sapiens' );
 has 'common_name' => ( is => 'lazy', isa => Str, default => 'human' );
