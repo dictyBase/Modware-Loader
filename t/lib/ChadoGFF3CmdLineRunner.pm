@@ -55,7 +55,7 @@ sub BUILD {
     }
 }
 
-#after 'teardown' => sub { drop_schema() };
+after 'teardown' => sub { drop_schema() };
 before 'setup' => sub {
     my ($self) = @_;
     if ( $self->backend eq 'sqlite' ) {
