@@ -4,7 +4,11 @@ use Test::Exception;
 use MooX::Types::MooseLike::Base qw/Str ConsumerOf/;
 use Test::Chado qw/:schema :manager/;
 use Bio::Chado::Schema;
+use Test::DatabaseRow;
+use FindBin qw/$Bin/;
+use Path::Class::Dir;
 use feature qw/say/;
+use SQL::Library;
 with 'ChadoGFF3CmdLine';
 
 has 'backend' => ( is => 'rw', isa => Str );
@@ -31,6 +35,15 @@ has 'dbmanager' => (
     }
 );
 
+has 'test_sql' => (
+    is      => 'lazy',
+    default => sub {
+        my $file = Path::Class::Dir->new($Bin)->parent->subdir('test_sql')
+            ->file('gff3_feature.lib');
+        return SQL::Library->new( { lib => $file } );
+    }
+);
+
 sub BUILD {
     my ($self) = @_;
     if ( $self->backend eq 'postgresql' ) {
@@ -42,7 +55,7 @@ sub BUILD {
     }
 }
 
-after 'teardown' => sub { drop_schema() };
+#after 'teardown' => sub { drop_schema() };
 before 'setup' => sub {
     my ($self) = @_;
     if ( $self->backend eq 'sqlite' ) {
@@ -50,6 +63,7 @@ before 'setup' => sub {
 
     }
     my $schema = $self->schema;
+    $Test::DatabaseRow::dbh = $schema->storage->dbh;
     $self->dbmanager( get_dbmanager_instance() );
     require_ok 'Modware::Load';
 };
@@ -66,16 +80,20 @@ test 'run_cmdline_app' => sub {
         push @ARGV, '--pg_schema', $self->dbmanager->schema_namespace;
     }
     for my $opt (
-        qw/synonym_type synonym_pub_id target_type analysis_name analysis_program/
+        qw/synonym_type target_type analysis_name analysis_program analysis_program_version/
         )
     {
         if ( $self->$opt ) {
             push @ARGV, '--' . $opt, $self->$opt;
         }
     }
+
     my $app = new_ok 'Modware::Load';
     lives_ok { $app->run } 'should run the gff3tochado subcommand';
 };
+
+with 'TestChadoGFF3';
+with 'TestChadoGFF3CmdLine';
 
 1;
 
