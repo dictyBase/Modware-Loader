@@ -9,6 +9,7 @@ use Modware::Spec::GFF3::Synonym;
 use Modware::Spec::GFF3::Analysis;
 use Bio::GFF3::LowLevel qw/gff3_parse_feature gff3_parse_directive/;
 use Bio::SeqIO;
+use feature qw/say/;
 extends qw/Modware::Load::Chado/;
 
 has '+input' => (
@@ -68,15 +69,17 @@ has 'sqlmanager' => (
 );
 
 has 'synonym_type' => (
-    is  => 'rw',
-    isa => 'Str',
+    is      => 'rw',
+    isa     => 'Str',
+    lazy    => 1,
+    default => 'symbol',
     documentation =>
         'The cvterm that will be used to store the value(s) of GFF3 Alias tag. By default, cvterm symbol is used. This cvterm will be used for all Alias'
 );
 
 has 'synonym_pub_id' => (
     is  => 'rw',
-    isa => 'Int',
+    isa => 'Str',
     documentation =>
         'A publication id that will be used in conjunction with synonym_cvterm. By default, the loader will create a unique publication record. It will stored under pubplace GFF3-Loader in the pub table'
 );
@@ -99,7 +102,14 @@ has 'analysis_program' => (
     is  => 'rw',
     isa => 'Str',
     documentation =>
-        'Name of program that is run for the analysis. Will only be used if there is a valid value in score column. The default is to concatenate the values of source and type columns. This value has to be set in order to use the analysis_name.'
+        'Name of program that is run for the analysis. Will only be used for features with a valid score column of GFF3 and when given in combination with analysis_program_version. The default is to concatenate the values of source and type columns. This value has to be set in order to use the analysis_name.'
+);
+
+has 'analysis_program_version' => (
+    is  => 'rw',
+    isa => 'Num',
+    documentation =>
+        'Version of the program that is used to run the analysis. Will be used for features with a valid score column in GFF3 and when given along with analysis_program option. This value has to be set in order to use the analysis_name. By default version 1.0 will be used.'
 );
 
 sub setup_staging_loader {
@@ -114,18 +124,19 @@ sub setup_staging_loader {
         organism   => $self->organism,
     );
     my $synonym_spec = Modware::Spec::GFF3::Synonym->new;
-    $synonym_spec->type(
-        $self->synonym_type ? $self->synonym_type : 'symbol' );
-    $synonym_spec->synonym_pubmed( $self->synonym_pub_id )
-        if $self->synonym_pub_id;
+    $synonym_spec->type( $self->synonym_type );
+    if ( $self->synonym_pub_id ) {
+        $synonym_spec->synonym_pubmed( $self->synonym_pub_id );
+    }
     $staging_loader->synonym_spec($synonym_spec);
 
     $staging_loader->target_type( $self->target_type ) if $self->target_type;
 
-    if ( $self->analysis_program ) {
+    if ( $self->analysis_program and $self->analysis_program_version ) {
         $staging_loader->analysis_spec(
             Modware::Spec::GFF3::Analysis->new(
-                program => $self->analysis_program
+                program        => $self->analysis_program,
+                programversion => $self->analysis_program_version
             )
         );
         $staging_loader->analysis_spec->name( $self->analysis_name )

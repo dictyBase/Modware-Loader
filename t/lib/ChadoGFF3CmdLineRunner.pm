@@ -97,4 +97,4 @@ with 'TestChadoGFF3CmdLine';
 
 1;
 
-__END__
+#__END__
