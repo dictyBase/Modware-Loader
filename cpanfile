@@ -47,6 +47,7 @@ on 'test' => sub {
   requires "Test::File" => "1.34";
   requires "Test::Moose::More" => "0.0019";
   requires "Test::More" => "0.88";
+  requires "Test::Roo" => "1.002";
   requires "Test::Spec" => "0.46";
 };
 

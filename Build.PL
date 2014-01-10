@@ -65,26 +65,26 @@ my %module_build_args = (
     "perl" => "5.010"
   },
   "script_files" => [
-    "bin/chado2dicty_gff3_parallel.sh",
-    "bin/discoideum-split-canonical.pl",
-    "bin/discoideum_tblastn_filter.pl",
-    "bin/modware",
-    "bin/modware-dump",
-    "bin/modware-export",
     "bin/modware-import",
-    "bin/modware-load",
-    "bin/modware-transform",
     "bin/modware-update",
-    "bin/chado2dicty_gff3_parallel.sh",
+    "bin/modware",
+    "bin/modware-transform",
+    "bin/modware-export",
     "bin/discoideum-split-canonical.pl",
     "bin/discoideum_tblastn_filter.pl",
-    "bin/modware",
-    "bin/modware-dump",
-    "bin/modware-export",
-    "bin/modware-import",
+    "bin/chado2dicty_gff3_parallel.sh",
     "bin/modware-load",
+    "bin/modware-dump",
+    "bin/modware-import",
+    "bin/modware-update",
+    "bin/modware",
     "bin/modware-transform",
-    "bin/modware-update"
+    "bin/modware-export",
+    "bin/discoideum-split-canonical.pl",
+    "bin/discoideum_tblastn_filter.pl",
+    "bin/chado2dicty_gff3_parallel.sh",
+    "bin/modware-load",
+    "bin/modware-dump"
   ],
   "share_dir" => {
     "dist" => "share",
@@ -98,6 +98,7 @@ my %module_build_args = (
     "Test::File" => "1.34",
     "Test::Moose::More" => "0.0019",
     "Test::More" => "0.88",
+    "Test::Roo" => "1.002",
     "Test::Spec" => "0.46"
   }
 );

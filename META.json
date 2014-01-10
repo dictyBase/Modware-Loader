@@ -4,7 +4,7 @@
       "Siddhartha Basu <biosidd@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.300039, CPAN::Meta::Converter version 2.132661",
+   "generated_by" : "Dist::Zilla version 4.300039, CPAN::Meta::Converter version 2.132140",
    "license" : [
       "perl_5"
    ],
@@ -82,6 +82,7 @@
             "Test::File" : "1.34",
             "Test::Moose::More" : "0.0019",
             "Test::More" : "0.88",
+            "Test::Roo" : "1.002",
             "Test::Spec" : "0.46"
          }
       }
