@@ -61,7 +61,7 @@ sub execute {
     if ( $loader->is_ontology_in_db() ) {
         if ( !$loader->is_ontology_new_version() ) {
             $loader->finish;
-            $logger->logdie(
+            $logger->error_die(
                 "This version of ontology already exist in database");
         }
     }

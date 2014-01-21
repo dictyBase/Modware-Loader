@@ -6,6 +6,7 @@ use Test::Chado qw/:all/;
 use Test::Chado::Common qw/:all/;
 use Test::Chado::Cvterm qw/:all/;
 use File::Temp qw/tmpnam/;
+use Log::Log4perl;
 
 my $data_dir    = Path::Class::Dir->new($Bin)->parent->subdir('test_data');
 my $obo_fixture = $data_dir->subdir('preset')->file('cvprop.tar.bz2');
@@ -13,7 +14,7 @@ my $obo_fixture = $data_dir->subdir('preset')->file('cvprop.tar.bz2');
 use_ok('Modware::Load');
 
 subtest 'updating ontology' => sub {
-    my $tmpfile   = tmpnam();
+    $Log::Log4perl::LOGEXIT_CODE = 1;
     my $schema    = chado_schema( custom_fixture => $obo_fixture );
     my $dbmanager = get_dbmanager_instance();
     my $loader    = new_ok('Modware::Load');
@@ -22,15 +23,12 @@ subtest 'updating ontology' => sub {
         $dbmanager->dsn,                                 '--user',
         $dbmanager->user,                                '--password',
         $dbmanager->password,                            '--input',
-        $data_dir->subdir('obo')->file('eco_v2.00.obo'), '--logfile',
-        $tmpfile
+        $data_dir->subdir('obo')->file('eco_v2.00.obo'), 
     );
     push @ARGV, '--pg_schema', $dbmanager->schema_namespace
         if $dbmanager->can('schema_namespace');
 
     lives_ok { $loader->run } "should load eco obo file";
-    dies_ok { $loader->run }
-    "should not reload the existing version of ontology";
     drop_schema();
 };
 
