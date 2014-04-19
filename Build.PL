@@ -1,4 +1,3 @@
-
 use strict;
 use warnings;
 
@@ -24,7 +23,7 @@ my %module_build_args = (
     "BibTeX::Parser" => "0.64",
     "Child" => "0.009",
     "Text::CSV" => "1.32",
-    "Text::TablularDisplay" => "1.33",
+    "Text::TabularDisplay" => "1.33",
     "XML::LibXML" => "1.70",
     "XML::LibXSLT" => "1.81",
     "XML::Simple" => "2.18"
