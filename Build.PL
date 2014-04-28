@@ -18,7 +18,7 @@ my %module_build_args = (
     "Siddhartha Basu <biosidd\@gmail.com>"
   ],
   "dist_name" => "Modware-Loader",
-  "dist_version" => "v1.6.0",
+  "dist_version" => "v1.6.1",
   "license" => "perl",
   "module_name" => "Modware::Loader",
   "recommends" => {
@@ -28,7 +28,7 @@ my %module_build_args = (
     "DBD::Oracle" => "1.52",
     "DBD::Pg" => "v2.19.3",
     "Math::Base36" => "0.10",
-    "Text::TablularDisplay" => "1.33",
+    "Text::TabularDisplay" => "1.33",
     "XML::LibXML" => "1.70",
     "XML::LibXSLT" => "1.81",
     "XML::Simple" => "2.18"
