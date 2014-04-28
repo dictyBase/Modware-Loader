@@ -1,7 +1,7 @@
 
-use strict;
-
 package Modware::Role::Stock::Export::Plasmid;
+
+use strict;
 
 use Bio::DB::GenBank;
 use Bio::SeqIO;
@@ -61,20 +61,24 @@ sub find_plasmid_inventory {
     my $plasmid_invent_rs
         = $self->legacy_schema->resultset('PlasmidInventory')->search(
         { plasmid_id => $plasmid_id },
-        {   select => [qw/me.location me.color me.stored_as me.storage_date me.other_comments_and_feedback/],
-            cache  => 1
+        {   select => [
+                qw/me.location me.color me.stored_as me.storage_date me.other_comments_and_feedback/
+            ],
+            cache => 1
         }
         );
     if ( $plasmid_invent_rs->count > 0 ) {
         $self->set_plasmid_invent_row( $plasmid_id, $plasmid_invent_rs );
         return $self->get_plasmid_invent_row($plasmid_id);
     }
+    return;
 }
 
 sub export_seq {
-    my ( $self, $gb_dbp_hash ) = @_;
+    my ( $self, $gb_dbp_hash, $seq_data_dir ) = @_;
     $self->_get_genbank($gb_dbp_hash);
-    $self->_export_existing_seq();
+    $self->_export_existing_seq($seq_data_dir);
+    return;
 }
 
 =head2 _get_ganbank
@@ -107,6 +111,7 @@ sub _get_genbank {
         );
         $seqout->write_seq($seq);
     }
+    return;
 }
 
 =head2 _export_existing_seq
@@ -116,15 +121,16 @@ Parses dirty sequences in either FastA or GenBank formats and writes to files by
 =cut
 
 sub _export_existing_seq {
-    my ($self) = @_;
+    my ( $self, $seq_data_dir ) = @_;
     my @formats = qw(genbank fasta);
 
     my $seq_dir = Path::Class::Dir->new( $self->output_dir, 'sequence' );
     if ( !-d $seq_dir ) {
         make_path( $seq_dir->stringify );
     }
+    print $seq_data_dir;
     foreach my $format (@formats) {
-        my $d = Path::Class::Dir->new( 'data', 'plasmid', $format );
+        my $d = Path::Class::Dir->new( $seq_data_dir, $format );
         while ( my $input = $d->next ) {
             if ( ref($input) ne 'Path::Class::Dir' ) {
                 my $dbp_id = sprintf( "DBP%07d", $input->basename );
@@ -147,6 +153,7 @@ sub _export_existing_seq {
             }
         }
     }
+    return;
 }
 
 1;
@@ -155,7 +162,7 @@ __END__
 
 =head1 NAME
 
-Modware::Role::Stock::Plasmid - 
+Modware::Role::Stock::Export::Plasmid - Role to export plasmid data
 
 =head1 DESCRIPTION
 

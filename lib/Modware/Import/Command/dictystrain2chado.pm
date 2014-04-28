@@ -20,13 +20,28 @@ has data => (
     default => sub {
         [   qw/characteristics publications inventory genotype phenotype props parent plasmid/
         ];
-    }
+    },
+    documentation =>
+        'Data to be imported. Default all (characteristics, publications, inventory, genotype, phenotype, props, parent, plasmid)'
+);
+
+has dsc_phenotypes => (
+    is            => 'rw',
+    isa           => 'Str',
+    documentation => 'File with corrected stockcenter phenotypes'
+);
+
+has strain_plasmid => (
+    is            => 'rw',
+    isa           => 'Str',
+    documentation => 'File with strain-plasmids mapped to real plasmids'
 );
 
 has mock_pubs => (
-    is      => 'rw',
-    isa     => 'Bool',
-    default => 0,
+    is            => 'rw',
+    isa           => 'Bool',
+    default       => 0,
+    documentation => 'Boolean to create mock publications. Default 0'
 );
 
 sub execute {
@@ -56,6 +71,14 @@ sub execute {
     foreach my $data ( @{ $self->data } ) {
         my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
         my $import_data = 'import_' . $data;
+        if ( $data eq 'phenotype' ) {
+            $importer->$import_data( $input_file, $self->dsc_phenotypes );
+            next;
+        }
+        if ( $data eq 'plasmid' ) {
+            $importer->$import_data( $input_file, $self->strain_plasmid );
+            next;
+        }
         $importer->$import_data($input_file);
     }
 

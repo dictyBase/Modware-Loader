@@ -1,0 +1,207 @@
+[create_table_temp_new_feature_ids]
+    CREATE TEMP TABLE temp_new_feature_ids (
+           id varchar(56) NOT NULL
+    )
+
+[create_table_temp_feature]
+    CREATE TEMP TABLE temp_feature (
+           source_dbxref_id integer,
+           type_id integer NOT NULL,
+           organism_id integer NOT NULL,
+           id varchar(56) NOT NULL,
+           name varchar(256)
+    )
+
+[create_table_temp_featureseq]
+    CREATE TEMP TABLE temp_featureseq (
+           id varchar(56) NOT NULL,
+           residue text NOT NULL,
+           md5 varchar(128) NOT NULL,
+           seqlen integer NOT NULL
+    )
+
+[create_table_temp_featureloc]
+    CREATE TEMP TABLE temp_featureloc (
+           id varchar(56) NOT NULL,
+           seqid varchar(20) NOT NULL,
+           start integer NOT NULL,
+           stop integer NOT NULL,
+           strand integer,
+           phase integer
+    )
+
+[create_table_temp_featureloc_target]
+    CREATE TEMP TABLE temp_featureloc_target (
+           id varchar(56) NOT NULL,
+           seqid varchar(20) NOT NULL,
+           start integer NOT NULL,
+           stop integer NOT NULL,
+           strand integer,
+           rank integer NOT NULL,
+           phase integer
+    )
+
+[create_table_temp_analysisfeature]
+    CREATE TEMP TABLE temp_analysisfeature (
+           id varchar(56) NOT NULL,
+           score real,
+           analysis_id smallint NOT NULL
+    )
+
+[create_table_temp_feature_synonym]
+    CREATE TEMP TABLE temp_feature_synonym (
+           id varchar(56) NOT NULL,
+           alias varchar(255) NOT NULL,
+           type_id integer NOT NULL,
+           pub_id integer NOT NULL
+    )
+
+[create_table_temp_feature_relationship]
+    CREATE TEMP TABLE temp_feature_relationship (
+           id varchar(56) NOT NULL,
+           parent_id varchar(56) NOT NULL,
+           type_id integer NOT NULL
+    )
+
+[create_table_temp_feature_dbxref]
+    CREATE TEMP TABLE temp_feature_dbxref (
+           id varchar(56) NOT NULL,
+           dbxref varchar(256) NOT NULL,
+           db_id integer NOT NULL
+    )
+
+[create_table_temp_featureprop]
+    CREATE TEMP TABLE temp_featureprop (
+           id varchar(56) NOT NULL,
+           type_id integer NOT NULL,
+           property text NOT NULL
+    )
+
+[insert_temp_new_feature_ids]
+    INSERT INTO temp_new_feature_ids(id)
+        SELECT tmpf.id FROM temp_feature tmpf
+        LEFT JOIN feature ON
+            tmpf.id = feature.uniquename
+        WHERE feature.uniquename is NULL
+
+[insert_new_feature]
+    INSERT INTO 
+        feature(dbxref_id,type_id,organism_id,uniquename,name,residues,
+           md5checksum, seqlen)
+           SELECT tmpf.source_dbxref_id,tmpf.type_id,tmpf.organism_id,
+               tmpf.id,tmpf.name,tmpfseq.residue,tmpfseq.md5,tmpfseq.seqlen
+            FROM temp_feature tmpf
+            LEFT JOIN temp_featureseq tmpfseq ON
+               tmpf.id = tmpfseq.id
+            INNER JOIN temp_new_feature_ids ON
+               tmpf.id = temp_new_feature_ids.id
+
+[insert_new_featureloc]
+    INSERT INTO 
+        featureloc(feature_id,srcfeature_id,fmin,fmax,strand,phase)
+           SELECT
+               feat.feature_id,srcfeat.feature_id,tmpfloc.start,tmpfloc.stop,
+               tmpfloc.strand,tmpfloc.phase
+           FROM temp_featureloc tmpfloc
+           INNER JOIN temp_new_feature_ids ON
+               temp_new_feature_ids.id = tmpfloc.id
+           INNER JOIN feature feat ON
+               feat.uniquename = temp_new_feature_ids.id
+           INNER JOIN feature srcfeat ON
+               srcfeat.uniquename = tmpfloc.seqid
+
+[insert_new_featureloc_target]
+    INSERT INTO 
+        featureloc(feature_id,srcfeature_id,fmin,fmax,strand,phase,rank)
+           SELECT
+               feat.feature_id,srcfeat.feature_id,tmpfloc.start,tmpfloc.stop,
+       tmpfloc.strand,tmpfloc.phase,tmpfloc.rank
+           FROM temp_featureloc_target tmpfloc
+           INNER JOIN temp_new_feature_ids ON
+               temp_new_feature_ids.id = tmpfloc.id
+           INNER JOIN feature feat ON
+               feat.uniquename = temp_new_feature_ids.id
+           INNER JOIN feature srcfeat ON
+               srcfeat.uniquename = tmpfloc.seqid
+
+[insert_new_analysisfeature]
+    INSERT INTO analysisfeature(feature_id,significance,analysis_id)
+           SELECT feat.feature_id, tmpaf.score,tmpaf.analysis_id
+           FROM temp_analysisfeature tmpaf 
+           INNER JOIN temp_new_feature_ids ON
+               temp_new_feature_ids.id = tmpaf.id
+           INNER JOIN feature feat ON
+               feat.uniquename = temp_new_feature_ids.id
+
+[insert_new_synonym]
+    INSERT INTO synonym(name,type_id,synonym_sgml)
+           SELECT DISTINCT tmpfs.alias,tmpfs.type_id,tmpfs.alias
+            FROM temp_feature_synonym tmpfs 
+            LEFT JOIN  synonym ON
+            (
+               synonym.name = tmpfs.alias
+               AND
+               synonym.type_id = tmpfs.type_id
+            )
+            WHERE 
+            (
+               synonym.name is NULL
+               AND 
+               synonym.type_id is NULL
+            )
+
+[insert_new_feature_synonym]
+    INSERT INTO feature_synonym(feature_id,synonym_id,pub_id)
+           SELECT feat.feature_id,syn.synonym_id,tmpfs.pub_id
+           FROM temp_feature_synonym tmpfs
+           INNER JOIN synonym syn ON
+               tmpfs.alias = syn.name
+           INNER JOIN temp_new_feature_ids ON
+               tmpfs.id = temp_new_feature_ids.id
+           INNER JOIN feature feat ON
+               temp_new_feature_ids.id = feat.uniquename
+
+[insert_new_feature_relationship]
+    INSERT into feature_relationship(object_id,subject_id,type_id)
+           SELECT pfeat.feature_id,cfeat.feature_id,tmpfr.type_id
+           FROM temp_feature_relationship tmpfr
+           INNER JOIN temp_new_feature_ids ON
+               temp_new_feature_ids.id = tmpfr.id
+           INNER JOIN feature cfeat ON
+               cfeat.uniquename = temp_new_feature_ids.id
+           INNER JOIN feature pfeat ON
+               pfeat.uniquename = tmpfr.parent_id
+
+[insert_new_dbxref]
+    INSERT INTO dbxref(accession,db_id)
+           SELECT tmpfd.dbxref,tmpfd.db_id 
+           FROM temp_feature_dbxref tmpfd
+           INNER JOIN temp_new_feature_ids ON
+               temp_new_feature_ids.id = tmpfd.id
+           INNER JOIN feature ON
+               feature.uniquename = temp_new_feature_ids.id
+
+[insert_new_feature_dbxref]
+    INSERT INTO feature_dbxref(dbxref_id,feature_id)
+        SELECT dbxref.dbxref_id,feature.feature_id FROM dbxref
+        INNER JOIN temp_feature_dbxref tmpfd ON
+           (
+               dbxref.accession = tmpfd.dbxref
+               AND
+               dbxref.db_id = tmpfd.db_id
+           )
+        INNER JOIN temp_new_feature_ids ON
+           temp_new_feature_ids.id = tmpfd.id
+        INNER JOIN feature ON
+           temp_new_feature_ids.id = feature.uniquename
+
+[insert_new_featureprop]
+    INSERT INTO featureprop(feature_id,value,type_id)
+        SELECT feat.feature_id,tmpfp.property,tmpfp.type_id
+        FROM temp_featureprop tmpfp
+        INNER JOIN temp_new_feature_ids ON
+           tmpfp.id = temp_new_feature_ids.id
+        INNER JOIN feature feat ON
+           feat.uniquename = temp_new_feature_ids.id
+
+

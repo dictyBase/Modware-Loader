@@ -25,6 +25,7 @@ role {
                     'add_to_' . $name . '_cache'           => 'push',
                     'clean_' . $name . '_cache'            => 'clear',
                     'entries_in_' . $name . '_cache'       => 'elements',
+                    'get_entry_from_' . $name . '_cache'   => 'get',
                     'count_entries_in_' . $name . '_cache' => 'count'
                 },
                 lazy    => 1,

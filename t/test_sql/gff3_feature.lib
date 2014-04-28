@@ -1,0 +1,120 @@
+[feature_count]
+    SELECT feature_id FROM feature
+
+[analysisfeature_rows]
+    SELECT analysisfeature.* FROM analysisfeature
+        JOIN feature ON feature.feature_id = analysisfeature.feature_id
+        WHERE feature.uniquename = ?
+
+[analysis_count]
+           SELECT analysisfeature.analysisfeature_id FROM
+               analysisfeature
+               JOIN analysis ON
+               analysis.analysis_id = analysisfeature.analysis_id
+               WHERE analysis.program = ?
+               AND 
+               analysis.name = ?
+               AND
+               analysis.programversion = ?
+
+[feature_dbxref_rows]
+    SELECT dbxref.accession FROM dbxref
+        JOIN feature_dbxref fbxref ON
+           fbxref.dbxref_id = dbxref.dbxref_id
+        JOIN feature ON
+           feature.feature_id = fbxref.feature_id
+        WHERE feature.uniquename = ?
+
+[parent_featurerel_rows]
+    SELECT parent.uniquename FROM feature parent
+           JOIN feature_relationship frel ON
+           frel.object_id = parent.feature_id
+           JOIN feature child ON
+           frel.subject_id = child.feature_id
+           JOIN cvterm ON
+           cvterm.cvterm_id = frel.type_id
+           WHERE
+           cvterm.name = 'part_of'
+           AND
+           child.uniquename = ?
+
+[feature_synonym_rows]
+    SELECT synonym.name FROM synonym
+           JOIN feature_synonym fsyn ON
+           fsyn.synonym_id = synonym.synonym_id
+           JOIN feature ON 
+           feature.feature_id = fsyn.feature_id
+           where feature.uniquename = ?
+
+[synonym_type_count]
+    SELECT synonym.synonym_id FROM synonym
+           JOIN cvterm ON synonym.type_id = cvterm.cvterm_id
+           WHERE cvterm.name = ?
+
+[feature_synonym_count]
+           SELECT fsyn.feature_synonym_id FROM feature_synonym fsyn
+               JOIN pub ON fsyn.pub_id = pub.pub_id
+               WHERE pub.pubplace = ?
+
+[featureprop_rows]
+    SELECT fprop.value FROM featureprop fprop
+           JOIN feature ON
+           fprop.feature_id = feature.feature_id
+           WHERE feature.uniquename = ?
+
+[featureproptype_rows]
+    SELECT fprop.value FROM featureprop fprop
+           JOIN feature ON
+           fprop.feature_id = feature.feature_id
+           JOIN cvterm ON
+           fprop.type_id = cvterm.cvterm_id
+           WHERE feature.uniquename = ?
+           AND
+           cvterm.name = ?
+
+[child_featureloc_rows]
+    SELECT child.uniquename FROM feature child
+           JOIN featureloc floc ON
+           floc.feature_id = child.feature_id
+           JOIN feature parent ON
+           floc.srcfeature_id = parent.feature_id
+           WHERE parent.uniquename = ?
+
+[feature_featureloc_rows]
+    SELECT featureloc.featureloc_id FROM featureloc
+           JOIN feature ON
+           feature.feature_id = featureloc.feature_id
+           JOIN feature parent ON
+           parent.feature_id = featureloc.srcfeature_id
+           WHERE
+           feature.uniquename = ?
+           AND
+           parent.uniquename = ?
+           AND
+           featureloc.fmin = ? 
+           AND 
+           featureloc.fmax = ?
+           AND
+           featureloc.rank = ?
+           
+[featureseq_row]
+    SELECT substr(feature.residues,1,5) fseq FROM feature 
+           WHERE feature.uniquename = ?
+
+[feature_rows]
+           SELECT feature.feature_id FROM feature
+               JOIN cvterm ON
+               feature.type_id = cvterm.cvterm_id
+               JOIN cv ON
+               cv.cv_id = cvterm.cv_id
+               WHERE cv.name = ?
+               AND
+               cvterm.name = ?
+
+[organism_feature_count]
+           SELECT feature.feature_id FROM feature
+               JOIN organism ON
+               organism.organism_id = feature.feature_id
+               WHERE organism.genus = ?
+               AND
+               organism.species = ?

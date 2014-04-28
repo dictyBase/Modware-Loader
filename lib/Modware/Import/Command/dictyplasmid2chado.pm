@@ -18,14 +18,33 @@ has data => (
     is      => 'rw',
     isa     => 'ArrayRef',
     default => sub {
-        [qw/publications props inventory images/];
-    }
+        [qw/publications props inventory images genes sequence/];
+    },
+    documentation =>
+        'Data to be imported. Default all (publications, props, inventory, images, sequence)'
+);
+
+has seq_data_dir => (
+    is  => 'rw',
+    isa => 'Str',
+    documentation =>
+        'Path to folder with plasmid sequence files in GenBank|FastA formats'
 );
 
 has mock_pubs => (
     is      => 'rw',
     isa     => 'Bool',
     default => 0,
+    documentation =>
+        'Mock publications, pub data is not populated. Default 0. Should be used only for testing code'
+);
+
+has image_url => (
+    is  => 'rw',
+    isa => 'Str',
+    default =>
+        'https://raw.github.com/dictyBase/migration-data/master/plasmid/images/',
+    documentation => 'Base URL for plasmid map images. Default github-url'
 );
 
 sub execute {
@@ -49,22 +68,27 @@ sub execute {
     $importer->schema( $self->schema );
     $importer->utils($utils);
 
-    my $base_image_url
-        = "https://raw.github.com/dictyBase/migration-data/master/plasmid/images/";
-
     my $prefix = 'plasmid_';
     my $input_file = catfile( $self->data_dir, $prefix . 'plasmid.tsv' );
     $importer->import_stock($input_file);
     foreach my $data ( @{ $self->data } ) {
-        if ( $data ne 'images' ) {
-            my $input_file
-                = catfile( $self->data_dir, $prefix . $data . '.tsv' );
-            my $import_data = 'import_' . $data;
-            $importer->$import_data($input_file);
+        if ( $data eq 'images' ) {
+            $importer->import_images( $self->image_url );
+            next;
         }
-        else {
-            $importer->import_images($base_image_url);
+        if ( $data eq 'sequence' ) {
+            if ( $self->seq_data_dir ) {
+                $importer->import_plasmid_sequence( $self->seq_data_dir );
+            }
+            else {
+                $self->logger->warn("seq_data_folder not set");
+            }
+            next;
         }
+
+        my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
+        my $import_data = 'import_' . $data;
+        $importer->$import_data($input_file);
     }
 
     $guard->commit;

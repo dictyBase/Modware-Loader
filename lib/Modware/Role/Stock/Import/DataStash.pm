@@ -154,6 +154,31 @@ sub find_stock {
     return;
 }
 
+sub find_stock_by_name {
+    my ( $self, $name ) = @_;
+    my $stock_id;
+    my $rs = $self->schema->resultset('Stock::Stock')
+        ->search( { name => $name }, {} );
+    if ( $rs->count > 0 ) {
+        $stock_id = $rs->first->stock_id;
+    }
+    return $stock_id;
+}
+
+sub find_stock_name {
+    my ( $self, $id ) = @_;
+    if ( $self->has_stock_row($id) ) {
+        return $self->get_stock_row($id)->name;
+    }
+    my $row = $self->schema->resultset('Stock::Stock')
+        ->search( { uniquename => $id }, {} );
+    if ( $row->count > 0 ) {
+        $self->set_stock_row( $id, $row->first );
+        return $self->get_stock_row($id)->name;
+    }
+    return;
+}
+
 has '_pub_row' => (
     is      => 'rw',
     isa     => 'HashRef',
@@ -264,9 +289,10 @@ sub find_or_create_genotype {
     }
     else {
         my $stock_rs = $self->find_stock($dbs_id);
-		if (!$stock_rs) {
-			return;
-		}
+        if ( !$stock_rs ) {
+            return;
+        }
+
         # my $genotype_uniquename = $self->generate_uniquename('DSC_G');
         my $genotype_uniquename
             = $self->utils->nextval( 'genotype', 'DSC_G' );
@@ -319,8 +345,6 @@ sub find_or_create_phenotype {
         = $self->find_or_create_cvterm( 'curator note', 'dicty_stockcenter' );
 
     my $phenotype_hash;
-
-  # $phenotype_hash->{uniquename}    = $self->generate_uniquename('DSC_PHEN');
     $phenotype_hash->{uniquename}
         = $self->utils->nextval( 'phenotype', 'DSC_PHEN' );
     $phenotype_hash->{observable_id} = $cvterm_phenotype;
@@ -337,6 +361,31 @@ sub find_or_create_phenotype {
         $self->set_phenotype( $phenotype_term, $phenotype_rs );
         return $self->get_phenotype($phenotype_term)->phenotype_id;
     }
+}
+
+sub find_stockcollection {
+    my ( $self, $name ) = @_;
+    my $rs = $self->schema->resultset('Stock::Stockcollection')
+        ->search( { name => $name } );
+    if ( $rs->count > 0 ) {
+        return $rs->first->stockcollection_id;
+    }
+    return;
+}
+
+sub create_stockcollection {
+    my ( $self, $name, $type_id ) = @_;
+    my $stockcollection_rs
+        = $self->schema->resultset('Stock::Stockcollection')->create(
+        {   type_id    => $type_id,
+            name       => $name,
+            uniquename => $self->utils->nextval( 'stockcollection', 'DSC' )
+        }
+        );
+    if ($stockcollection_rs) {
+        return $stockcollection_rs->stockcollection_id;
+    }
+    return;
 }
 
 1;

@@ -18,7 +18,7 @@ my %module_build_args = (
     "Siddhartha Basu <biosidd\@gmail.com>"
   ],
   "dist_name" => "Modware-Loader",
-  "dist_version" => "v1.6.0",
+  "dist_version" => "v1.6.1",
   "license" => "perl",
   "module_name" => "Modware::Loader",
   "recommends" => {
@@ -28,7 +28,7 @@ my %module_build_args = (
     "DBD::Oracle" => "1.52",
     "DBD::Pg" => "v2.19.3",
     "Math::Base36" => "0.10",
-    "Text::TablularDisplay" => "1.33",
+    "Text::TabularDisplay" => "1.33",
     "XML::LibXML" => "1.70",
     "XML::LibXSLT" => "1.81",
     "XML::Simple" => "2.18"
@@ -44,6 +44,8 @@ my %module_build_args = (
     "Email::Simple" => "2.10",
     "Email::Valid" => "0.184",
     "File::Find::Rule" => "0.32",
+    "HTML::WikiConverter" => "0.68",
+    "HTML::WikiConverter::MediaWiki" => "0.59",
     "Log::Log4perl" => "1.40",
     "MooseX::App::Cmd" => "0.09",
     "MooseX::Attribute::Dependent" => "v1.1.2",
@@ -59,6 +61,7 @@ my %module_build_args = (
     "Sub::Uplevel" => "0.24",
     "Text::CSV" => "1.32",
     "Tie::Cache" => "0.17",
+    "XML::Twig" => "3.44",
     "perl" => "5.010"
   },
   "script_files" => [
@@ -95,6 +98,7 @@ my %module_build_args = (
     "Test::File" => "1.34",
     "Test::Moose::More" => "0.0019",
     "Test::More" => "0.88",
+    "Test::Roo" => "1.002",
     "Test::Spec" => "0.46"
   }
 );

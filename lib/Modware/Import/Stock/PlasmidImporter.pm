@@ -2,11 +2,17 @@
 package Modware::Import::Stock::PlasmidImporter;
 
 use strict;
+use feature 'say';
 
+use Bio::SeqIO;
 use Carp;
+use Digest::MD5 qw(md5_hex);
+use File::Temp;
+use IO::String;
 use LWP::Simple qw/head/;
 use Moose;
 use namespace::autoclean;
+use Path::Class::Dir;
 use Text::CSV;
 
 use Modware::Import::Stock::DataTransformer;
@@ -28,14 +34,12 @@ sub import_stock {
 
     my $type_id
         = $self->find_or_create_cvterm( 'plasmid', 'dicty_stockcenter' );
-    my $stockcollection_rs
-        = $self->schema->resultset('Stock::Stockcollection')->find_or_create(
-        {   type_id    => $type_id,
-            name       => 'dicty_stockcenter',
-            uniquename => $self->utils->nextval( 'stockcollection', 'DSC' )
-        }
-        );
-    my $stockcollection_id = $stockcollection_rs->stockcollection_id;
+    my $stockcollection_id = 0;
+    $stockcollection_id = $self->find_stockcollection('Dicty Stockcenter');
+    if ( !$stockcollection_id ) {
+        $stockcollection_id
+            = $self->create_stockcollection( 'Dicty Stockcenter', $type_id );
+    }
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
@@ -239,7 +243,7 @@ sub import_inventory {
         )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data / 6
+                . ( scalar @stock_data / 6 )
                 . " plasmid inventory entries. Missed $missed entries" );
     }
     return;
@@ -284,6 +288,161 @@ sub import_images {
         $self->logger->info(
             "Imported " . scalar @stock_data . " plasmid map entries." );
     }
+    return;
+}
+
+sub import_plasmid_sequence {
+    my ( $self, $data_dir ) = @_;
+    $self->logger->info("Importing plasmid sequences");
+
+    croak "Please load plasmid data first!"
+        if !$self->utils->is_stock_loaded('plasmid');
+
+    my $seq_dir = Path::Class::Dir->new($data_dir);
+    while ( my $file = $seq_dir->next ) {
+        my $fasta_seq_io;
+        ( my $dbp_id = $file->basename ) =~ s/.[a-z]{5,7}$//;
+        if ( $file->basename =~ m/^DBP[0-9]{7}.genbank/ ) {
+            my $gb_seq_io = Bio::SeqIO->new(
+                -file   => $file->stringify,
+                -format => 'genbank'
+            );
+            my $tmp_fasta_file = File::Temp->new();
+            my $fasta_seq_out  = Bio::SeqIO->new(
+                -file   => ">$tmp_fasta_file",
+                -format => 'fasta'
+            );
+            while ( my $gb_seq = $gb_seq_io->next_seq() ) {
+                $fasta_seq_out->write_seq($gb_seq);
+            }
+            $fasta_seq_io = Bio::SeqIO->new(
+                -file   => $tmp_fasta_file,
+                -format => 'fasta'
+            );
+        }
+        elsif ( $file->basename =~ m/^DBP[0-9]{7}.fasta/ ) {
+            $fasta_seq_io = Bio::SeqIO->new(
+                -file   => $file->stringify,
+                -format => 'fasta'
+            );
+        }
+        else {
+            $self->logger->warn(
+                $file->basename . " does not have a DBP-ID" );
+            next;
+        }
+        $self->_load_fasta( $fasta_seq_io, $dbp_id ) if $fasta_seq_io;
+    }
+    File::Temp::cleanup();
+    return;
+}
+
+sub _load_fasta {
+    my ( $self, $seqio, $dbp_id ) = @_;
+    my $type_id = $self->find_cvterm('plasmid');
+    my $organism_id
+        = $self->find_or_create_organism('Dictyostelium discoideum');
+    while ( my $seq = $seqio->next_seq ) {
+        my $stock_name = $self->find_stock_name($dbp_id);
+        my $name       = $dbp_id;
+        $name = $stock_name if $stock_name;
+        my $dbxref_accession = $seq->id;
+        $dbxref_accession = $dbp_id if $dbxref_accession =~ m/unknown/;
+
+        my $dbxref_id;
+        if ( $dbxref_accession eq $dbp_id ) {
+            $self->db('dictyBase');
+            $dbxref_id = $self->find_or_create_dbxref($dbxref_accession);
+        }
+        else {
+            $self->db('GenBank');
+            $dbxref_id = $self->find_or_create_dbxref($dbxref_accession);
+        }
+        my @data;
+        my $feature = {
+            name        => $name,
+            uniquename  => $dbp_id,
+            residues    => $seq->seq,
+            seqlen      => $seq->length,
+            md5checksum => md5_hex( $seq->seq ),
+            type_id     => $type_id,
+            dbxref_id   => $dbxref_id,
+            organism_id => $organism_id
+        };
+        push @data, $feature;
+        my $feat_rs = $self->schema->resultset('Sequence::Feature')
+            ->populate( \@data );
+        my $stock_id = $self->find_stock($dbp_id);
+        if ( $feat_rs and $stock_id ) {
+            my $feature_id = @{$feat_rs}[0]->feature_id;
+            my $sp_type_id
+                = $self->find_cvterm( 'plasmid_vector', 'sequence' );
+            $self->schema->resultset('Stock::Stockprop')->create(
+                {   stock_id => $stock_id,
+                    type_id  => $sp_type_id,
+                    value    => $feature_id
+                }
+            );
+        }
+        else {
+            $self->logger->warn(
+                'Sequence present but no stock entry for ' . $dbp_id );
+        }
+    }
+    return;
+}
+
+sub import_genes {
+
+    my ( $self, $input ) = @_;
+    $self->logger->info("Importing data from $input");
+
+    croak "Please load plasmid data first!"
+        if !$self->utils->is_stock_loaded('plasmid');
+
+    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
+    my $csv = Text::CSV->new( { binary => 1 } )
+        or croak "Cannot use CSV: " . Text::CSV->error_diag();
+    $csv->sep_char("\t");
+
+    my $type_id = $self->find_or_create_cvterm( 'has_part', 'sequence' );
+    my @stock_props;
+    my $rank              = 0;
+    my $previous_stock_id = 0;
+    while ( my $line = $io->getline() ) {
+        if ( $csv->parse($line) ) {
+            my @fields = $csv->fields();
+            if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
+                $self->logger->debug(
+                    "Line starts with $fields[0]. Expected DBS ID");
+                next;
+            }
+
+            my $plasmid_genes;
+            $plasmid_genes->{stock_id} = $self->find_stock( $fields[0] );
+            if ( !$plasmid_genes->{stock_id} ) {
+                $self->logger->debug("Failed import of props for $fields[0]");
+                next;
+            }
+            $plasmid_genes->{type_id} = $type_id;
+            $rank = 0 if $previous_stock_id ne $plasmid_genes->{stock_id};
+            $plasmid_genes->{value} = $fields[1];
+            $plasmid_genes->{rank}  = $rank;
+            push @stock_props, $plasmid_genes;
+            $rank              = $rank + 1;
+            $previous_stock_id = $plasmid_genes->{stock_id};
+        }
+    }
+    $io->close();
+    my $missed = $csv->record_number() / 2 - scalar @stock_props;
+    if ( $self->schema->resultset('Stock::Stockprop')
+        ->populate( \@stock_props ) )
+    {
+        $self->logger->info( "Imported "
+                . scalar @stock_props
+                . " plasmid-gene entries. Missed $missed entries" );
+    }
+    return;
 }
 
 1;
