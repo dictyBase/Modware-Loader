@@ -33,6 +33,7 @@ has 'statement' => (
                 feature.is_deleted = 0
                 AND
                 cvterm.name = ?
+            ORDER BY dbxref.accession
     }
 );
 
@@ -70,7 +71,7 @@ sub execute {
     while ( my $hashref = $sth->fetchrow_hashref('NAME_lc') ) {
         if ( $self->has_gene( $hashref->{accession} ) ) {
             my $note_value = $self->get_gene( $hashref->{accession} );
-            push @$note_value, $hashref->{accession};
+            push @$note_value, $hashref->{note};
         }
         else {
             for my $pair ( $self->get_genes_and_notes ) {
