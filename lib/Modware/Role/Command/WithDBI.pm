@@ -1,4 +1,4 @@
-package Modware::Role::Command::WithBCS;
+package Modware::Role::Command::WithDBI;
 
 use strict;
 
@@ -48,7 +48,7 @@ has 'attribute' => (
 
 has 'dbh' => (
     is => 'rw',
-    isa => 'DBI',
+    isa => 'DBI::db',
     traits => [qw/NoGetopt/],
     lazy => 1,
     builder => '_build_dbh'
