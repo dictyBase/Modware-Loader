@@ -8,6 +8,7 @@ use Moose::Util::TypeConstraints;
 extends qw/Modware::Export::CommandPlus/;
 with 'Modware::Role::Command::WithDBI';
 with 'Modware::Role::Command::WithIO';
+with 'Modware::Role::Command::WithLogger';
 
 has '+input' => ( traits => [qw/NoGetopt/] );
 
@@ -52,37 +53,75 @@ has '_gene_stack' => (
 );
 
 has 'note' => (
-    is => 'rw',
-    isa => enum(['public', 'private']),
+    is       => 'rw',
+    isa      => enum( [ 'public', 'private' ] ),
     required => 1,
-    documentation => 'Type of curator notes, could be either of public or private'
+    documentation =>
+        'Type of curator notes, could be either of public or private'
 );
 
 sub execute {
     my ($self) = @_;
+    my $logger = $self->logger;
     my $dbh    = $self->dbh;
     my $sth    = $dbh->prepare( $self->statement );
-    my $note = $self->note eq 'public' ? 'public note': 'private note';
+    my $note = $self->note eq 'public' ? 'public note' : 'private note';
     $sth->execute($note);
     my $output = $self->output_handler;
     my $csv = Text::CSV->new( { auto_diag => 1, binary => 1 } );
     $csv->print( $output, [ "Gene ID", "Notes" ] );
     $output->print("\n");
+
     while ( my $hashref = $sth->fetchrow_hashref('NAME_lc') ) {
         if ( $self->has_gene( $hashref->{accession} ) ) {
             my $note_value = $self->get_gene( $hashref->{accession} );
-            push @$note_value, $hashref->{note};
+            if ( !$self->empty_note( $hashref->{note} ) ) {
+                push @$note_value, $self->cleanup_note( $hashref->{note} );
+            }
+            else {
+                $self->logger->warn( "empty note for ",
+                    $hashref->{accession} );
+            }
         }
         else {
+            #there is no more record for previous gene id so
+            #dump the cached notes
             for my $pair ( $self->get_genes_and_notes ) {
-                $csv->print($output, [$pair->[0], @{$pair->[1]}]);
+                $csv->print( $output, [ $pair->[0], @{ $pair->[1] } ] );
                 $output->print("\n");
             }
             $self->prune_genes;
-            $self->add_gene( $hashref->{accession},
-                [ $hashref->{note} ] );
+            if ( !$self->empty_note( $hashref->{note} ) ) {
+                $self->add_gene( $hashref->{accession},
+                    [ $self->cleanup_note( $hashref->{note} ) ] );
+            }
+            else {
+                $self->logger->warn( "empty note for ",
+                    $hashref->{accession} );
+            }
         }
     }
+}
+
+sub empty_note {
+    my ( $self, $note ) = @_;
+    if ( !$note ) {
+        $self->logger->warn("got empty note");
+        return;
+    }
+    if ( $note =~ /^\s+$/ ) {
+        $self->logger->warn("got empty note");
+        return 1;
+    }
+}
+
+sub cleanup_note {
+    my ( $self, $note ) = @_;
+    if ( $note =~ /\r\n/ ) {
+        $note =~ s/\r\n/ /g;
+        $self->logger->warn( "crappy note ", $note );
+    }
+    return $note;
 }
 
 1;
