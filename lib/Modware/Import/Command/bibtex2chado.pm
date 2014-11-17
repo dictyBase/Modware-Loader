@@ -24,6 +24,17 @@ has 'plugin' => (
         'Name of the plugin that will parse uniquename from bibtex file, default is BibTeX'
 );
 
+has 'pg_schema' => (
+    is      => 'rw',
+    isa     => 'Str',
+    trigger => sub {
+        my ( $self, $name ) = @_;
+        $self->add_connect_hook("SET SCHEMA '$name'");
+    },
+    documentation =>
+        'Name of postgresql schema where the publication record will be loaded, default is public, obviously ignored for other backend'
+);
+
 has 'plugin_namespace' => (
     is      => 'rw',
     isa     => 'Str',
