@@ -1,6 +1,7 @@
 package Modware::Import::Command::bibtex2chado;
 
 use strict;
+use feature qw/say/;
 use namespace::autoclean;
 use Moose;
 use BibTeX::Parser;
@@ -9,6 +10,7 @@ extends qw/Modware::Import::CommandPlus/;
 with 'Modware::Role::Command::WithOutputLogger';
 with 'Modware::Role::Command::WithIO';
 with 'Modware::Role::Command::WithBCS';
+with 'MooseX::Object::Pluggable';
 
 has '+output' => ( traits   => [qw/NoGetopt/] );
 has '+input'  => ( required => 1 );
@@ -42,8 +44,10 @@ sub execute {
 
     # do everything under a single transaction
     my $guard = $schema->txn_scope_guard;
+
     # creates/finds and caches all required cvterms
     $self->find_or_create_pub_type_cvterms;
+
     #$logger->debug("find/created all required pub_type cvterms");
 
     # map database column to bibtex fields
@@ -61,41 +65,59 @@ sub execute {
     while ( my $entry = $bib->next ) {
         if ( $entry->parse_ok ) {
             my $pubrow = $self->create_pub_record( $entry, $pubmap );
-            $self->find_or_create_author( $entry, $pubrow );
+            $self->create_authors( $entry, $pubrow );
+            $self->create_pub_properties( $entry, $pubrow );
         }
-    }
-    else {
-        $logger->warn( $entry->error );
+        else {
+            $logger->warn( $entry->error );
+        }
     }
     $guard->commit;
 }
 
 sub create_pub_record {
     my ( $self, $entry, $pubmap ) = @_;
+    my $pubhash;
     $pubhash->{uniquename} = $self->parse_uniquename($entry);
-    $pubhash->{pubplace}   = $self->guess_pub_source($entry);
-    my $pub_type = $self->guess_pub_type($entry);
-    $pubash->{type_id} = $self->get_cvterm_row($pub_type)->cvterm_id;
+    $pubhash->{pubplace}   = $self->parse_pub_source($entry);
+    my $pub_type = $self->parse_pub_type($entry);
+    $pubhash->{type_id} = $self->get_cvterm_row($pub_type)->cvterm_id;
     for my $column ( keys %$pubmap ) {
         $pubhash->{$column} = $entry->field( $pubmap->{$column} )
             if $entry->has( $pubmap->{$column} );
     }
-    my $pubrow = $schema->resultset('Pub::Pub')->create($pubhash);
+    my $pubrow = $self->schema->resultset('Pub::Pub')->create($pubhash);
     return $pubrow;
 }
 
-sub find_or_create_author {
+sub create_pub_properties {
+    my ( $self, $entry, $pubrow ) = @_;
+    for my $prop (qw/doi status month issn abstract/) {
+        if ( $entry->has($prop) ) {
+            $self->schema->resultset('Pub::Pubprop')->create(
+                {   pub_id  => $pubrow->pub_id,
+                    type_id => $self->get_cvterm_row($prop)->cvterm_id,
+                    value   => $entry->field($prop)
+                }
+            );
+        }
+    }
+}
+
+sub create_authors {
     my ( $self, $entry, $pubrow ) = @_;
     my $pub_id  = $pubrow->pub_id;
     my @authors = $entry->author;
-    for my $i ( 1 .. @authors ) {
-        $self->schema->resulset('Pub::Pubauthor')->create(
-            {   pub_id     => $pub_id,
-                rank       => $i,
-                givennames => $authors[$i]->first,
-                surname    => $authors[$i]->last
-            }
-        );
+    for my $i ( 0 .. $#authors ) {
+        my $author_hash = {
+            pub_id => $pub_id,
+            rank   => $i + 1
+
+        };
+        $author_hash->{givennames} = $authors[$i]->first
+            if $authors[$i]->first;
+        $author_hash->{surname} = $authors[$i]->last if $authors[$i]->last;
+        $self->schema->resultset('Pub::Pubauthor')->create($author_hash);
     }
 }
 
@@ -122,7 +144,7 @@ sub ontology {
     return 'pub_type';
 }
 
-#with 'Modware::Loader::Role::Ontology::WithHelper';
+with 'Modware::Loader::Role::Ontology::WithHelper';
 1;
 
 __END__
