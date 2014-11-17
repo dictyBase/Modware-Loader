@@ -1,5 +1,6 @@
 package Modware::Plugin::Import::Publication::BibTeX;
 use Moose::Role;
+use feature qw/say/;
 
 sub parse_uniquename {
     my ( $self, $entry ) = @_;
