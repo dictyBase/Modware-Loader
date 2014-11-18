@@ -81,7 +81,7 @@ sub execute {
     my $event = Modware::EventEmitter::Feature::Chado::Canonical->new(
         resource => $self->schema );
 
-    for my $name (qw/reference seq_id contig gene transcript exon/) {
+    for my $name (qw/reference seq_id contig gene transcript exon polypeptide/) {
         my $read_api  = 'read_' . $name;
         my $write_api = 'write_' . $name;
         $event->on( $read_api  => sub { $read_handler->$read_api(@_) } );
