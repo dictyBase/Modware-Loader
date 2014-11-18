@@ -42,6 +42,8 @@ sub read_exon {
 
 sub read_polypeptide {
     my ( $self, $event, $dbrow ) = @_;
+    my $rs = $self->_children_dbrows( $dbrow, 'derives_from', 'polypeptide' );
+    $event->response($rs);
 }
 
 sub read_cds {
