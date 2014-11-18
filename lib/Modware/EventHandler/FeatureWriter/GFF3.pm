@@ -45,7 +45,7 @@ sub _dbrow2gff3hash {
     $hashref->{seq_id} = $seq_id;
 
     my $floc_row = $dbrow->featureloc_features->first;
-    $hashref->{start} = $floc_row->fmin + 1;
+    $hashref->{start} = $floc_row->fmin ? $floc_row->fmin + 1: undef;
     $hashref->{end}   = $floc_row->fmax;
     if ( my $strand = $floc_row->strand ) {
         $hashref->{strand} = $strand == -1 ? '-' : '+';
