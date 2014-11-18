@@ -57,7 +57,7 @@ sub _cache_common_lookups {
                     qw/supercontig gene exon mRNA pseudogene contig chromosome pseudogenic_exon
                         pseudogenic_transcript snRNA class_I_RNA class_II_RNA
                         C_D_box_snoRNA H_ACA_box_snoRNA SRP_RNA RNAase_P_RNA
-                        RNAase_MRP_RNA snoRNA rRNA ncRNA tRNA/
+                        RNAase_MRP_RNA snoRNA rRNA ncRNA tRNA polypeptide/
                 ]
             }
         },
