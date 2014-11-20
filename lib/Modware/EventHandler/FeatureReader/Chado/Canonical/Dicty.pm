@@ -109,6 +109,12 @@ sub read_synonym {
     $event->response($syn_rs);
 }
 
+sub read_polypeptide {
+    my ( $self, $event, $dbrow ) = @_;
+    my $rs = $self->_children_dbrows( $dbrow, 'derived_from', 'polypeptide' );
+    $event->response($rs);
+}
+
 __PACKAGE__->meta->make_immutable;
 
 1;    # Magic true value required at end of module
