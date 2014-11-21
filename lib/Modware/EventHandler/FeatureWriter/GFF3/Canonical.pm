@@ -86,6 +86,30 @@ sub write_transcript {
 }
 
 sub write_polypeptide {
+    my ( $self, $event, $seq_id, $parent_dbrow, $dbrow, $cds_rows ) = @_;
+    my $trans_id = $self->_chado_feature_id($parent_dbrow);
+    my $hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id );
+    $hash->{attributes}->{Derives_from} = $trans_id;
+    if ( not defined $hash->{start} ) {
+
+        # polypeptide feature doesn't have a default location
+        # so it needs to be infered
+        if (defined $cds_rows) {    # try to infer from cdses
+            my $floc_row  = $cds_rows->[0]->featureloc_features->first;
+            my $floc_row2 = $cds_rows->[-1]->featureloc_features->first;
+            $hash->{start}  = $floc_row->fmin + 1;
+            $hash->{end}    = $floc_row2->fmax;
+            $hash->{strand} = $floc_row->strand == -1 ? '-' : '+';
+        }
+        else {
+            # otherwise get it from the transcript
+            my $floc_row = $parent_dbrow->featureloc_features->first;
+            $hash->{start}  = $floc_row->fmin + 1;
+            $hash->{end}    = $floc_row->fmax;
+            $hash->{strand} = $floc_row->strand == -1 ? '-' : '+';
+        }
+    }
+    $self->output->print( gff3_format_feature($hash) );
 }
 
 sub write_cds {
