@@ -94,9 +94,9 @@ sub write_polypeptide {
 
         # polypeptide feature doesn't have a default location
         # so it needs to be infered
-        if (@$cds_rows) {    # try to infer from cdses
-            my $floc_row  = $cds_rows[0]->featureloc_features->first;
-            my $floc_row2 = $cds_rows[-1]->featureloc_features->first;
+        if (defined $cds_rows) {    # try to infer from cdses
+            my $floc_row  = $cds_rows->[0]->featureloc_features->first;
+            my $floc_row2 = $cds_rows->[-1]->featureloc_features->first;
             $hash->{start}  = $floc_row->fmin + 1;
             $hash->{end}    = $floc_row2->fmax;
             $hash->{strand} = $floc_row->strand == -1 ? '-' : '+';
