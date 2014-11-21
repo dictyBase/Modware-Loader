@@ -147,11 +147,13 @@ REFERENCE:
                             }
                         }
 
+                        my $all_cdsrow;
                         $self->emit( 'read_cds' => $trow );
                         if ( $self->has_response ) {
                             my $rs4 = $self->response;
                         CDS:
                             while ( my $cdsrow = $rs4->next ) {
+                                push @$all_cdsrow, $cdsrow;
                                 $self->emit(
                                     write_cds => ( $ref_id, $trow, $cdsrow )
                                 );
@@ -164,7 +166,7 @@ REFERENCE:
                         POLYPEPTIDE:
                             while ( my $prow = $rs5->next ) {
                                 $self->emit( write_polypeptide =>
-                                        ( $ref_id, $trow, $prow ) );
+                                        ( $ref_id, $trow, $prow, $all_cdsrow ) );
                             }
                         }
                     }
