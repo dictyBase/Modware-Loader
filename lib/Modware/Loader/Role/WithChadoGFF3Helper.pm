@@ -240,20 +240,24 @@ sub make_featureprop_stash {
 
 sub make_feature_relationship_stash {
     my ( $self, $gff_hashref, $feature_hashref ) = @_;
-    return if not defined $gff_hashref->{attributes}->{Parent};
+    if (not defined $gff_hashref->{attributes}->{Parent} or not defined $gff_hashref->{attributes}->{Dervies_from}) {
+        return;
+    }
     my $insert_array;
     for my $parent ( @{ $gff_hashref->{attributes}->{Parent} } ) {
         push @$insert_array,
             {
             id        => $feature_hashref->{id},
             parent_id => $parent,
-            type_id   => $self->find_or_create_cvterm_row(
-                {   cvterm => 'part_of',
-                    cv     => 'sequence',
-                    dbxref => 'part_of',
-                    db     => 'local'
-                }
-            )->cvterm_id
+            type_id   => $self->find_cvterm_row('part_of', 'sequence')->cvterm_id
+            };
+    }
+    for my $dervies ( @{ $gff_hashref->{attributes}->{Dervies_from} } ) {
+        push @$insert_array,
+            {
+            id        => $feature_hashref->{id},
+            parent_id => $parent,
+            type_id   => $self->find_cvterm_row('dervies_from', 'sequence')->cvterm_id
             };
     }
     return $insert_array;
