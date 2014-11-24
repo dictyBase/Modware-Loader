@@ -16,6 +16,7 @@ requires "MooseX::Attribute::Dependent" => "v1.1.2";
 requires "MooseX::ConfigFromFile" => "0.10";
 requires "MooseX::Event" => "v0.2.0";
 requires "MooseX::Getopt" => "0.56";
+requires "MooseX::Object::Pluggable" => "0.0013";
 requires "MooseX::Types::Path::Class" => "0.06";
 requires "Number::Compare" => "0.03";
 requires "OBO::Core::Ontology" => "1.40";
