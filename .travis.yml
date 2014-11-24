@@ -14,10 +14,9 @@ install:
     - "sudo apt-get update"
     - "sudo apt-get install libdb-dev libexpat1-dev"
     - "cpanm -n LWP::Protocol::https"
-    - "cpanm -n https://github.com/dictyBase/Test-Chado/releases/download/v4.0.0/Test-Chado-v4.0.0.tar.gz" 
     - "cpanm -n --quiet --installdeps ."
     - "cpanm -n  git://github.com/dictyBase/BioPortal-WebService.git@build/develop"
-    - "cpanm --quiet -n Devel::Cover::Report::Coveralls DBD::Pg"
+    - "cpanm --quiet -n Devel::Cover::Report::Coveralls DBD::Pg Test::Chado"
 branches:
     only:
         - "develop"
