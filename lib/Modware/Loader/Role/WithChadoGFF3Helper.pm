@@ -4,6 +4,7 @@ use namespace::autoclean;
 use Digest::MD5 qw/md5/;
 use feature qw/say/;
 use Data::Dumper;
+use feature qw/say/;
 with 'Modware::Role::WithDataStash' =>
     { 'create_kv_stash_for' => [qw/analysis/] };
 
@@ -150,7 +151,7 @@ sub make_feature_target_stash {
     #query featureloc with rank 1
     $insert_hashref->{query_featureloc} = {
         id    => $afeature_hashref->{id},
-        seqid => $target[0] ,
+        seqid => $target[0],
         start => $target[1] - 1,
         stop  => $target[2],
         rank  => 1
@@ -240,27 +241,34 @@ sub make_featureprop_stash {
 
 sub make_feature_relationship_stash {
     my ( $self, $gff_hashref, $feature_hashref ) = @_;
-    if (not defined $gff_hashref->{attributes}->{Parent} or not defined $gff_hashref->{attributes}->{Dervies_from}) {
-        return;
+    if ( defined $gff_hashref->{attributes}->{Parent} ) {
+        my $insert_array;
+        for my $parent ( @{ $gff_hashref->{attributes}->{Parent} } ) {
+            push @$insert_array,
+                {
+                id        => $feature_hashref->{id},
+                parent_id => $parent,
+                type_id =>
+                    $self->find_cvterm_row( 'part_of', 'sequence' )->cvterm_id
+                };
+        }
+        return $insert_array;
     }
-    my $insert_array;
-    for my $parent ( @{ $gff_hashref->{attributes}->{Parent} } ) {
-        push @$insert_array,
-            {
-            id        => $feature_hashref->{id},
-            parent_id => $parent,
-            type_id   => $self->find_cvterm_row('part_of', 'sequence')->cvterm_id
-            };
+    if ( defined $gff_hashref->{attributes}->{Derives_from} ) {
+        my $insert_array;
+        for my $derives ( @{ $gff_hashref->{attributes}->{Derives_from} } ) {
+            push @$insert_array,
+                {
+                id        => $feature_hashref->{id},
+                parent_id => $derives,
+                type_id =>
+                    $self->find_cvterm_row( 'derives_from', 'sequence' )
+                    ->cvterm_id
+                };
+        }
+        return $insert_array;
     }
-    for my $dervies ( @{ $gff_hashref->{attributes}->{Dervies_from} } ) {
-        push @$insert_array,
-            {
-            id        => $feature_hashref->{id},
-            parent_id => $parent,
-            type_id   => $self->find_cvterm_row('dervies_from', 'sequence')->cvterm_id
-            };
-    }
-    return $insert_array;
+    return;
 }
 
 sub make_feature_synonym_stash {
