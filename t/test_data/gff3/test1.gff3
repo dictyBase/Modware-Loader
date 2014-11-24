@@ -8,12 +8,14 @@ Contig1	confirmed	exon	1401	1450	.	+	.	Parent=trans-1
 Contig1	confirmed	CDS	1051	1100	.	+	0	Parent=trans-1
 Contig1	confirmed	CDS	1201	1300	.	+	2	Parent=trans-1
 Contig1	confirmed	CDS	1401	1440	.	+	0	Parent=trans-1
+Contig1	confirmed	polypeptide	1051	1440	.	+	.	ID=poly-1;Derives_from=trans-1
 Contig1	tc1	transposable_element	5001	6000	13.5	+	.	ID=c128.1;Name=c128.1
 Contig1	tc1	transposable_element	8001	9000	.	-	.	ID=c128.2;Name=c128.2
 Contig1	confirmed	transcript	30001	31000	.	-	.	ID=trans-2;Name=trans-2;Alias=xyz-2;Note=Terribly+interesting
 Contig1	confirmed	exon	30001	30100	.	-	.	Parent=trans-2;Alias=abc-1,abc-9;Note=function+unknown
 Contig1	confirmed	exon	30701	30800	.	-	.	Parent=trans-2
 Contig1	confirmed	exon	30801	31000	.	-	.	Parent=trans-2
+Contig1	confirmed	polypeptide	30050	30970	.	-	.	Derives_from=trans-2;ID=poly-2
 Contig1	confirmed	gene	2000	3000	.	.	.	ID=tier0;Name=gene3;expressed=yes;in_process=1;Dbxref=FB:FBpp0070331
 Contig1	confirmed	mRNA	2000	3000	.	+	.	Parent=tier0;ID=tier0.1;expressed=yes;Name=gene3.a;
 Contig1	confirmed	mRNA	2500	3000	.	+	.	Parent=tier0;ID=tier0.2;Name=gene3.b
@@ -41,6 +43,7 @@ Contig3	confirmed	CDS	32101	33000	.	+	.	Parent=trans-8
 Contig3	confirmed	CDS	34000	34500	.	+	.	Parent=trans-8
 Contig3	confirmed	CDS	34600	34900	.	+	.	Parent=trans-8
 Contig3	confirmed	UTR	34901	35000	.	+	.	Parent=trans-8
+Contig3	confirmed	polypeptide	32101	34900	.	+	.	Derives_from=trans-8;ID=poly-8
 ##sequence-region Contig4 1 50000
 Contig4	clone	assembly_component	1	50000	.	.	.	ID=Contig4
 Contig4	confirmed	gene	32000	35000	.	+	.	ID=thing1;gene=gene-9;Name=9th-gene
