@@ -48,6 +48,7 @@ my %module_build_args = (
     "MooseX::ConfigFromFile" => "0.10",
     "MooseX::Event" => "v0.2.0",
     "MooseX::Getopt" => "0.56",
+    "MooseX::Object::Pluggable" => "0.0013",
     "MooseX::Types::Path::Class" => "0.06",
     "Number::Compare" => "0.03",
     "OBO::Core::Ontology" => "1.40",
