@@ -33,19 +33,15 @@
       },
       "runtime" : {
          "recommends" : {
-            "BibTeX::Parser" : "0.64",
             "BioPortal::WebService" : "v1.0.0",
             "Child" : "0.009",
             "DBD::Oracle" : "1.52",
             "DBD::Pg" : "v2.19.3",
-            "Math::Base36" : "0.10",
-            "Text::TabularDisplay" : "1.33",
-            "XML::LibXML" : "1.70",
-            "XML::LibXSLT" : "1.81",
-            "XML::Simple" : "2.18"
+            "Math::Base36" : "0.10"
          },
          "requires" : {
             "Archive::Tar" : "1.92",
+            "BibTeX::Parser" : "0.65",
             "Bio::Chado::Schema" : "0.20000",
             "Bio::GFF3::LowLevel" : "1.5",
             "Email::Abstract" : "3.006",
@@ -62,6 +58,7 @@
             "MooseX::ConfigFromFile" : "0.10",
             "MooseX::Event" : "v0.2.0",
             "MooseX::Getopt" : "0.56",
+            "MooseX::Object::Pluggable" : "0.0013",
             "MooseX::Types::Path::Class" : "0.06",
             "Number::Compare" : "0.03",
             "OBO::Core::Ontology" : "1.40",
@@ -70,7 +67,11 @@
             "Spreadsheet::WriteExcel" : "2.37",
             "Sub::Uplevel" : "0.24",
             "Text::CSV" : "1.32",
+            "Text::TabularDisplay" : "1.33",
             "Tie::Cache" : "0.17",
+            "XML::LibXML" : "1.70",
+            "XML::LibXSLT" : "1.81",
+            "XML::Simple" : "2.18",
             "XML::Twig" : "3.44",
             "perl" : "5.010"
          }
@@ -78,7 +79,7 @@
       "test" : {
          "requires" : {
             "MooX::Types::MooseLike" : "0.25",
-            "Test::Chado" : "v4.0.0",
+            "Test::Chado" : "v4.1.1",
             "Test::File" : "1.34",
             "Test::Moose::More" : "0.0019",
             "Test::More" : "0.88",
