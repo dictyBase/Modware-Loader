@@ -7,8 +7,8 @@ test 'check_feature' => sub {
     my ($self) = @_;
     row_ok(
         sql         => $self->test_sql->retr('feature_count'),
-        rows        => 50,
-        description => 'should have 50 feature rows'
+        rows        => 53,
+        description => 'should have 53 feature rows'
     );
 };
 
