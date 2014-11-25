@@ -15,8 +15,11 @@ test 'check_feature' => sub {
 test 'target_feature' => sub {
     my ($self) = @_;
     row_ok(
-        sql => [$self->test_sql->retr('feature_rows'),'sequence', 'sequence_feature'],
-        rows => 2,
+        sql => [
+            $self->test_sql->retr('feature_rows'), 'sequence',
+            'sequence_feature'
+        ],
+        rows        => 2,
         description => 'should have 2 features created from Target attributes'
     );
 };
@@ -79,6 +82,11 @@ test 'feature_relationships' => sub {
         rows => 33,
         description => "should have child featureloc for Contig1"
     );
+    row_ok(
+        sql         => [ $test_sql->retr('derives_featurerel_rows'), $_ ],
+        rows        => 1,
+        description => "should have derived parent of $_"
+    ) for qw/poly-1 poly-2 poly-8/;
 };
 
 test 'feature_locations' => sub {
