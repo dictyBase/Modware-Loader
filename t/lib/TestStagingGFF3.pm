@@ -264,6 +264,26 @@ test 'feature_links2' => sub {
         result => 1,
         description => "should have one sequence entry for Contig4"
     );
+
+    my $sql = <<'SQL';
+    SELECT * FROM temp_feature_relationship where id = ? 
+    AND parent_id = ?;
+    AND type_id = (SELECT cvterm_id FROM cvterm 
+    JOIN cv ON cv.cv_id = cvterm.cv_id
+    where cvterm.name = 'derives_from'
+    AND cv.name = 'sequence'
+    );
+SQL
+
+    my @rel;
+    push @rel, [qw/poly-1 trans-1/], [qw/poly-2 trans-2/], [qw/poly-8 trans-8/];
+    for my $frel(@rel) {
+        row_ok(
+            sql => [$sql, $frel->[0], $frel->[1]],
+            result => 1,
+            description => "should have parent $frel->[0] of child $frel->[1]"
+        );
+    }
 };
 
 ###testing for Target GFF3 features
@@ -295,7 +315,7 @@ test 'featureloc_target' => sub {
             "SELECT * from temp_featureloc_target where id = 'match00003' and rank = 1 and start = 0 and stop = 502 and strand = -1",
         result => 1,
         description =>
-            'should have a featureloc entry for id match00003 on the query backend'
+            'should have a featureloc entryfor id match00003 on the query backend'
     );
     row_ok(
         sql =>
