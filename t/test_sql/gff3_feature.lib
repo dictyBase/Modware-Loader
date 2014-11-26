@@ -1,6 +1,16 @@
 [feature_count]
     SELECT feature_id FROM feature
 
+[feature_type_count]
+    SELECT feature.feature_id FROM feature
+        JOIN cvterm ON
+           cvterm.cvterm_id = feature.type_id
+        JOIN cv ON
+           cv.cv_id = cvterm.cv_id
+        WHERE cv.name = 'sequence'
+           AND
+        cvterm.name = ?
+
 [analysisfeature_rows]
     SELECT analysisfeature.* FROM analysisfeature
         JOIN feature ON feature.feature_id = analysisfeature.feature_id
