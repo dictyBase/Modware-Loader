@@ -267,7 +267,7 @@ test 'feature_links2' => sub {
 
     my $sql = <<'SQL';
     SELECT * FROM temp_feature_relationship where id = ? 
-    AND parent_id = ?;
+    AND parent_id = ?
     AND type_id = (SELECT cvterm_id FROM cvterm 
     JOIN cv ON cv.cv_id = cvterm.cv_id
     where cvterm.name = 'derives_from'
