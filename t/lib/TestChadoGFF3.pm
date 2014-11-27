@@ -7,16 +7,24 @@ test 'check_feature' => sub {
     my ($self) = @_;
     row_ok(
         sql         => $self->test_sql->retr('feature_count'),
-        rows        => 50,
-        description => 'should have 50 feature rows'
+        rows        => 53,
+        description => 'should have 53 feature rows'
+    );
+    row_ok(
+        sql => [ $self->test_sql->retr('feature_type_count'), 'polypeptide' ],
+        rows        => 4,
+        description => 'should have 4 polypeptide features'
     );
 };
 
 test 'target_feature' => sub {
     my ($self) = @_;
     row_ok(
-        sql => [$self->test_sql->retr('feature_rows'),'sequence', 'sequence_feature'],
-        rows => 2,
+        sql => [
+            $self->test_sql->retr('feature_rows'), 'sequence',
+            'sequence_feature'
+        ],
+        rows        => 2,
         description => 'should have 2 features created from Target attributes'
     );
 };
@@ -79,25 +87,32 @@ test 'feature_relationships' => sub {
         rows => 33,
         description => "should have child featureloc for Contig1"
     );
+    row_ok(
+        sql         => [ $test_sql->retr('derives_featurerel_rows'), $_ ],
+        rows        => 1,
+        description => "should have derived parent of $_"
+    ) for qw/poly-1 poly-2 poly-8/;
 };
 
 test 'feature_locations' => sub {
     my ($self)   = @_;
     my $test_sql = $self->test_sql;
     my $flocs    = [
-        [ 1000, 2000, 'trans-1' ],
-        [ 5000, 6000, 'c128.1' ],
-        [ 8000, 9000, 'c128.2' ],
-        [ 1999, 3000, 'tier0' ],
-        [ 2800, 2900, 'utr1' ],
-        [ 2500, 2551, 'parent2' ]
+        [ 1000,  2000,  'trans-1', 'Contig1' ],
+        [ 5000,  6000,  'c128.1',  'Contig1' ],
+        [ 8000,  9000,  'c128.2',  'Contig1' ],
+        [ 1999,  3000,  'tier0',   'Contig1' ],
+        [ 2800,  2900,  'utr1',    'Contig1' ],
+        [ 2500,  2551,  'parent2', 'Contig1' ],
+        [ 1050,  1440,  'poly-1',  'Contig1' ],
+        [ 32100, 34900, 'poly-8',  'Contig3' ]
     ];
 
     for my $row (@$flocs) {
         row_ok(
             sql => [
                 $test_sql->retr('feature_featureloc_rows'),
-                $row->[2], 'Contig1', $row->[0], $row->[1], 0
+                $row->[2], $row->[-1], $row->[0], $row->[1], 0
             ],
             rows => 1,
             description =>
