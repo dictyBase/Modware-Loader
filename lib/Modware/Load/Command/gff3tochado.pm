@@ -197,9 +197,20 @@ sub load_data_in_chado {
     return $result;
 }
 
+sub is_so_loaded {
+    my ($self) = @_;
+    my $row = $self->schema->resultset('Cv::Cv')->find({name => 'sequence'});
+    return 1 if $row;
+}
+
 sub execute {
     my ($self) = @_;
     my $logger = $self->logger;
+    # check if sequence ontology is loaded
+    # if not bail out
+    if (!$self->is_so_loaded) {
+        $logger->logcroak("please load sequence ontology(SO) before loading the gff3 file");
+    }
 
     my $staging_loader = $self->setup_staging_loader;
     $logger->debug("start loading in staging tables");
