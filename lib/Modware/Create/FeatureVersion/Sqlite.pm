@@ -3,7 +3,7 @@ use Moose;
 
 sub create {
     my ($self, $schema, $sqlmanager) = @_;
-    my $dbh = $self->schema->storage->dbh;
+    my $dbh = $schema->storage->dbh;
     $dbh->do($sqlmanager->retr('insert_new_dbxref_with_version'));
 
     my $sth = $dbh->prepare($sqlmanager->retr('select_all_dbxrefs_with_version'));
