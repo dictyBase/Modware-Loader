@@ -71,10 +71,15 @@ before 'setup' => sub {
 test 'run_cmdline_app' => sub {
     my ($self) = @_;
     local @ARGV = (
-        'gff3tochado', '--dsn',   $self->dsn,      '-u',
-        $self->user,   '-p',      $self->password, '-i',
-        $self->input,  '--genus', $self->genus,    '--species',
-        $self->species, '--version_plugin', 1
+        'gff3tochado',   '--dsn',
+        $self->dsn,      '-u',
+        $self->user,     '-p',
+        $self->password, '-i',
+        $self->input,    '--genus',
+        $self->genus,    '--species',
+        $self->species,  '--version_plugin',
+        1,               '--db_name',
+        'testdb'
     );
     if ( $self->dbmanager->can('schema_namespace') ) {
         push @ARGV, '--pg_schema', $self->dbmanager->schema_namespace;
@@ -89,7 +94,9 @@ test 'run_cmdline_app' => sub {
     }
 
     my $app = new_ok 'Modware::Load';
-    lives_ok { $app->run } 'should run the gff3tochado subcommand with version plugin';
+    diag("going to run the app");
+    lives_ok { $app->run }
+    'should run the gff3tochado subcommand with version plugin';
 };
 
 1;
