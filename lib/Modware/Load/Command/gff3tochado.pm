@@ -120,6 +120,24 @@ has 'version_plugin' => (
     documentation => 'Flag to activate plugin that adds version to all the loaded features, default is false'
 );
 
+has 'db_name' => (
+    is => 'rw',
+    isa => 'Str',
+    documentation => 'Only for version plugin, mandatory. Name of the database which will be used for creating dbxref entries with version'
+);
+
+has 'db_urlprefix' => (
+    is => 'rw',
+    isa => 'Str',
+    documentation => 'Only for version plugin, optional though. The prefix(for example http://) required to construct db_url.'
+);
+
+has 'db_url' => (
+    is => 'rw',
+    isa => 'Str',
+    documentation => 'Only for version plugin, optional though. The base value of the url for the database.'
+);
+
 has 'plugin_namespace' => (
     is      => 'rw',
     isa     => 'Str',
@@ -243,6 +261,7 @@ sub execute {
 
     # plugin time
     if ($self->version_plugin) {
+        $logger->logcroak('*db_name* is required for version plugin') if !$self->db_name;
         $self->load_plugin('+'.$self->plugin_namespace.'::'.'FeatureVersion');
         $self->add_version($self->schema);
         $logger->debug('added version to loaded features');
