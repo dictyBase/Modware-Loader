@@ -17,7 +17,7 @@ sub add_version {
         }
     );
     load $version_class;
-    $version_class->new->create( $self->schema, $sqlmanager );
+    $version_class->new->create( $self, $self->schema, $sqlmanager );
 }
 
 1;
