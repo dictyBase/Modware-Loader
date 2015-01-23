@@ -94,9 +94,49 @@ test 'run_cmdline_app' => sub {
     }
 
     my $app = new_ok 'Modware::Load';
-    diag("going to run the app");
     lives_ok { $app->run }
     'should run the gff3tochado subcommand with version plugin';
+};
+
+test 'check_all_dbxref' => sub {
+    my ($self) = @_;
+    row_ok(
+        sql => ['SELECT dbxref_id FROM dbxref WHERE version = ?', '1'],
+        rows => 53,
+        description => 'should have 53 dbxref rows with versions'
+    );
+};
+
+test 'check_one_dbxref' => sub {
+    my ($self) = @_;
+    my $sql = <<'SQL';
+    SELECT dbxref.dbxref_id FROM dbxref
+    JOIN db ON dbxref.db_id = db.db_id
+    WHERE dbxref.accession = ?
+    AND dbxref.version = ?
+    AND db.name = ?
+SQL
+    row_ok(
+        sql => [$sql, 'trans-1', '1', 'testdb'],
+        rows => 1,
+        description => 'should have 1 dbxref row for id trans-1'
+    );
+};
+
+test 'check_feature_id' => sub {
+    my ($self) = @_;
+    my $sql = <<'SQL';
+    SELECT feature_id FROM feature 
+    WHERE feature_id = (
+        SELECT uniquename FROM feature
+        LIMIT 1
+    )
+SQL
+    row_ok(
+        sql => $sql,
+        rows => 1,
+        description => 'should have identical feature_id and uniquename'
+    );
 };
 
 1;
