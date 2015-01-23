@@ -1,0 +1,20 @@
+[insert_new_dbxref_with_version]
+    INSERT INTO dbxref(accession, version, db_id)
+           SELECT id, 1, (SELECT db_id FROM db where name = ?) 
+               FROM temp_new_feature_ids
+
+[update_feature_with_dbxref_id]
+    UPDATE feature 
+           SET dbxref_id = dbxref.dbxref_id
+        FROM (
+               SELECT dbxref.dbxref_id, dbxref.accession 
+               FROM dbxref
+               INNER JOIN temp_new_feature_ids tmpnf ON
+                   dbxref.accession = tmpnf.id
+               WHERE
+                   dbxref.version = '1'
+                   AND
+                   dbxref.db_id = ?
+           ) dbxref
+           WHERE 
+           feature.uniquename = dbxref.accession
