@@ -189,6 +189,7 @@ has 'sqllib' => (
         );
     }
 );
+
 has 'organism' => (
     is      => 'lazy',
     default => sub {

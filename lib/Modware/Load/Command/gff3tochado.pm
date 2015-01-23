@@ -11,6 +11,7 @@ use Bio::GFF3::LowLevel qw/gff3_parse_feature gff3_parse_directive/;
 use Bio::SeqIO;
 use feature qw/say/;
 extends qw/Modware::Load::Chado/;
+with 'MooseX::Object::Pluggable';
 
 has '+input' => (
     documentation => 'Name of the GFF3 file',
@@ -110,6 +111,39 @@ has 'analysis_program_version' => (
     isa => 'Num',
     documentation =>
         'Version of the program that is used to run the analysis. Will be used for features with a valid score column in GFF3 and when given along with analysis_program option. This value has to be set in order to use the analysis_name. By default version 1.0 will be used.'
+);
+
+has 'version_plugin' => (
+    is => 'rw',
+    isa => 'Bool',
+    default => 0,
+    documentation => 'Flag to activate plugin that adds version to all the loaded features, default is false'
+);
+
+has 'db_name' => (
+    is => 'rw',
+    isa => 'Str',
+    documentation => 'Only for version plugin, mandatory. Name of the database which will be used for creating dbxref entries with version'
+);
+
+has 'db_urlprefix' => (
+    is => 'rw',
+    isa => 'Str',
+    documentation => 'Only for version plugin, optional though. The prefix(for example http://) required to construct db_url.'
+);
+
+has 'db_url' => (
+    is => 'rw',
+    isa => 'Str',
+    documentation => 'Only for version plugin, optional though. The base value of the url for the database.'
+);
+
+has 'plugin_namespace' => (
+    is      => 'rw',
+    isa     => 'Str',
+    lazy    => 1,
+    traits  => [qw/NoGetopt/],
+    default => 'Modware::Plugin::Create',
 );
 
 sub setup_staging_loader {
@@ -224,6 +258,16 @@ sub execute {
     $logger->debug("loaded $result->{$_} entries in $_") for keys %$result;
     $logger->info( "loaded GFF3 features from ",
         $self->input, " in chado database" );
+
+    # plugin time
+    if ($self->version_plugin) {
+        $logger->logcroak('*db_name* is required for version plugin') if !$self->db_name;
+        $self->load_plugin('+'.$self->plugin_namespace.'::'.'FeatureVersion');
+        $self->add_version($self->schema);
+        $logger->debug('added version to loaded features');
+    }
+
+
     if ( $self->dry_run ) {
         $logger->info("Nothing saved in database");
     }
