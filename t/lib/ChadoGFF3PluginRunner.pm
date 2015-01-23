@@ -123,22 +123,6 @@ SQL
     );
 };
 
-test 'check_feature_id' => sub {
-    my ($self) = @_;
-    my $sql = <<'SQL';
-    SELECT feature_id FROM feature 
-    WHERE feature_id = (
-        SELECT uniquename FROM feature
-        LIMIT 1
-    )
-SQL
-    row_ok(
-        sql => $sql,
-        rows => 1,
-        description => 'should have identical feature_id and uniquename'
-    );
-};
-
 1;
 
 #__END__

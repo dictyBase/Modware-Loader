@@ -21,11 +21,3 @@
     UPDATE feature
         SET dbxref_id = ?
         WHERE uniquename = ?
-
-[update_feature_with_uniquename]
-    UPDATE feature
-      SET uniquename = ?
-      WHERE dbxref_id = ?
-      AND
-      feature_id = ?
-
