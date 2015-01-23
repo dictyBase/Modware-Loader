@@ -17,7 +17,7 @@ sub create {
     while(my ($id, $accession) = $sth->fetchrow_array()) {
         $dbh->do($sqlmanager->retr('update_feature_with_dbxref_id'), {}, $id, $accession);
         my ($feature_id) = $dbh->selectrow_array($sqlmanager->retr('select_feature_id'), {}, $accession);
-        $dbh->do($sqlmanager->retr('update_feature_with_uniquename'), {}, $accession, $id, $feature_id);
+        $dbh->do($sqlmanager->retr('update_feature_with_uniquename'), {}, $feature_id, $id, $feature_id);
     }
 }
 
