@@ -33,7 +33,6 @@
       },
       "runtime" : {
          "recommends" : {
-            "BioPortal::WebService" : "v1.0.0",
             "Child" : "0.009",
             "DBD::Oracle" : "1.52",
             "DBD::Pg" : "v2.19.3",
@@ -44,6 +43,8 @@
             "BibTeX::Parser" : "0.65",
             "Bio::Chado::Schema" : "0.20000",
             "Bio::GFF3::LowLevel" : "1.5",
+            "Data::Dump" : "1.22",
+            "DateTime::Format::Strptime" : "1.56",
             "Email::Abstract" : "3.006",
             "Email::Address" : "1.900",
             "Email::Sender::Simple" : "0.102370",
