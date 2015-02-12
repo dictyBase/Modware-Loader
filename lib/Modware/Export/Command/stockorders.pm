@@ -27,22 +27,22 @@ has 'statement' => (
         ) 
         join cgm_ddb.stock_order sorder on sorder.stock_order_id=sitem.order_id
         join cgm_ddb.colleague on colleague.colleague_no = sorder.colleague_id
-        JOIN cgm_ddb.coll_email colemail ON colemail.colleague_no=colleague.colleague_no
-        JOIN cgm_ddb.email ON email.email_no=colemail.email_no
+        join cgm_ddb.coll_email colemail on colemail.colleague_no=colleague.colleague_no
+        join cgm_ddb.email on email.email_no=colemail.email_no
         UNION ALL
         select sorder.stock_order_id order_id, sc.id id, sc.name stock_name, 
         colleague.first_name, colleague.last_name, colleague.colleague_no,
-        sorder.order_date, email.email from plasmid sc
-        join stock_item_order sitem on 
+        sorder.order_date, email.email from cgm_ddb.plasmid sc
+        join cgm_ddb.stock_item_order sitem on 
         (
               sc.name=sitem.item
               AND
               sc.id = sitem.item_id
         )
-        join stock_order sorder on sorder.stock_order_id=sitem.order_id
-        join colleague on colleague.colleague_no = sorder.colleague_id
-        JOIN cgm_ddb.coll_email colemail ON colemail.colleague_no=colleague.colleague_no
-        JOIN cgm_ddb.email ON email.email_no=colemail.email_no
+        join cgm_ddb.stock_order sorder on sorder.stock_order_id=sitem.order_id
+        join cgm_ddb.colleague on colleague.colleague_no = sorder.colleague_id
+        join cgm_ddb.coll_email colemail on colemail.colleague_no=colleague.colleague_no
+        join cgm_ddb.email on email.email_no=colemail.email_no
     }
 );
 
@@ -54,17 +54,11 @@ sub execute {
     $sth->execute;
     my $output = $self->output_handler;
     my $csv = Text::CSV->new( { auto_diag => 1, binary => 1 } );
-    $csv->print( $output, [ "Stock Order_ID", "StockID",    "StockName", "FirstName",
-        "LastName", "Colleague#", "OrderDate", "email" ] );
+    $csv->print( $output, [ "Stock Order_ID", "Stock ID", "Stock Name", "First Name", "Last Name", "Colleague #", "Order Date", "email" ] );
     $output->print("\n");
-    while ( my ($stock_order_id, $sc_id, $stock_name, $first_name,
-            $last_name, $colleague_no, $order_date, $email ) = $sth->fetchrow() ) {
-        $csv->print(
-            $output,
-            [   $stock_order_id, $sc_id,        $stock_name, $first_name,
-                $last_name,      $colleague_no, $order_date, $email
-            ]
-        );
+
+    while ( my ($stock_order_id, $sc_id, $stock_name, $first_name, $last_name, $colleague_no, $order_date, $email ) = $sth->fetchrow() ) {
+        $csv->print($output,[ $stock_order_id, $sc_id, $stock_name, $first_name, $last_name, $colleague_no, $order_date, $email ]);
         $output->print("\n");
     }
 }
