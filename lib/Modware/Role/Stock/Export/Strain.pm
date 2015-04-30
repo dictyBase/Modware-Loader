@@ -174,13 +174,11 @@ sub find_phenotypes {
 	LEFT JOIN genotype g on g.genotype_id = pst.genotype_id
 	
 	LEFT JOIN cvterm env on env.cvterm_id = pst.environment_id
-	LEFT JOIN cv env_cv on env_cv.cv_id = env.cv_id
 	
 	LEFT JOIN phenotype p on p.phenotype_id = pst.phenotype_id
 	LEFT JOIN cvterm phen on phen.cvterm_id = p.observable_id
 	
 	LEFT JOIN cvterm assay on assay.cvterm_id = p.assay_id
-	LEFT JOIN cv assay_cv on assay_cv.cv_id = assay.cv_id
 	
 	LEFT JOIN pub on pub.pub_id = pst.pub_id
 	WHERE g.uniquename = '$dbs_id'

@@ -24,5 +24,6 @@ MYMETA.yml
 _build/
 blib/
 .env
-
+config-legacy.yaml
+config-chado.yaml
 
