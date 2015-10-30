@@ -20,7 +20,7 @@ RUN cd /tmp \
     && cpanm -n --quiet --installdeps . \
     && cpanm -n --quiet DBD::Oracle DBD::Pg Math::Base36 String::CamelCase LWP::Protocol::https && \
     rm -fr /rpms
-RUN cpanm -n --quiet Child
+RUN cpanm -n --quiet Child Dist::Zilla
 
 COPY bin /usr/src/modware/bin
 COPY lib /usr/src/modware/lib
@@ -32,6 +32,8 @@ COPY MANIFEST.SKIP /usr/src/modware/
 COPY META.json /usr/src/modware/
 COPY MYMETA.json /usr/src/modware/
 COPY MYMETA.yml /usr/src/modware/
+COPY dist.ini /usr/src/modware/
 WORKDIR /usr/src/modware
-RUN perl Build.PL && ./Build install
+RUN dzil authordeps | cpanm -n --quiet \
+    && perl Build.PL && ./Build install
 
