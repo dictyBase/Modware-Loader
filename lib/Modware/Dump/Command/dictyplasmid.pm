@@ -230,7 +230,7 @@ sub execute {
         $self->export_seq( $gb_dbp_hash, $self->seq_data_dir );
     }
 
-    for my $key ( keys $stats ) {
+    for my $key ( keys %$stats ) {
         $self->logger->info(
             "Exported " . $stats->{$key} . " entries for " . $key );
     }
