@@ -1,18 +1,22 @@
+sudo: false
 language: perl
 perl:
-    - "5.10"
-    - "5.12"
-    - "5.14"
-    - "5.16"
     - "5.18"
-    - "5.19"
+    - "5.16"
+    - "5.20"
+    - "5.22"
+    - "5.23"
 before_script:
     - createdb -U postgres test_chado
 script:
     - perl Build.PL && ./Build && HARNESS_OPTIONS=j6 TC_DSN="dbi:Pg:dbname=test_chado" TC_USER="postgres" TC_PASS="" cover -test
+addons:
+    postgresql: "9.3"
+    apt:
+        packages:
+            - libdb-dev
+            - libexpat1-dev
 install:
-    - "sudo apt-get update"
-    - "sudo apt-get install libdb-dev libexpat1-dev"
     - "cpanm -n LWP::Protocol::https"
     - "cpanm -n --quiet --installdeps ."
     - "cpanm -n  git://github.com/dictyBase/BioPortal-WebService.git@build/develop"
