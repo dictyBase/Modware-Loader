@@ -4,13 +4,13 @@
       "Siddhartha Basu <biosidd@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.300039, CPAN::Meta::Converter version 2.132140",
+   "generated_by" : "Dist::Zilla version 5.041, CPAN::Meta::Converter version 2.150005",
    "license" : [
       "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
-      "version" : "2"
+      "version" : 2
    },
    "name" : "Modware-Loader",
    "prereqs" : {
@@ -91,6 +91,6 @@
    },
    "release_status" : "stable",
    "resources" : {},
-   "version" : "v1.6.1"
+   "version" : "v1.6.2"
 }
 
