@@ -47,14 +47,6 @@ Download the respective tarballs from their release pages in github and invoke B
 
 =item
 
-BioPortal-WebService L<release page|https://github.com/dictyBase/BioPortal-WebService/releases>
-
-=item
-
-Test-Chado L<release page|https://github.com/dictyBase/Test-Chado/releases>
-
-=item
-
 Modware-Loader L<release pages|https://github.com/dictyBase/Modware:Loader/releases>
 
 =back
