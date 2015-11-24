@@ -102,6 +102,25 @@ has 'update_ontology_hooks' => (
     }
 );
 
+sub parse_ontology_tag {
+    my ($self, $file) = @_;
+    my $handler  = IO::File->new($file, "r") or die "cannot open file $!";
+    while (my $line = $handler->getline) {
+        if ($line =~ /^\[/) {
+            last;
+        }
+        if ($line =~ /^ontology/) {
+            my ($value) = ((split /:/,$line))[1];
+            $value =~ s/^\s+//;
+            $value =~ s/\s+$//;
+            $handler->close;
+            return $value;
+        }
+    }
+    $handler->close;
+    return;
+}
+
 sub _around_connection {
     my ($self)       = @_;
     my $connect_info = $self->connect_info;
