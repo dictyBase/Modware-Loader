@@ -10,17 +10,18 @@ use SQL::Library;
 use File::Spec::Functions qw/catfile/;
 use Modware::Loader;
 use Modware::Loader::Schema::Temporary;
+use File::Basename;
 
 has 'sqllib' => (
     is      => 'rw',
     isa     => 'SQL::Library',
-    lazy => 1,
+    lazy    => 1,
     default => sub {
         my ($self) = @_;
         my $lib = SQL::Library->new(
             {   lib => catfile(
                     module_dir('Modware::Loader'),
-                    lc ($self->schema->storage->sqlt_type) . '.lib'
+                    lc( $self->schema->storage->sqlt_type ) . '.lib'
                 )
             }
         );
@@ -29,8 +30,8 @@ has 'sqllib' => (
 );
 
 has 'app_instance' => (
-    is      => 'rw',
-    isa     => 'Modware::Load::Command::obo2chado',
+    is  => 'rw',
+    isa => 'Modware::Load::Command::obo2chado',
 );
 
 has 'logger' =>
@@ -68,7 +69,15 @@ has 'ontology' => (
     writer  => 'set_ontology',
     trigger => sub {
         my ( $self, $onto ) = @_;
-        $self->ontology_namespace( $onto->default_namespace || $onto->id );
+        my $namespace
+            = $self->parse_ontology_tag( $self->app_instance->input )
+            || $self->parse_namespace_from_file_path
+            || $onto->default_namespace
+            || $onto->id;
+        $self->app_instance->logger->logdie(
+            "could not parse ontology namespace")
+            if !$namespace;
+        $self->ontology_namespace($namespace);
     }
 );
 
@@ -89,7 +98,7 @@ has 'create_ontology_hooks' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return [ 'create_synonyms', 'create_comments', 'create_alt_ids'];
+        return [ 'create_synonyms', 'create_comments', 'create_alt_ids' ];
     }
 );
 
@@ -98,19 +107,27 @@ has 'update_ontology_hooks' => (
     isa     => 'ArrayRef',
     lazy    => 1,
     default => sub {
-        return ['update_synonyms', 'update_comments',  'update_alt_ids'];
+        return [ 'update_synonyms', 'update_comments', 'update_alt_ids' ];
     }
 );
 
+sub parse_namespace_from_file_path {
+    my ($self) = @_;
+    my ($namespace)
+        = ( split /\./, basename( $self->app_instance->input ) )[0];
+    return $namespace;
+}
+
 sub parse_ontology_tag {
-    my ($self, $file) = @_;
-    my $handler  = IO::File->new($file, "r") or die "cannot open file $!";
-    while (my $line = $handler->getline) {
-        if ($line =~ /^\[/) {
+    my ( $self, $file ) = @_;
+    my $handler = IO::File->new( $file, "r" )
+        or $self->app_instance->logger->logdie("cannot open file $!");
+    while ( my $line = $handler->getline ) {
+        if ( $line =~ /^\[/ ) {
             last;
         }
-        if ($line =~ /^ontology/) {
-            my ($value) = ((split /:/,$line))[1];
+        if ( $line =~ /^ontology/ ) {
+            my ($value) = ( ( split /:/, $line ) )[1];
             $value =~ s/^\s+//;
             $value =~ s/\s+$//;
             $handler->close;
