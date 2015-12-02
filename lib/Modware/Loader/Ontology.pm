@@ -87,7 +87,7 @@ has '_date_parser' => (
     lazy    => 1,
     default => sub {
         return DateTime::Format::Strptime->new(
-            pattern  => '%d:%m:%Y',
+            pattern  => '%d:%m:%Y%n%H:%M',
             on_error => 'croak'
         );
     }
