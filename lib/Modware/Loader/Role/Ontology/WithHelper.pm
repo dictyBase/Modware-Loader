@@ -73,8 +73,7 @@ sub find_or_create_cvrow {
     if ( $self->has_cvrow($cv) ) {
         return $self->get_cvrow($cv);
     }
-    my $cvrow
-        = $self->schema->resultset('Cv::Cv')
+    my $cvrow = $self->schema->resultset('Cv::Cv')
         ->find_or_create( { name => $cv } );
     $self->set_cvrow( $cv, $cvrow );
     return $cvrow;
@@ -101,8 +100,7 @@ sub find_or_create_cvterm_namespace {
     if ( $self->has_cvterm_row($cvterm) ) {
         return $self->get_cvterm_row($cvterm);
     }
-    my $cvterm_row
-        = $schema->resultset('Cv::Cvterm')
+    my $cvterm_row = $schema->resultset('Cv::Cvterm')
         ->find( { name => $cvterm, 'cv.name' => $cv }, { join => 'cv' } );
     if ($cvterm_row) {
         $self->set_cvterm_row( $cvterm, $cvterm_row );
@@ -150,8 +148,14 @@ sub _normalize_id {
         $accession = $parsed[1];
     }
     else {
-        $db_id = $self->find_or_create_db_id(
-            $self->ontology->default_namespace );
+        my $namespace
+            = $self->ontology->default_namespace
+            || $self->parse_namespace_from_file_path
+            || $self->parse_ontology_tag( $self->app_instance->input );
+        $self->app_instance->logger->logdie(
+            "could not parse default namespace")
+            if !$namespace;
+        $db_id     = $self->find_or_create_db_id($namespace);
         $accession = $id;
     }
     return ( $db_id, $accession );
