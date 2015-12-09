@@ -54,10 +54,10 @@ sub _cache_common_lookups {
         {   'cv.name' => 'sequence',
             'me.name' => {
                 -in => [
-                    qw/gene exon mRNA pseudogene contig chromosome pseudogenic_exon
+                    qw/supercontig gene exon mRNA pseudogene contig chromosome pseudogenic_exon
                         pseudogenic_transcript snRNA class_I_RNA class_II_RNA
                         C_D_box_snoRNA H_ACA_box_snoRNA SRP_RNA RNAase_P_RNA
-                        RNAase_MRP_RNA snoRNA rRNA ncRNA tRNA/
+                        RNAase_MRP_RNA snoRNA rRNA ncRNA tRNA polypeptide/
                 ]
             }
         },
@@ -147,11 +147,13 @@ REFERENCE:
                             }
                         }
 
+                        my $all_cdsrow;
                         $self->emit( 'read_cds' => $trow );
                         if ( $self->has_response ) {
                             my $rs4 = $self->response;
                         CDS:
                             while ( my $cdsrow = $rs4->next ) {
+                                push @$all_cdsrow, $cdsrow;
                                 $self->emit(
                                     write_cds => ( $ref_id, $trow, $cdsrow )
                                 );
@@ -164,7 +166,7 @@ REFERENCE:
                         POLYPEPTIDE:
                             while ( my $prow = $rs5->next ) {
                                 $self->emit( write_polypeptide =>
-                                        ( $ref_id, $trow, $prow ) );
+                                        ( $ref_id, $trow, $prow, $all_cdsrow ) );
                             }
                         }
                     }

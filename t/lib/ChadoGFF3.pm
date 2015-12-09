@@ -122,14 +122,14 @@ sub do_bulk_load {
     lives_ok { $return = $loader->bulk_load } 'should load in chado';
     is_deeply(
         $return,
-        {   temp_new_feature         => 50,
-            new_feature              => 50,
-            new_featureloc           => 48,
+        {   temp_new_feature         => 53,
+            new_feature              => 53,
+            new_featureloc           => 51,
             new_featureloc_target    => 2,
             new_analysisfeature      => 6,
             new_feature_synonym      => 4,
             new_synonym              => 3,
-            new_feature_relationship => 36,
+            new_feature_relationship => 39,
             new_feature_dbxref       => 5,
             new_dbxref               => 5,
             new_featureprop          => 12,
@@ -189,6 +189,7 @@ has 'sqllib' => (
         );
     }
 );
+
 has 'organism' => (
     is      => 'lazy',
     default => sub {

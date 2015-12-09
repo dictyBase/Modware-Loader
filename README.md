@@ -4,12 +4,12 @@ Modware::Loader
 
 # VERSION
 
-version v1.6.1
+version v1.7.0
 
 # DESCRIPTION
 
-[Chado](http://gmod.org/wiki/Introduction\_to\_Chado) is an open-source modular database
-schema for biological data. This distribution provides [MooseX::App::Cmd](http://search.cpan.org/perldoc?MooseX::App::Cmd) based command
+[Chado](http://gmod.org/wiki/Introduction_to_Chado) is an open-source modular database
+schema for biological data. This distribution provides [MooseX::App::Cmd](https://metacpan.org/pod/MooseX::App::Cmd) based command
 line applications to import and export biological data from Chado database.
 
 # NAME
@@ -18,39 +18,29 @@ Modware::Loader -  Command line apps for Chado relational database
 
 # INSTALLATION
 
-You need to install 2/3 dependencies from __github__, rest of them would be pulled from __CPAN__ as needed.
-Install using __cpanm__ is highly recommended.
+You need to install 2/3 dependencies from **github**, rest of them would be pulled from **CPAN** as needed.
+Install using **cpanm** is highly recommended.
 Use a latest version of [cpanm](https://metacpan.org/module/cpanm), at least 1.6 is needed.
 
 ## Latest release 
 
-        cpanm -n  git://github.com/dictyBase/Modware-Loader.git
+>     cpanm -n  git://github.com/dictyBase/Modware-Loader.git
 
-If you install without (-n/notest flag) then install __Test::Chado__ before you install __BioPortal-Webservice__.
+If you install without (-n/notest flag) then install **Test::Chado** before you install **BioPortal-Webservice**.
 
-        cpanm git://github.com/dictyBase/Test-Chado.git
+>     cpanm git://github.com/dictyBase/Test-Chado.git
 
 ## Any particular release
 
-Download the respective tarballs from their release pages in github and invoke __cpanm__ on them locally.
+Download the respective tarballs from their release pages in github and invoke **cpanm** on them locally.
 
-- BioPortal-WebService [release page](https://github.com/dictyBase/BioPortal-WebService/releases)
-- Test-Chado [release page](https://github.com/dictyBase/Test-Chado/releases)
 - Modware-Loader [release pages](https://github.com/dictyBase/Modware:Loader/releases)
 
 ### Using Build.PL,  cpan and friends
 
-Just follow the instuctions in the __INSTALL__ file.
+Just follow the instuctions in the **INSTALL** file.
 
 # Build Status
-
-<a href='https://travis-ci.org/dictyBase/Modware-Loader'>
-  	<img src='https://travis-ci.org/dictyBase/Modware-Loader.png?branch=develop' alt='Travis CI status'/>
-</a>
-
-<a href='https://coveralls.io/r/dictyBase/Modware-Loader'>
-	<img src='https://coveralls.io/repos/dictyBase/Modware-Loader/badge.png?branch=develop' alt='Coverage Status' />
-</a>
 
 # Documentation
 
@@ -104,17 +94,17 @@ Execute the subcommand
 
       $_> modware-load obo2chado --dsn 'dbi:Pg:database=mychado'  -u tucker -p tucker -i go.obo
 
-__Done.__
+**Done.**
 
 ## Tutorials/Blog posts
 
 - [Exporting annotations](http://dictybase.github.io/blog/2013/03/06/exporting-discoideum-annotations/)
-- [Converting tblastn alignments to GFF3 format](http://dictybase.github.io/refining-tblastn-protein-alignments/index.html)
+- [Converting  tblastn alignments to GFF3 format](http://dictybase.github.io/refining-tblastn-protein-alignments/index.html)
 - [Design pattern of chado loader](http://dictybase.github.io/blog/2013/09/18/chado-loader-design)
 
 # AUTHOR
 
-Siddhartha Basu <biosidd@gmail.com>
+Siddhartha Basu &lt;biosidd@gmail.com>
 
 # COPYRIGHT AND LICENSE
 

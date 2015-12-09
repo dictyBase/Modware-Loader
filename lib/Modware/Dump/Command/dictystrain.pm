@@ -399,7 +399,7 @@ sub execute {
 
     }
 
-    for my $key ( keys $stats ) {
+    for my $key ( keys %$stats ) {
         $self->logger->info(
             "Exported " . $stats->{$key} . " entries for " . $key );
     }

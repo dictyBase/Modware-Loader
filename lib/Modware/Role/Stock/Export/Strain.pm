@@ -255,7 +255,7 @@ sub _find_strain_genes {
         if ( !$self->has_strain_gene_name( $strain_gene->[0] ) ) {
             $self->set_strain_gene_name( $strain_gene->[0], [] );
         }
-        push $self->get_strain_gene_name( $strain_gene->[0] ),
+        push @{$self->get_strain_gene_name( $strain_gene->[0] )},
             $strain_gene->[1];
     }
 }

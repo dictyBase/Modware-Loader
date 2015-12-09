@@ -86,7 +86,7 @@ has 'input' => (
             = Path::Class::Dir->new($Bin)->parent->parent->subdir('test_data')
             ->subdir('gff3')->file( $self->test_file )->openr;
         return $file;
-    }
+        }
 
 );
 has 'loader' => ( is => 'rw' );
@@ -124,22 +124,23 @@ test 'add_data' => sub {
                 $loader->add_data($feature_hashref);
             }
         }
-    } 'should add_data';
+    }
+    'should add_data';
 };
 
 test 'count_cache' => sub {
     my ($self) = @_;
     my $loader = $self->loader;
     is( $loader->count_entries_in_feature_cache,
-        50, 'should have 50 entries in feature cache' );
+        53, 'should have 53 entries in feature cache' );
     is( $loader->count_entries_in_analysisfeature_cache,
         6, 'should have 6 entries in analysis feature cache' );
     is( $loader->count_entries_in_featureloc_cache,
-        48, 'should have 48 entries in featureloc cache' );
+        51, 'should have 51 entries in featureloc cache' );
     is( $loader->count_entries_in_feature_synonym_cache,
         4, 'should have 4 entries in feature synonym cache' );
     is( $loader->count_entries_in_feature_relationship_cache,
-        36, 'should have 36 entries in feature relationship cache' );
+        39, 'should have 39 entries in feature relationship cache' );
     is( $loader->count_entries_in_feature_dbxref_cache,
         5, 'should have 5 entries in feature dbxref cache' );
     is( $loader->count_entries_in_featureprop_cache,
@@ -160,7 +161,7 @@ test 'check_feature' => sub {
             "SELECT * from temp_feature where organism_id = ?",
             $self->loader->organism_id
         ],
-        results     => 50,
+        results     => 53,
         description => 'should have 50 feature entries'
     );
     row_ok(
@@ -179,6 +180,15 @@ test 'check_feature' => sub {
         results     => 1,
         description => 'should have name 9th-gene with id thing1'
     );
+
+    #check the polypeptide features
+    for my $id (qw/poly-1 poly-2 poly-8/) {
+        row_ok(
+            sql         => [ "SELECT * from temp_feature where id = ?", $id ],
+            results     => 1,
+            description => "should have id $id"
+        );
+    }
 };
 
 test 'check_feature_links1' => sub {
@@ -210,6 +220,12 @@ test 'check_feature_links1' => sub {
         ],
         results     => 1,
         description => 'should have an alias for id trans-2'
+    );
+    row_ok(
+        sql =>
+            "SELECT * from temp_featureloc where seqid = 'Contig3' AND strand = 1 AND start = 32100 AND stop = 34900 AND id = 'poly-8'",
+        results     => 1,
+        description => 'should have featureloc with id poly-8'
     );
 };
 
@@ -248,9 +264,29 @@ test 'feature_links2' => sub {
         result => 1,
         description => "should have one sequence entry for Contig4"
     );
+
+    my $sql = <<'SQL';
+    SELECT * FROM temp_feature_relationship where id = ? 
+    AND parent_id = ?
+    AND type_id = (SELECT cvterm_id FROM cvterm 
+    JOIN cv ON cv.cv_id = cvterm.cv_id
+    where cvterm.name = 'derives_from'
+    AND cv.name = 'sequence'
+    );
+SQL
+
+    my @rel;
+    push @rel, [qw/poly-1 trans-1/], [qw/poly-2 trans-2/], [qw/poly-8 trans-8/];
+    for my $frel(@rel) {
+        row_ok(
+            sql => [$sql, $frel->[0], $frel->[1]],
+            result => 1,
+            description => "should have parent $frel->[0] of child $frel->[1]"
+        );
+    }
 };
 
-##testing for Target GFF3 features
+###testing for Target GFF3 features
 test 'featureloc_target' => sub {
     my ($self) = @_;
     row_ok(
@@ -279,7 +315,7 @@ test 'featureloc_target' => sub {
             "SELECT * from temp_featureloc_target where id = 'match00003' and rank = 1 and start = 0 and stop = 502 and strand = -1",
         result => 1,
         description =>
-            'should have a featureloc entry for id match00003 on the query backend'
+            'should have a featureloc entryfor id match00003 on the query backend'
     );
     row_ok(
         sql =>

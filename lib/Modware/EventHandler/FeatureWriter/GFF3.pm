@@ -45,13 +45,15 @@ sub _dbrow2gff3hash {
     $hashref->{seq_id} = $seq_id;
 
     my $floc_row = $dbrow->featureloc_features->first;
-    $hashref->{start} = $floc_row->fmin + 1;
-    $hashref->{end}   = $floc_row->fmax;
-    if ( my $strand = $floc_row->strand ) {
-        $hashref->{strand} = $strand == -1 ? '-' : '+';
-    }
-    else {
-        $hashref->{strand} = undef;
+    if ($floc_row) {
+        $hashref->{start} = $floc_row->fmin ? $floc_row->fmin + 1 : undef;
+        $hashref->{end} = $floc_row->fmax;
+        if ( my $strand = $floc_row->strand ) {
+            $hashref->{strand} = $strand == -1 ? '-' : '+';
+        }
+        else {
+            $hashref->{strand} = undef;
+        }
     }
 
     if ( $hashref->{type} eq 'CDS' ) {
@@ -90,7 +92,7 @@ sub _dbrow2gff3hash {
         $dbname =~ s/^DB:// if $dbname =~ /^DB:/;
         push @$dbxrefs, $dbname . ':' . $xref_row->accession;
     }
-    $hashref->{attributes}->{Dbxref} = $dbxrefs if  $dbxrefs;
+    $hashref->{attributes}->{Dbxref} = $dbxrefs if $dbxrefs;
     return $hashref;
 }
 

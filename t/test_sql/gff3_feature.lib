@@ -1,6 +1,16 @@
 [feature_count]
     SELECT feature_id FROM feature
 
+[feature_type_count]
+    SELECT feature.feature_id FROM feature
+        JOIN cvterm ON
+           cvterm.cvterm_id = feature.type_id
+        JOIN cv ON
+           cv.cv_id = cvterm.cv_id
+        WHERE cv.name = 'sequence'
+           AND
+        cvterm.name = ?
+
 [analysisfeature_rows]
     SELECT analysisfeature.* FROM analysisfeature
         JOIN feature ON feature.feature_id = analysisfeature.feature_id
@@ -35,6 +45,23 @@
            cvterm.cvterm_id = frel.type_id
            WHERE
            cvterm.name = 'part_of'
+           AND
+           child.uniquename = ?
+
+[derives_featurerel_rows]
+    SELECT parent.uniquename FROM feature parent
+           JOIN feature_relationship frel ON
+           frel.object_id = parent.feature_id
+           JOIN feature child ON
+           frel.subject_id = child.feature_id
+           JOIN cvterm ON
+           cvterm.cvterm_id = frel.type_id
+           JOIN cv ON
+           cv.cv_id = cvterm.cv_id
+           WHERE
+           cvterm.name = 'derives_from'
+           AND 
+           cv.name = 'sequence'
            AND
            child.uniquename = ?
 

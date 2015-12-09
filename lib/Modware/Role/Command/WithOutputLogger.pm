@@ -42,12 +42,14 @@ has 'logger' => (
     }
 );
 
+enum 'LogLevel', [qw(debug error fatal info warn)];
+
 has 'log_level' => (
     is            => 'rw',
-    isa           => enum(qw/debug error fatal info warn/),
+    isa           => 'LogLevel',
     lazy          => 1,
-    default       => 'error',
-    documentation => 'Log level of the logger,  default is error'
+    default       => 'info',
+    documentation => 'Log level of the logger,  default is info'
 );
 
 sub _build_output_logger {
