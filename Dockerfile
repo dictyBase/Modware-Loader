@@ -10,30 +10,24 @@ RUN apt-get update && \
     mkdir -p /rpms && \
     alien -i /rpms/*.rpm && \
     echo '/usr/lib/oracle/11.2/client64/lib' > /etc/ld.so.conf.d/oracle.conf && \
-    echo 'export ORACLE_HOME=/usr/lib/oracle/11.2/client64' > /etc/profile.d/oracle.sh
+    echo 'export ORACLE_HOME=/usr/lib/oracle/11.2/client64' > /etc/profile.d/oracle.sh \
+    && apt-get clean \
+    && apt-get autoremove \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV ORACLE_HOME /usr/lib/oracle/11.2/client64/
 ENV LD_LIBRARY_PATH /usr/lib/oracle/11.2/client64/lib/
 
 ADD cpanfile /tmp/
+ADD dist.ini /tmp/
 RUN cd /tmp \
     && cpanm -n --quiet --installdeps . \
-    && cpanm -n --quiet DBD::Oracle DBD::Pg Math::Base36 String::CamelCase LWP::Protocol::https && \
-    rm -fr /rpms
-RUN cpanm -n --quiet Child Dist::Zilla
-
-COPY bin /usr/src/modware/bin
-COPY lib /usr/src/modware/lib
-COPY t /usr/src/modware/t
-COPY share /usr/src/modware/share
-COPY Build.PL /usr/src/modware/
-COPY Changes /usr/src/modware/
-COPY MANIFEST.SKIP /usr/src/modware/
-COPY META.json /usr/src/modware/
-COPY MYMETA.json /usr/src/modware/
-COPY MYMETA.yml /usr/src/modware/
-COPY dist.ini /usr/src/modware/
+    && cpanm -n --quiet DBD::Oracle DBD::Pg Math::Base36 String::CamelCase LWP::Protocol::https Child Dist::Zilla \
+    && dzil authordeps --missing | cpanm -n --quiet  \
+    && rm -fr /rpms \
+    && rm -rf /tmp/*
 WORKDIR /usr/src/modware
-RUN dzil authordeps | cpanm -n --quiet \
-    && perl Build.PL && ./Build install
 
+ENV HARNESS_OPTIONS j6
+
+CMD perl Build.PL && ./Build test
