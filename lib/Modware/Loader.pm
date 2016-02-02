@@ -17,7 +17,6 @@ line applications to import and export biological data from Chado database.
 
 =head1 INSTALLATION
 
-You need to install 2/3 dependencies from B<github>, rest of them would be pulled from B<CPAN> as needed.
 Install using B<cpanm> is highly recommended.
 Use a latest version of L<cpanm|https://metacpan.org/module/cpanm>, at least 1.6 is needed.
 
@@ -26,15 +25,6 @@ Use a latest version of L<cpanm|https://metacpan.org/module/cpanm>, at least 1.6
 =over
 
    cpanm -n  git://github.com/dictyBase/Modware-Loader.git
-
-=back
-
-If you install without (-n/notest flag) then install B<Test::Chado> before you install B<BioPortal-Webservice>.
-
-
-=over
-
-  cpanm git://github.com/dictyBase/Test-Chado.git
 
 =back
 
@@ -55,20 +45,16 @@ Modware-Loader L<release pages|https://github.com/dictyBase/Modware:Loader/relea
 
 Just follow the instuctions in the B<INSTALL> file.
 
+=head2 Using docker
+
+Use any particular tag from L<docker hub|https://hub.docker.com/r/dictybase/modware-loader/tags>
+
+    $_> docker run --rm dictybase/modware-loader:1.8 <cmd>
+
 
 =head1 Build Status
 
-=begin HTML
-
-<a href='https://travis-ci.org/dictyBase/Modware-Loader'>
-  	<img src='https://travis-ci.org/dictyBase/Modware-Loader.png?branch=develop' alt='Travis CI status'/>
-</a>
-
-<a href='https://coveralls.io/r/dictyBase/Modware-Loader'>
-	<img src='https://coveralls.io/repos/dictyBase/Modware-Loader/badge.png?branch=develop' alt='Coverage Status' />
-</a>
-
-=end HTML
+=for HTML <a href="https://travis-ci.org/dictyBase/Modware-Loader"><img src="https://travis-ci.org/dictyBase/Modware-Loader.svg?branch=master"></a>
 
 =head1 Documentation
 

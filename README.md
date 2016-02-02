@@ -4,7 +4,7 @@ Modware::Loader
 
 # VERSION
 
-version v1.8.0
+version v1.8.1
 
 # DESCRIPTION
 
@@ -18,17 +18,12 @@ Modware::Loader -  Command line apps for Chado relational database
 
 # INSTALLATION
 
-You need to install 2/3 dependencies from **github**, rest of them would be pulled from **CPAN** as needed.
 Install using **cpanm** is highly recommended.
 Use a latest version of [cpanm](https://metacpan.org/module/cpanm), at least 1.6 is needed.
 
 ## Latest release 
 
 >     cpanm -n  git://github.com/dictyBase/Modware-Loader.git
-
-If you install without (-n/notest flag) then install **Test::Chado** before you install **BioPortal-Webservice**.
-
->     cpanm git://github.com/dictyBase/Test-Chado.git
 
 ## Any particular release
 
@@ -39,6 +34,12 @@ Download the respective tarballs from their release pages in github and invoke *
 ### Using Build.PL,  cpan and friends
 
 Just follow the instuctions in the **INSTALL** file.
+
+## Using docker
+
+Use any particular tag from [docker hub](https://hub.docker.com/r/dictybase/modware-loader/tags)
+
+    $_> docker run --rm dictybase/modware-loader:1.8 <cmd>
 
 # Build Status
 
