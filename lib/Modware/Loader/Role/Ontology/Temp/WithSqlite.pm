@@ -15,9 +15,9 @@ after 'load_data_in_staging' => sub {
             $dbh->do(
                 q{CREATE UNIQUE INDEX uniq_name_idx ON temp_cvterm(name,  is_obsolete,  cv_id)}
             );
-            #$dbh->do(
-                #q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)}
-            #);
+            $dbh->do(
+                q{CREATE UNIQUE INDEX uniq_accession_idx ON temp_cvterm(accession)}
+            );
         }
     );
 
