@@ -1,7 +1,7 @@
 package Modware::Loader::Role::WithChadoGFF3Helper;
 use Moose::Role;
 use namespace::autoclean;
-use Digest::MD5 qw/md5/;
+use Digest::MD5 qw/md5_hex/;
 use feature qw/say/;
 use Data::Dumper;
 use feature qw/say/;
@@ -168,7 +168,7 @@ sub make_featureseq_stash {
     my $insert_hash = {
         id      => $gff_seq_hashref->{seq_id},
         residue => $gff_seq_hashref->{sequence},
-        md5     => md5( $gff_seq_hashref->{sequence} ),
+        md5     => md5_hex( $gff_seq_hashref->{sequence} ),
         seqlen  => length( $gff_seq_hashref->{sequence} )
     };
     return $insert_hash;

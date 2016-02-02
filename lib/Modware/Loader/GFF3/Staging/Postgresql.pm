@@ -2,7 +2,6 @@ package Modware::Loader::GFF3::Staging::Postgresql;
 use namespace::autoclean;
 use Digest::MD5 qw/md5/;
 use feature qw/say/;
-use Data::Dumper;
 use Moose;
 use Modware::Spec::GFF3::Analysis;
 with 'Modware::Role::WithDataStash' => {
