@@ -4,7 +4,7 @@ use Test::Exception;
 use File::ShareDir qw/module_file/;
 use Test::Chado qw/chado_schema drop_schema/;
 use Test::Chado::Common qw/:all/;
-use Digest::MD5 qw/md5/;
+use Digest::MD5 qw/md5_hex/;
 use Modware::Spec::GFF3::Analysis;
 use Modware::DataSource::Chado::Organism;
 
@@ -241,7 +241,7 @@ subtest 'make staging compatible hash data structure from GFF3' => sub {
         $featureseq_row,
         {   id      => 'DDB0166986',
             residue => 'ATGACTCTAATATAGCACACGTGATATATAGAC',
-            md5     => md5('ATGACTCTAATATAGCACACGTGATATATAGAC'),
+            md5     => md5_hex('ATGACTCTAATATAGCACACGTGATATATAGAC'),
             seqlen  => length('ATGACTCTAATATAGCACACGTGATATATAGAC')
         },
         'should match the featureseq structure'

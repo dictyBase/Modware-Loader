@@ -15,6 +15,7 @@ use File::Spec::Functions;
 use Log::Log4perl qw/:easy/;
 use feature qw/say/;
 use Modware::DataSource::Chado::Organism;
+use Data::Dumper;
 
 requires 'backend';
 
