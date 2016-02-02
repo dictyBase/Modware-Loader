@@ -59,10 +59,12 @@ sub execute {
     #enable transaction
     # check if it is a new version
     if ( $loader->is_ontology_in_db() ) {
-        if ( !$loader->is_ontology_new_version() ) {
-            $loader->finish;
-            $logger->error_die(
-                "This version of ontology already exist in database");
+        if ( $ontology->date ) {
+            if ( !$loader->is_ontology_new_version() ) {
+                $loader->finish;
+                $logger->error_die(
+                    "This version of ontology already exist in database");
+            }
         }
     }
 
