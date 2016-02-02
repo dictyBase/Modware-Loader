@@ -42,12 +42,12 @@ subtest 'loading of obo file without default namespace' => sub {
     WHERE
     DBXREF.ACCESSION=?
     AND
-    DB.NAME='ro-filter'
+    DB.NAME='ro'
 SQL
     row_ok(
         sql         => [$sql, $_],
         results     => 1,
-        description => 'should have term with db namespace from file path'
+        description => 'should have term with db namespace from ontology namespace'
     ) for qw/results_in_morphogenesis_of results_in_development_of results_in_formation_of/;
 
     drop_schema();
