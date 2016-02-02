@@ -70,9 +70,9 @@ has 'ontology' => (
     trigger => sub {
         my ( $self, $onto ) = @_;
         my $namespace
-            = $self->parse_ontology_tag( $self->app_instance->input )
+            = $onto->default_namespace 
+            || $self->parse_ontology_tag( $self->app_instance->input )
             || $self->parse_namespace_from_file_path
-            || $onto->default_namespace
             || $onto->id;
         $self->app_instance->logger->logdie(
             "could not parse ontology namespace")

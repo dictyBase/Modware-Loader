@@ -174,3 +174,42 @@ subtest 'loading of cvterms metadata from obo file' => sub {
 
     drop_schema();
 };
+
+subtest 'loading of ro obo file' => sub {
+    my $schema    = chado_schema( custom_fixture => $obo_fixture );
+    my $dbmanager = get_dbmanager_instance();
+    my $loader    = new_ok('Modware::Load');
+    local @ARGV = (
+        'obo2chado',          '--dsn',
+        $dbmanager->dsn,      '--user',
+        $dbmanager->user,     '--password',
+        $dbmanager->password, '--input',
+        $data_dir->subdir('obo')->file('ro.obo'),
+    );
+    push @ARGV, '--pg_schema', $dbmanager->schema_namespace
+        if $dbmanager->can('schema_namespace');
+
+    lives_ok { $loader->run } "should load ro obo file";
+    has_cv( $schema, 'ro', 'should have ro ontology' );
+    for my $name (
+        qw/has_part realized_in preceded_by has_participant function_of/)
+    {
+        has_cvterm( $schema, $name, "should have term $_" );
+    }
+    for my $dbxref (
+        qw/0000050 0000060 0000080 results_in_development_of results_in_morphogenesis_of HOM0000073/
+        )
+    {
+        has_dbxref( $schema, $dbxref, "should have dbxref $dbxref" );
+    }
+    count_subject_ok(
+        $schema,
+        {   cv           => 'ro',
+            count        => 14,
+            object       => 'overlaps',
+            relationship => 'is_a'
+        },
+        'should have 14 subjects of term overlaps'
+    );
+    drop_schema();
+};

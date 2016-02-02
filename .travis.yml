@@ -4,9 +4,12 @@ perl:
     - "5.18"
     - "5.16"
     - "5.20"
+before_script:
+ - createdb -U postgres test_chado
 script:
-    - perl Build.PL && ./Build && cover -test
+   - perl Build.PL && ./Build && HARNESS_OPTIONS=j6 TC_DSN="dbi:Pg:dbname=test_chado" TC_USER="postgres" TC_PASS="" cover -test
 addons:
+    postgresql: "9.3"
     apt:
         packages:
             - libdb-dev
