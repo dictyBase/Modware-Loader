@@ -150,8 +150,8 @@ sub _normalize_id {
     else {
         my $namespace
             = $self->ontology->default_namespace
-            || $self->parse_namespace_from_file_path
-            || $self->parse_ontology_tag( $self->app_instance->input );
+            || $self->parse_ontology_tag( $self->app_instance->input )
+            || $self->parse_namespace_from_file_path;
         $self->app_instance->logger->logdie(
             "could not parse default namespace")
             if !$namespace;
