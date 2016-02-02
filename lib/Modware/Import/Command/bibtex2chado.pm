@@ -125,9 +125,16 @@ sub create_authors {
             rank   => $i + 1
 
         };
-        $author_hash->{givennames} = $authors[$i]->first
-            if $authors[$i]->first;
-        $author_hash->{surname} = $authors[$i]->last if $authors[$i]->last;
+        if (my $first = $authors[$i]->first) {
+            $first =~ s/{//;
+            $first =~ s/}//;
+            $author_hash->{givennames} = $first;
+        }
+        if (my $last = $authors[$i]->last) {
+            $last =~ s/{//;
+            $last =~ s/}//;
+            $author_hash->{surname} = $last;
+        }
         $self->schema->resultset('Pub::Pubauthor')->create($author_hash);
     }
 }
