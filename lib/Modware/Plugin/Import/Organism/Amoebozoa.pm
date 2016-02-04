@@ -5,7 +5,6 @@ sub raw2db_structure {
     my ( $self, $str ) = @_;
     my ( $dbarray, $species_hash );
     for my $entry (@$str) {
-        next if exists $species_hash->{ $entry->{species} };
         my $dbhash;
         $dbhash->{genus}       = $entry->{genus};
         $dbhash->{common_name} = undef;
@@ -15,10 +14,12 @@ sub raw2db_structure {
         if ( defined $entry->{strain} ) {
             my $species = sprintf "%s %s", $entry->{species},
                 $entry->{strain};
+            next if exists $species_hash->{$species};
             $dbhash->{species} = $species;
             $species_hash->{$species} = 1;
         }
         else {
+            next if exists $species_hash->{ $entry->{species} };
             $dbhash->{species} = $entry->{species};
             $species_hash->{ $entry->{species} } = 1;
         }
