@@ -32,7 +32,7 @@ gh-release: release-only create-dockerfile
 	git push github develop
 	UPLOAD_URL=$(shell curl --silent --data '$(API_JSON)' https://api.github.com/repos/dictyBase/Modware-Loader/releases?access_token=$(ACCESS_TOKEN) | jq '.upload_url' | sed -e 's/{.*}//') 
 	name=$(shell Modware-Loader-$(VERSION).tar.gz)
-	curl -X POST -H 'Content-Type: application/gzip' --data-binary @$(VERSION) $(UPLOAD_URL)?name=$(name)&access_token=$(ACCESS_TOKEN)
+	curl -X POST -H 'Content-Type: application/gzip' --data-binary @$(name) $(UPLOAD_URL)?name=$(name)&access_token=$(ACCESS_TOKEN)
 	
 
 
