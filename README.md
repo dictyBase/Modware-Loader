@@ -4,7 +4,7 @@ Modware::Loader
 
 # VERSION
 
-version v1.8.3
+version v1.8.4
 
 # DESCRIPTION
 
@@ -102,6 +102,21 @@ Execute the subcommand
 - [Exporting annotations](http://dictybase.github.io/blog/2013/03/06/exporting-discoideum-annotations/)
 - [Converting  tblastn alignments to GFF3 format](http://dictybase.github.io/refining-tblastn-protein-alignments/index.html)
 - [Design pattern of chado loader](http://dictybase.github.io/blog/2013/09/18/chado-loader-design)
+
+# Automated release and docker build
+
+This is only meant for developers. The automated process is done through \`Makefile\`. 
+
+### Prerequisites
+
+- Docker
+- curl
+- [jq](https://stedolan.github.io/jq/)
+- Github personal access [token](https://github.com/blog/1509-personal-api-tokens) . Store it in \`~/.github-release\` file.
+
+Then bump the version in \`dist.ini\` file and run the command
+
+    $_> make release && make gh-release
 
 # AUTHOR
 
