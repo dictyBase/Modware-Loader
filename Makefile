@@ -35,6 +35,10 @@ create-dockerfile:
 	git add $(PWD)/docker/release
 	git commit -m 'updated dockerfile for this $(VERSION)'
 gh-release: create-dockerfile 
+	git checkout master
+	git rebase develop
 	git push github develop
+	git push github master
+	git checkout develop
 	curl -X POST -H 'Content-Type: application/gzip' -H 'Authorization: token $(ACCESS_TOKEN)' --data-binary @$(NAME) $(ASSET_URL)
 
