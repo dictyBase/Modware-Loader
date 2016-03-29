@@ -41,4 +41,11 @@ gh-release: create-dockerfile
 	git checkout develop
 	git push origin develop
 	curl -X POST -H 'Content-Type: application/gzip' -H 'Authorization: token $(ACCESS_TOKEN)' --data-binary @$(NAME) $(ASSET_URL)
+gh-release-only:
+	git checkout master
+	git rebase develop
+	git push origin master
+	git checkout develop
+	git push origin develop
+	curl -X POST -H 'Content-Type: application/gzip' -H 'Authorization: token $(ACCESS_TOKEN)' --data-binary @$(NAME) $(ASSET_URL)
 
