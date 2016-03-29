@@ -11,12 +11,12 @@ default: build test
 build:
 	docker build --rm -t dictybase/modware-loader-test:devel .
 test:
-	docker run --rm -v $(pwd):/usr/src/modware dictybase/modware-loader-test:devel
-testpg: build
-	docker run -d --name mlpostgres -e admin_db=mldb -e admin_user=mluser -e admin_pass=mlpass dictybase/postgres:9.4 \
+	docker run --rm -v $(shell pwd):/usr/src/modware -e HARNESS_OPTIONS="j6" dictybase/modware-loader-test:devel
+testpg: 
+	docker run -d --name mlpostgres -e ADMIN_DB=mldb -e ADMIN_USER=mluser -e ADMIN_PASS=mlpass dictybase/postgres:9.4 \
 		&& sleep 10 \
-		&& docker run --rm -v $(pwd):/usr/src/modware --link mlpostgres:ml -e tc_dsn="dbi:pg:dbname=mldb;host=ml" -e tc_user=mluser \
-		-e tc_pass=mlpass dictybase/modware-loader-test:devel \
+		&& docker run --rm -v $(shell pwd):/usr/src/modware --link mlpostgres:ml -e TC_DSN="dbi:Pg:database=mldb;host=ml" -e TC_USER=mluser \
+		-e TC_PASS=mlpass -e HARNESS_OPTIONS="j6" dictybase/modware-loader-test:devel \
 			&& docker stop mlpostgres \
 			&& docker rm mlpostgres
 release: build test testpg
