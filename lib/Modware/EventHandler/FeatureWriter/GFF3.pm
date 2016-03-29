@@ -3,6 +3,7 @@ package Modware::EventHandler::FeatureWriter::GFF3;
 # Other modules:
 use namespace::autoclean;
 use Moose;
+use feature qw/say/;
 
 # Module implementation
 #
@@ -46,7 +47,13 @@ sub _dbrow2gff3hash {
 
     my $floc_row = $dbrow->featureloc_features->first;
     if ($floc_row) {
-        $hashref->{start} = defined $floc_row->fmin ? $floc_row->fmin + 1 : undef;
+        my $fmin = $floc_row->fmin;
+        if (defined $fmin) {
+            $hashref->{start} = $fmin + 1;
+        }
+        else {
+            die "fmin is not defined";
+        }
         $hashref->{end} = $floc_row->fmax;
         if ( my $strand = $floc_row->strand ) {
             $hashref->{strand} = $strand == -1 ? '-' : '+';
