@@ -4,7 +4,7 @@ Modware::Loader
 
 # VERSION
 
-version v1.8.3
+version v1.8.5
 
 # DESCRIPTION
 
@@ -105,7 +105,7 @@ Execute the subcommand
 
 # AUTHOR
 
-Siddhartha Basu &lt;biosidd@gmail.com>
+Siddhartha Basu <biosidd@gmail.com>
 
 # COPYRIGHT AND LICENSE
 
