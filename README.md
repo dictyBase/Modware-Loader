@@ -4,11 +4,7 @@ Modware::Loader
 
 # VERSION
 
-<<<<<<< HEAD
-version v1.8.5
-=======
-version v1.8.4
->>>>>>> e26efd5d11f319e3cf501fd37292dd787f6ce6f4
+version v1.8.6
 
 # DESCRIPTION
 
@@ -124,7 +120,7 @@ Then bump the version in \`dist.ini\` file and run the command
 
 # AUTHOR
 
-Siddhartha Basu &lt;biosidd@gmail.com>
+Siddhartha Basu <biosidd@gmail.com>
 
 # COPYRIGHT AND LICENSE
 
