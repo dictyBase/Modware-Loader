@@ -131,3 +131,26 @@ B<Done.>
 =item L<Design pattern of chado loader|http://dictybase.github.io/blog/2013/09/18/chado-loader-design>
 
 =back
+
+=head1 Automated release and docker build
+
+This is only meant for developers. The automated process is done through `Makefile`. 
+
+=head3 Prerequisites
+
+=over
+
+=item Docker
+
+=item curl
+
+=item L<jq|https://stedolan.github.io/jq/>
+
+=item Github personal access L<token|https://github.com/blog/1509-personal-api-tokens> . Store it in `~/.github-release` file.
+
+=back
+
+Then bump the version in `dist.ini` file and run the command
+    
+    $_> make release && make gh-release
+

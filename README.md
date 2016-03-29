@@ -4,7 +4,11 @@ Modware::Loader
 
 # VERSION
 
+<<<<<<< HEAD
 version v1.8.5
+=======
+version v1.8.4
+>>>>>>> e26efd5d11f319e3cf501fd37292dd787f6ce6f4
 
 # DESCRIPTION
 
@@ -103,9 +107,24 @@ Execute the subcommand
 - [Converting  tblastn alignments to GFF3 format](http://dictybase.github.io/refining-tblastn-protein-alignments/index.html)
 - [Design pattern of chado loader](http://dictybase.github.io/blog/2013/09/18/chado-loader-design)
 
+# Automated release and docker build
+
+This is only meant for developers. The automated process is done through \`Makefile\`. 
+
+### Prerequisites
+
+- Docker
+- curl
+- [jq](https://stedolan.github.io/jq/)
+- Github personal access [token](https://github.com/blog/1509-personal-api-tokens) . Store it in \`~/.github-release\` file.
+
+Then bump the version in \`dist.ini\` file and run the command
+
+    $_> make release && make gh-release
+
 # AUTHOR
 
-Siddhartha Basu <biosidd@gmail.com>
+Siddhartha Basu &lt;biosidd@gmail.com>
 
 # COPYRIGHT AND LICENSE
 
