@@ -11,4 +11,6 @@
 \bdata_dump/
 \bcarton\.lock\b
 \b_build/
+\bdocker/
+\bDockerfile
 
