@@ -177,6 +177,17 @@ sub clear_all_caches {
 }
 
 sub count_entries_in_staging {
+    my ($self) = @_;
+    for my $name (
+        qw/feature analysisfeature featureseq featureloc feature_synonym feature_relationship
+        feature_dbxref featureprop featureloc_target/
+        ) {
+            my $table_name = 'temp_' . $name;
+            my $dbh = $self->schema->storage->dbh;
+            my $stmt = sprintf "SELECT COUNT(*) FROM %s", $table_name;
+            my @row = $dbh->selectrow_array($stmt);
+            $self->logger->debug("loaded $row[0] rows in table $table_name");
+        }
 
 }
 

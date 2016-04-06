@@ -251,6 +251,7 @@ sub execute {
     my $guard = $self->schema->txn_scope_guard;
     $self->setup_staging_env($staging_loader);
     $self->load_data_in_staging($staging_loader);
+    $staging_loader->count_entries_in_staging();
 
     my $chado_loader = $self->setup_chado_loader;
     $logger->debug("start loading in chado tables");
