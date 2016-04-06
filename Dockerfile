@@ -18,6 +18,8 @@ RUN apt-get update && \
 ENV ORACLE_HOME /usr/lib/oracle/11.2/client64/
 ENV LD_LIBRARY_PATH /usr/lib/oracle/11.2/client64/lib/
 
+ARG curruid
+ARG user
 ADD cpanfile /tmp/
 ADD dist.ini /tmp/
 RUN cd /tmp \
@@ -26,6 +28,9 @@ RUN cd /tmp \
     && dzil authordeps --missing | cpanm -n --quiet  \
     && rm -fr /rpms \
     && rm -rf /tmp/*
+# Add an user that will be used for install purpose
+RUN useradd -m -s /bin/bash -c "Docker image user" -u $curruid $user
+USER $user
 WORKDIR /usr/src/modware
 
 ENV HARNESS_OPTIONS j6
