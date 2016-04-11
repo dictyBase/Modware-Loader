@@ -22,13 +22,13 @@ testpg:
 release: build test testpg
 	docker run --rm -v $(pwd):/usr/src/modware dictybase/modware-loader-test:devel /bin/bash -c "dzil clean && dzil build"
 	git add Build.PL README.md dist.ini
-	git add META.JSON
 	git commit -m 'bumped version and toolchain files for version $(VERSION)'
 release-only: 
 	docker run --rm -v $(PWD):/usr/src/modware dictybase/modware-loader-test:devel /bin/bash -c "dzil clean && dzil build"
 	git add Build.PL README.md dist.ini
-	git add META.JSON
 	git commit -m 'bumped version and toolchain files for version $(VERSION)'
+meta-json:
+	git add META.JSON
 create-dockerfile:
 	cp $(PWD)/docker/template/Dockerfile $(PWD)/docker/release/Dockerfile
 	sed -i -e 's/version/$(VERSION)/' $(PWD)/docker/release/Dockerfile
