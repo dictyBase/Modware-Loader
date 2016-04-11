@@ -59,16 +59,18 @@ sub write_transcript {
         $output->print( gff3_format_feature($trans_hash) );
     }
     else {
-
+        #transcript is before gene because transcript source defines the source of
+        #gene feature
+        my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id, $gene_id );
         if ( !$self->has_gene_in_cache($gene_id) ) {
             my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $event, $seq_id );
 			$gene_hash->{attributes}->{Alias} = $synonyms if $synonyms;
+            if ($gene_hash->{source} ne $trans_hash->{source}) {
+                $gene_hash->{source} = $trans_hash->{source};
+            }
             $output->print( gff3_format_feature($gene_hash) );
             $self->add_gene_in_cache( $gene_id, 1 );
         }
-
-        #transcript
-        my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id, $gene_id );
         $output->print( gff3_format_feature($trans_hash) );
     }
 }
