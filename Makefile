@@ -1,11 +1,14 @@
 VERSION = $(shell grep -E ^version dist.ini | cut -d'=' -f2 | sed -e 's/^[ \t]*//')
-API_JSON = $(shell printf '{"tag_name": "%s","target_commitish": "develop","name": "%s","body": "Release of version %s","draft": false,"prerelease" : false}'  $(VERSION) $(VERSION) $(VERSION))
+COMMIT_ID = $(shell git rev-parse HEAD)
+API_JSON = $(shell printf '{"tag_name": "%s","target_commitish": "%s","name": "%s","body": "Release of version %s","draft": false,"prerelease" : false}'  $(VERSION) $(COMMIT_ID) $(VERSION) $(VERSION))
 ACCESS_TOKEN = $(shell cat ~/.github-release)
 NAME = Modware-Loader-$(VERSION).tar.gz
 UPLOAD_URL = $(shell curl --silent --data '$(API_JSON)' https://api.github.com/repos/dictyBase/Modware-Loader/releases?access_token=$(ACCESS_TOKEN) | jq '.upload_url' | sed -e 's/{.*}//' | sed -e 's/"//g' | sed -e 's/[[:blank:]]*$$//') 
 UPLOAD_URL += ?name=$(NAME)
 ASSET_URL += $(shell echo $(UPLOAD_URL) | sed 's/[[:blank:]]//')
 
+show-api-json:
+	@echo $(API_JSON)
 default: build test
 #upload_url = $(shell curl --silent --data '$(api_json)' https://api.github.com/repos/dictybase/modware-loader/releases/latest?access_token=$(access_token) | jq '.upload_url' | sed -e 's/{.*}//' | sed -e 's/"//g' | sed -e 's/[[:blank:]]*$$//') 
 build:
@@ -34,18 +37,16 @@ create-dockerfile:
 	sed -i -e 's/version/$(VERSION)/' $(PWD)/docker/release/Dockerfile
 	git add $(PWD)/docker/release
 	git commit -m 'updated dockerfile for this $(VERSION)'
-gh-release: create-dockerfile 
-	git checkout master
-	git rebase develop
-	git push origin master
-	git checkout develop
-	git push origin develop
+gh-release: create-dockerfile gh-update
+	sleep 6
 	curl -X POST -H 'Content-Type: application/gzip' -H 'Authorization: token $(ACCESS_TOKEN)' --data-binary @$(NAME) $(ASSET_URL)
-gh-release-only:
+gh-update:
 	git checkout master
 	git rebase develop
 	git push origin master
 	git checkout develop
 	git push origin develop
+gh-release-only:
+	sleep 6
 	curl -X POST -H 'Content-Type: application/gzip' -H 'Authorization: token $(ACCESS_TOKEN)' --data-binary @$(NAME) $(ASSET_URL)
 
