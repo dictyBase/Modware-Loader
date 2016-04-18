@@ -4,6 +4,7 @@ package Modware::EventHandler::FeatureWriter::GFF3::Canonical::Dicty;
 use namespace::autoclean;
 use Moose;
 use Bio::GFF3::LowLevel qw/gff3_format_feature/;
+use List::Util qw/uniq/;
 extends 'Modware::EventHandler::FeatureWriter::GFF3::Canonical';
 
 has '_gene_cache' => (
@@ -21,11 +22,12 @@ has '_gene_cache' => (
 # Module implementation
 #
 sub write_gene {
+
     # my ( $self, $event, $seq_id, $dbrow, $synonyms ) = @_;
     # my $hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id );
     # $hash->{attributes}->{Alias} = $synonyms if $synonyms;
     # $self->output->print( gff3_format_feature($hash) );
-	return;
+    return;
 }
 
 sub write_transcript {
@@ -59,13 +61,16 @@ sub write_transcript {
         $output->print( gff3_format_feature($trans_hash) );
     }
     else {
-        #transcript is before gene because transcript source defines the source of
-        #gene feature
-        my $trans_hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id, $gene_id );
+    #transcript is before gene because transcript source defines the source of
+    #gene feature
+        my $trans_hash
+            = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id, $gene_id );
         if ( !$self->has_gene_in_cache($gene_id) ) {
-            my $gene_hash = $self->_dbrow2gff3hash( $parent_dbrow, $event, $seq_id );
-			$gene_hash->{attributes}->{Alias} = $synonyms if $synonyms;
-            if ($gene_hash->{source} ne $trans_hash->{source}) {
+            my $gene_hash
+                = $self->_dbrow2gff3hash( $parent_dbrow, $event, $seq_id );
+            $gene_hash->{attributes}->{Alias} = [ uniq(@$synonyms) ]
+                if $synonyms;
+            if ( $gene_hash->{source} ne $trans_hash->{source} ) {
                 $gene_hash->{source} = $trans_hash->{source};
             }
             $output->print( gff3_format_feature($gene_hash) );
@@ -80,7 +85,9 @@ sub write_exon {
     my $output   = $self->output;
     my $trans_id = $self->_chado_feature_id($parent_dbrow);
     my $hash;
-    if ( $event->get_cvrow_by_id( $parent_dbrow->type_id )->name eq 'pseudogene' ) {
+    if ( $event->get_cvrow_by_id( $parent_dbrow->type_id )->name eq
+        'pseudogene' )
+    {
         $hash = $self->pseudorow2gff3hash( $dbrow, $seq_id, $trans_id,
             'pseudogenic_exon' );
     }
@@ -140,18 +147,18 @@ sub pseudorow2gff3hash {
     return $hashref;
 }
 
-
 sub write_polypeptide {
     my ( $self, $event, $seq_id, $parent_dbrow, $dbrow ) = @_;
     my $trans_id = $self->_chado_feature_id($parent_dbrow);
     my $hash = $self->_dbrow2gff3hash( $dbrow, $event, $seq_id );
     $hash->{attributes}->{Derives_from} = $trans_id;
     if ( not defined $hash->{start} ) {
-            my $floc_row = $parent_dbrow->featureloc_features->first;
-            $hash->{start}  = $floc_row->fmin + 1;
-            $hash->{end}    = $floc_row->fmax;
-            $hash->{strand} = $floc_row->strand == -1 ? '-' : '+';
+        my $floc_row = $parent_dbrow->featureloc_features->first;
+        $hash->{start}  = $floc_row->fmin + 1;
+        $hash->{end}    = $floc_row->fmax;
+        $hash->{strand} = $floc_row->strand == -1 ? '-' : '+';
     }
+
     # Removes the dot P from polypeptide ids
     my $poly_id = $hash->{attributes}->{ID}->[0];
     $poly_id =~ s/\.P$//;
