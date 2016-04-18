@@ -4,7 +4,7 @@ Modware::Loader
 
 # VERSION
 
-version v1.8.9
+version v1.8.10
 
 # DESCRIPTION
 
