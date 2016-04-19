@@ -12,7 +12,7 @@ show-api-json:
 default: build test
 #upload_url = $(shell curl --silent --data '$(api_json)' https://api.github.com/repos/dictybase/modware-loader/releases/latest?access_token=$(access_token) | jq '.upload_url' | sed -e 's/{.*}//' | sed -e 's/"//g' | sed -e 's/[[:blank:]]*$$//') 
 build:
-	docker build --rm --build-arg user=$(shell id -nu) curruid=$(shell id -u) -t dictybase/modware-loader-test:devel .
+	docker build --rm --build-arg user=$(shell id -nu) --build-arg curruid=$(shell id -u) -t dictybase/modware-loader-test:devel .
 test:
 	docker run --rm -v $(shell pwd):/usr/src/modware -e HARNESS_OPTIONS="j6" dictybase/modware-loader-test:devel
 testpg: 
