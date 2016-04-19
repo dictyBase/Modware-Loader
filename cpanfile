@@ -12,6 +12,7 @@ requires "Email::Valid" => "0.184";
 requires "File::Find::Rule" => "0.32";
 requires "HTML::WikiConverter" => "0.68";
 requires "HTML::WikiConverter::MediaWiki" => "0.59";
+requires "List::Util" => "1.45";
 requires "Log::Log4perl" => "1.40";
 requires "MooseX::App::Cmd" => "0.09";
 requires "MooseX::Attribute::Dependent" => "v1.1.2";
