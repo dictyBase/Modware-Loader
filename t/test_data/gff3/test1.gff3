@@ -17,7 +17,7 @@ Contig1	confirmed	exon	30701	30800	.	-	.	Parent=trans-2
 Contig1	confirmed	exon	30801	31000	.	-	.	Parent=trans-2
 Contig1	confirmed	polypeptide	30050	30970	.	-	.	Derives_from=trans-2;ID=poly-2
 Contig1	confirmed	gene	2000	3000	.	.	.	ID=tier0;Name=gene3;expressed=yes;in_process=1;Dbxref=FB:FBpp0070331
-Contig1	confirmed	mRNA	2000	3000	.	+	.	Parent=tier0;ID=tier0.1;expressed=yes;Name=gene3.a;
+Contig1	confirmed	mRNA	2000	3000	.	+	.	Parent=tier0;ID=tier0.1;expressed=yes;Name=gene3.a;Dbxref=FB:FBpp0070331
 Contig1	confirmed	mRNA	2500	3000	.	+	.	Parent=tier0;ID=tier0.2;Name=gene3.b
 Contig1	confirmed	five_prime_UTR	2000	2100	.	+	.	Parent=tier0.1
 Contig1	confirmed	CDS	2101	2200	.	+	0	Parent=tier0.1
