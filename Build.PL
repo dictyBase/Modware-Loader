@@ -19,7 +19,7 @@ my %module_build_args = (
     "Siddhartha Basu <biosidd\@gmail.com>"
   ],
   "dist_name" => "Modware-Loader",
-  "dist_version" => "v1.8.11",
+  "dist_version" => "v1.8.12",
   "license" => "perl",
   "module_name" => "Modware::Loader",
   "recommends" => {
