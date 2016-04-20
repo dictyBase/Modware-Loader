@@ -175,12 +175,13 @@
 
 [insert_new_dbxref]
     INSERT INTO dbxref(accession,db_id)
-           SELECT tmpfd.dbxref,tmpfd.db_id 
+           SELECT DISTINCT tmpfd.dbxref,tmpfd.db_id 
            FROM temp_feature_dbxref tmpfd
            INNER JOIN temp_new_feature_ids ON
                temp_new_feature_ids.id = tmpfd.id
            INNER JOIN feature ON
                feature.uniquename = temp_new_feature_ids.id
+           GROUP BY tmpfd.dbxref,tmpfd.db_id
 
 [insert_new_feature_dbxref]
     INSERT INTO feature_dbxref(dbxref_id,feature_id)
