@@ -143,7 +143,7 @@ test 'count_cache' => sub {
     is( $loader->count_entries_in_feature_relationship_cache,
         39, 'should have 39 entries in feature relationship cache' );
     is( $loader->count_entries_in_feature_dbxref_cache,
-        5, 'should have 5 entries in feature dbxref cache' );
+        6, 'should have 6 entries in feature dbxref cache' );
     is( $loader->count_entries_in_featureprop_cache,
         12, 'should have 12 entries in featureprop cache' );
     is( $loader->count_entries_in_featureloc_target_cache,
@@ -242,6 +242,16 @@ test 'feature_links2' => sub {
         sql => "SELECT * from temp_feature_relationship where id = 'child1'",
         results     => 2,
         description => 'should have two parents'
+    );
+    row_ok(
+        sql => "SELECT * from temp_feature_dbxref where dbxref = 'FBpp0070331'",
+        results => 2,
+        description => 'should have two instances of this xref'
+    );
+    row_ok(
+        sql => "SELECT * from temp_feature_dbxref where id = 'tier0' AND dbxref = (SELECT dbxref FROM temp_feature_dbxref where id = 'tier0.1')",
+        results => 1,
+        description => 'should have identical dbxref for tier0 and tier0.1'
     );
     row_ok(
         sql =>
