@@ -130,7 +130,7 @@ sub do_bulk_load {
             new_feature_synonym      => 4,
             new_synonym              => 3,
             new_feature_relationship => 39,
-            new_feature_dbxref       => 5,
+            new_feature_dbxref       => 6,
             new_dbxref               => 5,
             new_featureprop          => 12,
         },

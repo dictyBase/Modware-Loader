@@ -35,6 +35,14 @@
            feature.feature_id = fbxref.feature_id
         WHERE feature.uniquename = ?
 
+[dbxref_rows]
+    SELECT dbxref_id FROM dbxref
+        JOIN db ON 
+           dbxref.db_id = db.db_id
+        WHERE dbxref.accession = ?
+        AND
+        db.name = ?
+
 [parent_featurerel_rows]
     SELECT parent.uniquename FROM feature parent
            JOIN feature_relationship frel ON

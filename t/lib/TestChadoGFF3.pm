@@ -41,7 +41,7 @@ test 'feature_links' => sub {
         sql         => [ $test_sql->retr('feature_dbxref_rows'), $_ ],
         rows        => 1,
         description => "should have dbxref for id $_"
-    ) for qw/tier0 trans-8 trans-1/;
+    ) for qw/tier0 trans-8 trans-1 tier0 tier0.1/;
     row_ok(
         sql         => [ $test_sql->retr('feature_dbxref_rows'), 'thing2' ],
         rows        => 2,
@@ -62,6 +62,11 @@ test 'feature_links' => sub {
         rows        => 1,
         description => "should have Gap featureprop for id $_"
     ) for qw/match00002 match00003/;
+    row_ok(
+        sql => [$test_sql->retr('dbxref_rows'), 'FBpp0070331', 'FB'],
+        rows => 1,
+        description => 'should have a single dbxref row for FBpp0070331'
+    );
 };
 
 test 'feature_relationships' => sub {
