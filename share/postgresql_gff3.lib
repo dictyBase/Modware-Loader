@@ -175,11 +175,16 @@
 [insert_new_dbxref]
     INSERT INTO dbxref(accession,db_id)
            SELECT tmpfd.dbxref,tmpfd.db_id 
-           FROM temp_feature_dbxref tmpfd
+               FROM (
+               SELECT * , row_number() 
+                   OVER(partition by dbxref order by db_id) 
+                   FROM temp_feature_dbxref
+               ) tmpfd
            INNER JOIN temp_new_feature_ids ON
                temp_new_feature_ids.id = tmpfd.id
            INNER JOIN feature ON
                feature.uniquename = temp_new_feature_ids.id
+            WHERE tmpfd.row_number = 1
 
 [insert_new_feature_dbxref]
     INSERT INTO feature_dbxref(dbxref_id,feature_id)
