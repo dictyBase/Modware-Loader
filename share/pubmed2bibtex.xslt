@@ -56,7 +56,7 @@
 
 <xsl:template match="Article">
 <xsl:text>,
-    title = {{</xsl:text><xsl:value-of select="ArticleTitle" /><xsl:text>}}</xsl:text>
+    title = {</xsl:text><xsl:value-of select="ArticleTitle" /><xsl:text>}</xsl:text>
 <xsl:apply-templates select="AuthorList" />
 <xsl:apply-templates select="Journal" />
 <xsl:if test="string-length(Pagination/MedlinePgn) > 0"><xsl:text>,
@@ -70,7 +70,7 @@
 <xsl:template match="Journal">
 <!-- going for the journal title's abbreviation, looks better -->
 <xsl:text>,
-    journal = {{</xsl:text><xsl:value-of select="ISOAbbreviation" /><xsl:text>}}</xsl:text>
+    journal = {</xsl:text><xsl:value-of select="ISOAbbreviation" /><xsl:text>}</xsl:text>
 <xsl:if test="string-length(ISSN) > 0"><xsl:text>,
     issn = {</xsl:text><xsl:value-of select="ISSN" /><xsl:text>}</xsl:text></xsl:if>
 <xsl:if test="string-length(JournalIssue/Volume) > 0"><xsl:text>,

@@ -69,9 +69,9 @@ sub bibtex {
         sprintf( "\@article{%s,\n", $bib_id . $row->uniquename ) );
     $output->print( 'id = {', $row->uniquename, '}', "\n" );
 
-    $output->print( 'journal = {{', $row->series_name, '}}', "\n" )
+    $output->print( 'journal = {', $row->series_name, '}', "\n" )
         if $row->series_name;
-    $output->print( 'title = {{', $row->title, '}}', "\n" )
+    $output->print( 'title = {', $row->title, '}', "\n" )
         if $row->title;
 
     $output->print( 'volume = {', $row->volume, '}', "\n" )
