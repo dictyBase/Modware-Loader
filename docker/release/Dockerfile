@@ -19,5 +19,5 @@ ENV ORACLE_HOME /usr/lib/oracle/11.2/client64/
 ENV LD_LIBRARY_PATH /usr/lib/oracle/11.2/client64/lib/
 RUN cpanm -n --quiet DBD::Oracle  DBD::Pg Math::Base36 String::CamelCase Child \
     && rm -fr /rpms
-RUN cpanm -n --quiet git://github.com/dictyBase/Modware-Loader.git@v1.8.12
+RUN cpanm -n --quiet git://github.com/dictyBase/Modware-Loader.git@v1.8.13
 CMD ['modware']
