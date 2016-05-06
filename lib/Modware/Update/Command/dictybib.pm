@@ -66,19 +66,18 @@ sub bibtex {
     my ( $self, $entry, $dt ) = @_;
     my $output = $self->output_handler;
     $output->print( sprintf( "\@article{%s,\n", $entry->key ) );
-    $output->print( $_, ' = {', $entry->field($_), '}', "\n" )
-        for
-        qw/journal title status nlmuniqueid pmid year/;
+    $output->print( sprintf( "%s = {%s},\n", $_, $entry->field($_) ) )
+        for qw/journal title status nlmuniqueid pmid year/;
     for my $key (qw/volume pages doi month issn abstract/) {
         if ( $entry->has($key) ) {
-            $output->print( $key, ' = {', $entry->field($key),
-                '}', "\n" );
-
+            $output->print(
+                sprintf( "%s = {%s},\n", $key, $entry->field($key) ) );
         }
     }
-    $output->print( 'author = {', join( ' and ', $entry->author ),
-        '}', "\n" );
-    $output->print( 'timestamp = {', $dt->ymd('.'), '}', "\n" );
+    $output->print(
+        sprintf( "%s = {%s},\n", "author", join( ' and ', $entry->author ) )
+    );
+    $output->print( sprintf( "%s = {%s}\n", "timestamp", $dt->ymd(".") ) );
     $output->print( '}', "\n\n" );
 }
 
