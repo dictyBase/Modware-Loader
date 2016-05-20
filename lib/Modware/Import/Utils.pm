@@ -51,6 +51,15 @@ sub mock_publications {
     return;
 }
 
+sub clean_line {
+    my ( $self, $str ) = @_;
+    $str =~ s{<a.+/a>}{};
+    $str =~ s{<br>.+}{};
+    $str =~ s{[,;]\s+$}{};
+    $str =~ s{"}{}g;
+    return $str;
+}
+
 sub trim {
     my ( $self, $s ) = @_;
     $s =~ s/^\s+//;

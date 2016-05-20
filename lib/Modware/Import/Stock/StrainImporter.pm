@@ -39,8 +39,9 @@ sub import_stock {
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
+        my $clean_line = $self->utils->clean_line($line);
         $num_line += 1;
-        if ( $csv->parse($line) ) {
+        if ( $csv->parse($clean_line) ) {
             my @fields = $csv->fields();
             if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
                 $self->logger->debug(
@@ -60,6 +61,8 @@ sub import_stock {
             $strain->{stockcollection_stocks}
                 = [ { stockcollection_id => $stockcollection_id } ];
             push @stock_data, $strain;
+        } else {
+            $self->logger->error(sprintf ("error in parsing %s", $csv->error_input()))
         }
     }
     $io->close();
