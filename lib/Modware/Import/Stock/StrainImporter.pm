@@ -127,74 +127,69 @@ sub import_props {
 
 sub import_inventory {
     my ( $self, $input ) = @_;
-    $self->logger->info("Importing data from $input");
+    my $logger = $self->logger;
+    $logger->info("Importing data from $input");
 
-    croak "Please load strain_inventory ontology!"
+    $logger->logcroak("Please load strain_inventory ontology!")
         if !$self->utils->is_ontology_loaded('strain_inventory');
-    croak "Please load strain data first!"
+    $logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
 
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
+    my $io = IO::File->new( $input, 'r' )
+        or $logger->logcroak("Cannot open file: $input");
 
     my $transform = Modware::Import::Stock::DataTransformer->new();
 
     my @stock_data;
     my $rank              = 0;
     my $previous_stock_id = 0;
+    my $counter           = 0;
+STOCK:
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
+        chomp $line;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $logger->debug("Line starts with $fields[0]. Expected DBS ID");
+            next;
+        }
+        my $stock_id = $self->find_stock( $fields[0] );
+        if ( !$stock_id ) {
+            $logger->debug("Failed import of inventory for $fields[0]");
+            next STOCK;
+        }
 
-            my $inventory
-                = $transform->convert_row_to_strain_inventory_hash(@fields);
-            foreach my $key ( keys %$inventory ) {
-                my $data;
-                $data->{stock_id} = $self->find_stock( $fields[0] );
-                if ( !$data->{stock_id} ) {
-                    $self->logger->debug(
-                        "Failed import of inventory for $fields[0]");
-                    next;
-                }
-                my $type = $key;
-                $type =~ s/_/ /g if $type =~ /_/;
-                $data->{type_id}
-                    = $self->find_cvterm( $type, 'strain_inventory' );
-                if ( !$data->{type_id} ) {
-                    $self->logger->debug(
-                        "Couldn't find $key from strain_inventory");
-                    next;
-                }
-                $rank = 0 if $previous_stock_id ne $data->{stock_id};
-                $data->{value} = $inventory->{$key};
-                $data->{rank}  = $rank;
-                push @stock_data, $data;
+        my $inventory
+            = $transform->convert_row_to_strain_inventory_hash(@fields);
 
-                $previous_stock_id = $data->{stock_id};
-            }
-
+        if ( $stock_id == $previous_stock_id ) {
+            $rank++;
         }
         else {
-            $self->logger->error(
-                sprintf( "error in parsing %s", $csv->error_input() ) );
+            $rank = 0;
         }
-        $rank = $rank + 1;
+    INVENTORY:
+        foreach my $key ( keys %$inventory ) {
+            my $data;
+            $data->{stock_id} = $stock_id;
+            $data->{type_id}
+                = $self->find_cvterm( $key, 'strain_inventory' );
+            if ( !$data->{type_id} ) {
+                $logger->debug(
+                    "Couldn't find $key from strain_inventory ontology");
+                next INVENTORY;
+            }
+            $data->{value} = $inventory->{$key};
+            $data->{rank}  = $rank;
+            push @stock_data, $data;
+        }
+        $previous_stock_id = $stock_id;
+        $counter++;
     }
     $io->close();
-    my $missed = $csv->record_number() / 9 - scalar @stock_data / 9;
     if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
         )
     {
-        $self->logger->info( "Imported "
-                . scalar @stock_data / 9
-                . " strain inventory entries. Missed $missed entries" );
+        $logger->info("imported $counter invertory records");
     }
     return;
 }
