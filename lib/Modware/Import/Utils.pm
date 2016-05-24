@@ -6,11 +6,19 @@ use strict;
 
 use Moose;
 use namespace::autoclean;
+use HTML::WikiConverter;
 
 # use String::Random;
 
 has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has wiki_converter => (
+    is  => 'ro',
+    isa => 'HTML::WikiConverter',
+    default =>
+        sub { return HTML::WikiConverter->new( dialect => 'MediaWiki' ) },
+    required => 1
+);
 
 with 'Modware::Role::Stock::Import::DataStash';
 

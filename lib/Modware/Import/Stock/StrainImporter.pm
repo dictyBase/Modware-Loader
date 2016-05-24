@@ -1,4 +1,3 @@
-
 package Modware::Import::Stock::StrainImporter;
 
 use strict;
@@ -8,7 +7,6 @@ use Carp;
 use Moose;
 use namespace::autoclean;
 use Text::CSV;
-
 use Modware::Import::Stock::DataTransformer;
 use Modware::Import::Utils;
 
@@ -23,9 +21,10 @@ sub import_stock {
     $self->logger->info("Importing data from $input");
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
+
+    #my $csv = Text::CSV->new( { binary => 1 } )
+    #or croak "Cannot use CSV: " . Text::CSV->error_diag();
+    #$csv->sep_char("\t");
 
     my $num_line = 0;
     my $type_id
@@ -39,31 +38,28 @@ sub import_stock {
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
-        my $clean_line = $self->utils->clean_line($line);
+        chomp $line;
         $num_line += 1;
-        if ( $csv->parse($clean_line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
-
-            my $strain;
-            $strain->{uniquename} = $fields[0];
-            $strain->{name}       = $fields[1];
-            $strain->{organism_id}
-                = $self->find_or_create_organism( $fields[2] )
-                if $fields[2];
-            $strain->{description} = $self->utils->trim( $fields[3] )
-                if $fields[3];
-            $strain->{type_id} = $type_id;
-            $strain->{stockcollection_stocks}
-                = [ { stockcollection_id => $stockcollection_id } ];
-            push @stock_data, $strain;
-        } else {
-            $self->logger->error(sprintf ("error in parsing %s", $csv->error_input()))
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $self->logger->debug(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
         }
+
+        my $strain;
+        $strain->{uniquename}  = $fields[0];
+        $strain->{name}        = $fields[1];
+        $strain->{organism_id} = $self->find_or_create_organism( $fields[2] )
+            if $fields[2];
+        $strain->{description}
+            = $self->utils->wiki_converter->html2wiki(
+            $self->utils->trim( $fields[3] ) )
+            if $fields[3];
+        $strain->{type_id} = $type_id;
+        $strain->{stockcollection_stocks}
+            = [ { stockcollection_id => $stockcollection_id } ];
+        push @stock_data, $strain;
     }
     $io->close();
     my $missed = $num_line - scalar @stock_data;
@@ -185,6 +181,10 @@ sub import_inventory {
             }
 
         }
+        else {
+            $self->logger->error(
+                sprintf( "error in parsing %s", $csv->error_input() ) );
+        }
         $rank = $rank + 1;
     }
     $io->close();
@@ -228,8 +228,7 @@ sub import_publications {
                     "Failed import of publication for $fields[0]");
                 next;
             }
-            $data->{pub_id}
-                = $self->find_pub( $fields[1] );
+            $data->{pub_id} = $self->find_pub( $fields[1] );
             if ( !$data->{pub_id} ) {
                 $self->logger->debug(
                     "Couldn't find publication for $fields[1]");
@@ -483,8 +482,7 @@ sub import_parent {
                     "Failed import of parental strain for $fields[0]");
                 next;
             }
-            $data->{subject_id}
-                = $self->find_stock( $fields[1] );
+            $data->{subject_id} = $self->find_stock( $fields[1] );
             if ( !$data->{subject_id} ) {
                 $self->logger->debug(
                     "Couldn't find $fields[1] parental strain entry");
