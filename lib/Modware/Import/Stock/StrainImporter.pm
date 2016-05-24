@@ -144,9 +144,11 @@ sub import_inventory {
     my $rank              = 0;
     my $previous_stock_id = 0;
     my $counter           = 0;
+    my $total             = 0;
 STOCK:
     while ( my $line = $io->getline() ) {
         chomp $line;
+        $counter++;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
             $logger->debug("Line starts with $fields[0]. Expected DBS ID");
@@ -171,8 +173,7 @@ STOCK:
         foreach my $key ( keys %$inventory ) {
             my $data;
             $data->{stock_id} = $stock_id;
-            $data->{type_id}
-                = $self->find_cvterm( $key, 'strain_inventory' );
+            $data->{type_id} = $self->find_cvterm( $key, 'strain_inventory' );
             if ( !$data->{type_id} ) {
                 $logger->debug(
                     "Couldn't find $key from strain_inventory ontology");
@@ -183,13 +184,15 @@ STOCK:
             push @stock_data, $data;
         }
         $previous_stock_id = $stock_id;
-        $counter++;
+        $total++;
     }
     $io->close();
     if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
         )
     {
-        $logger->info("imported $counter invertory records");
+        $logger->info( "imported $counter invertory records, missed "
+                . ( $counter - $total )
+                . " entries" );
     }
     return;
 }
@@ -318,7 +321,7 @@ sub import_genotype {
     $csv->sep_char("\t");
 
     my $genotype_type_id
-        = $self->find_cvterm( 'genotype', 'dicty_stockcenter' );
+        = $self->find_or_create_cvterm( 'genotype', 'dicty_stockcenter' );
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
@@ -361,14 +364,15 @@ sub import_genotype {
 
 sub import_phenotype {
     my ( $self, $input, $dsc_phenotypes ) = @_;
+    my $logger = $self->logger;
 
-    croak "Please load strain data first!"
+    $logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
-    croak "Please load Dicty Phenotypes ontology!"
+    $logger->logcroak("Please load Dicty Phenotypes ontology!")
         if !$self->utils->is_ontology_loaded('Dicty Phenotypes');
-    croak "Please load Dicty Environment ontology!"
+    $logger->logcroak("Please load Dicty Environment ontology!")
         if !$self->utils->is_ontology_loaded('Dicty Environment');
-    croak "Please load genotype data first!"
+    $logger->logcroak("Please load genotype data first!")
         if !$self->utils->is_genotype_loaded();
 
     my $type_id
@@ -449,46 +453,43 @@ sub import_parent {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    croak "Please load strain data first!"
+    $self->logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
 
     my $stock_rel_type_id
         = $self->find_or_create_cvterm( 'is_parent_of', 'stock_relation' );
-
     my @stock_data;
+    my $counter = 0;
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
-
-            my $data;
-            $data->{object_id} = $self->find_stock( $fields[0] );
-            if ( !$data->{object_id} ) {
-                $self->logger->debug(
-                    "Failed import of parental strain for $fields[0]");
-                next;
-            }
-            $data->{subject_id} = $self->find_stock( $fields[1] );
-            if ( !$data->{subject_id} ) {
-                $self->logger->debug(
-                    "Couldn't find $fields[1] parental strain entry");
-                next;
-            }
-            $data->{type_id} = $stock_rel_type_id;
-            push @stock_data, $data;
+        $counter++;
+        chomp $line;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $self->logger->debug(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
         }
+
+        my $data;
+        $data->{object_id} = $self->find_stock( $fields[0] );
+        if ( !$data->{object_id} ) {
+            $self->logger->debug(
+                "Failed import of parental strain for $fields[0]");
+            next;
+        }
+        $data->{subject_id} = $self->find_stock( $fields[1] );
+        if ( !$data->{subject_id} ) {
+            $self->logger->debug(
+                "Couldn't find $fields[1] parental strain entry");
+            next;
+        }
+        $data->{type_id} = $stock_rel_type_id;
+        push @stock_data, $data;
     }
     $io->close();
-    my $missed = $csv->record_number() / 2 - scalar @stock_data;
+    my $missed = $counter - scalar @stock_data;
     if ( $self->schema->resultset('Stock::StockRelationship')
         ->populate( \@stock_data ) )
     {
@@ -511,7 +512,7 @@ sub import_plasmid {
         = $self->find_or_create_cvterm( 'part_of', 'stock_relation' );
 
     my $plasmid_type_id
-        = $self->find_cvterm( 'plasmid', 'dicty_stockcenter' );
+        = $self->find_or_create_cvterm( 'plasmid', 'dicty_stockcenter' );
 
     my @files = ( $input, $strain_plasmid );
     for my $f (@files) {
