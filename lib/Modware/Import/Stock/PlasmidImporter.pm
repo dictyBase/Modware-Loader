@@ -191,7 +191,6 @@ sub import_inventory {
         or $self->logger->logcroak("Cannot open file: $input");
     my $count = 0;
     while ( my $line = $io->getline() ) {
-        $count++;
         chomp $line;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
@@ -204,6 +203,7 @@ sub import_inventory {
             = $transform->convert_row_to_plasmid_inventory_hash(@fields);
         foreach my $key ( keys %$inventory ) {
             my $data;
+            $count++;
             $data->{stock_id} = $self->find_stock( $fields[0] );
             if ( !$data->{stock_id} ) {
                 $self->logger->debug(
@@ -230,7 +230,7 @@ sub import_inventory {
         $rank = $rank + 1;
     }
     $io->close();
-    my $missed = $count - scalar @stock_data;
+    my $missed = ( $count - scalar @stock_data ) / 6;
     if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
         )
     {
