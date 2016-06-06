@@ -27,10 +27,8 @@ sub import_stock {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
+    my $io = IO::File->new( $input, 'r' )
+        or $self->logger->logcroak("Cannot open file: $input");
 
     my $type_id
         = $self->find_or_create_cvterm( 'plasmid', 'dicty_stockcenter' );
@@ -42,28 +40,29 @@ sub import_stock {
     }
 
     my @stock_data;
+    my $count = 0;
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBP ID");
-                next;
-            }
-
-            my $data;
-            $data->{uniquename}  = $fields[0];
-            $data->{name}        = $fields[1];
-            $data->{description} = $self->utils->trim( $fields[2] )
-                if $fields[2];
-            $data->{type_id} = $type_id;
-            $data->{stockcollection_stocks}
-                = [ { stockcollection_id => $stockcollection_id } ];
-            push @stock_data, $data;
+        chomp $line;
+        $count++;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
+            $self->logger->debug(
+                "Line starts with $fields[0]. Expected DBP ID");
+            next;
         }
+
+        my $data;
+        $data->{uniquename}  = $fields[0];
+        $data->{name}        = $fields[1];
+        $data->{description} = $self->utils->trim( $fields[2] )
+            if $fields[2];
+        $data->{type_id} = $type_id;
+        $data->{stockcollection_stocks}
+            = [ { stockcollection_id => $stockcollection_id } ];
+        push @stock_data, $data;
     }
     $io->close();
-    my $missed = $csv->record_number() / 3 - scalar @stock_data;
+    my $missed = $count - scalar @stock_data;
     if ( $self->schema->resultset('Stock::Stock')->populate( \@stock_data ) )
     {
         $self->logger->info( "Imported "
@@ -80,42 +79,39 @@ sub import_props {
     croak "Please load plasmid data first!"
         if !$self->utils->is_stock_loaded('plasmid');
 
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
-
+    my $io = IO::File->new( $input, 'r' )
+        or $self->logger->logcroak("Cannot open file: $input");
     my @stock_props;
     my $rank             = 0;
     my $previous_type_id = 0;
+    my $count            = 0;
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
-
-            my $strain_props;
-            $strain_props->{stock_id} = $self->find_stock( $fields[0] );
-            if ( !$strain_props->{stock_id} ) {
-                $self->logger->debug("Failed import of props for $fields[0]");
-                next;
-            }
-            $strain_props->{type_id}
-                = $self->find_or_create_cvterm( $fields[1],
-                'dicty_stockcenter' );
-            $rank = 0 if $previous_type_id ne $strain_props->{type_id};
-            $strain_props->{value} = $fields[2];
-            $strain_props->{rank}  = $rank;
-            push @stock_props, $strain_props;
-            $rank             = $rank + 1;
-            $previous_type_id = $strain_props->{type_id};
+        $count++;
+        chomp $line;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
+            $self->logger->debug(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
         }
+
+        my $strain_props;
+        $strain_props->{stock_id} = $self->find_stock( $fields[0] );
+        if ( !$strain_props->{stock_id} ) {
+            $self->logger->debug("Failed import of props for $fields[0]");
+            next;
+        }
+        $strain_props->{type_id}
+            = $self->find_or_create_cvterm( $fields[1], 'dicty_stockcenter' );
+        $rank = 0 if $previous_type_id ne $strain_props->{type_id};
+        $strain_props->{value} = $fields[2];
+        $strain_props->{rank}  = $rank;
+        push @stock_props, $strain_props;
+        $rank             = $rank + 1;
+        $previous_type_id = $strain_props->{type_id};
     }
     $io->close();
-    my $missed = $csv->record_number() / 3 - scalar @stock_props;
+    my $missed = $count - scalar @stock_props;
     if ( $self->schema->resultset('Stock::Stockprop')
         ->populate( \@stock_props ) )
     {
@@ -155,8 +151,7 @@ sub import_publications {
                     "Failed import of publication for $fields[0]");
                 next;
             }
-            $data->{pub_id}
-                = $self->find_pub( $fields[1] );
+            $data->{pub_id} = $self->find_pub( $fields[1] );
             if ( !$data->{pub_id} ) {
                 $self->logger->debug(
                     "Couldn't find publication for $fields[1]");
@@ -182,63 +177,60 @@ sub import_inventory {
     $self->logger->info("Importing data from $input");
 
     my $inventory_ontology_name = 'plasmid_inventory';
-
-    croak "Please load plasmid_inventory ontology!"
+    $self->logger->logcroak("Please load plasmid_inventory ontology!")
         if !$self->utils->is_ontology_loaded($inventory_ontology_name);
-    croak "Please load plasmid data first!"
+    $self->logger->logcroak("Please load plasmid data first!")
         if !$self->utils->is_stock_loaded('plasmid');
 
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
-
     my $transform = Modware::Import::Stock::DataTransformer->new();
-
     my @stock_data;
     my $rank              = 0;
     my $previous_stock_id = 0;
+
+    my $io = IO::File->new( $input, 'r' )
+        or $self->logger->logcroak("Cannot open file: $input");
+    my $count = 0;
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
+        $count++;
+        chomp $line;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
+            $self->logger->debug(
+                "Line starts with $fields[0]. Expected DBP ID");
+            next;
+        }
+
+        my $inventory
+            = $transform->convert_row_to_plasmid_inventory_hash(@fields);
+        foreach my $key ( keys %$inventory ) {
+            my $data;
+            $data->{stock_id} = $self->find_stock( $fields[0] );
+            if ( !$data->{stock_id} ) {
                 $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBP ID");
+                    "Failed import of inventory for $fields[0]");
                 next;
             }
-
-            my $inventory
-                = $transform->convert_row_to_plasmid_inventory_hash(@fields);
-            foreach my $key ( keys %$inventory ) {
-                my $data;
-                $data->{stock_id} = $self->find_stock( $fields[0] );
-                if ( !$data->{stock_id} ) {
-                    $self->logger->debug(
-                        "Failed import of inventory for $fields[0]");
-                    next;
-                }
-                my $type = $key;
-                $type =~ s/_/ /g if $type =~ /_/;
-                $data->{type_id}
-                    = $self->find_cvterm( $type, $inventory_ontology_name );
-                if ( !$data->{type_id} ) {
-                    $self->logger->debug(
-                        "Couldn't find $key from $inventory_ontology_name");
-                    next;
-                }
-                $rank = 0 if $previous_stock_id ne $data->{stock_id};
-                $data->{value} = $inventory->{$key};
-                $data->{rank}  = $rank;
-                push @stock_data, $data;
-
-                $previous_stock_id = $data->{stock_id};
+            my $type = $key;
+            $type =~ s/_/ /g if $type =~ /_/;
+            $data->{type_id}
+                = $self->find_cvterm( $type, $inventory_ontology_name );
+            if ( !$data->{type_id} ) {
+                $self->logger->debug(
+                    "Couldn't find $key from $inventory_ontology_name");
+                next;
             }
+            $rank = 0 if $previous_stock_id ne $data->{stock_id};
+            $data->{value} = $inventory->{$key};
+            $data->{rank}  = $rank;
+            push @stock_data, $data;
+
+            $previous_stock_id = $data->{stock_id};
 
         }
         $rank = $rank + 1;
     }
     $io->close();
-    my $missed = $csv->record_number() / 6 - scalar @stock_data / 6;
+    my $missed = $count - scalar @stock_data;
     if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
         )
     {
