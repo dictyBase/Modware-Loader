@@ -483,6 +483,7 @@ sub import_parent {
         if ( !$data->{subject_id} ) {
             $self->logger->debug(
                 "Couldn't find $fields[1] parental strain entry");
+            $self->logger->warn("$fields[0] no parent exists in database");
             next;
         }
         $data->{type_id} = $stock_rel_type_id;
