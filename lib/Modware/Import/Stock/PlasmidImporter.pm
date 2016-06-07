@@ -129,39 +129,37 @@ sub import_publications {
     croak "Please load plasmid data first!"
         if !$self->utils->is_stock_loaded('plasmid');
 
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
-
+    my $io = IO::File->new( $input, 'r' )
+        or $self->logger->logcroak("Cannot open file: $input");
     my @stock_data;
+    my $count = 0;
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
-
-            my $data;
-            $data->{stock_id} = $self->find_stock( $fields[0] );
-            if ( !$data->{stock_id} ) {
-                $self->logger->debug(
-                    "Failed import of publication for $fields[0]");
-                next;
-            }
-            $data->{pub_id} = $self->find_pub( $fields[1] );
-            if ( !$data->{pub_id} ) {
-                $self->logger->debug(
-                    "Couldn't find publication for $fields[1]");
-                next;
-            }
-            push @stock_data, $data;
+        $count++;
+        chomp $line;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
+            $self->logger->debug(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
         }
+
+        my $data;
+        $data->{stock_id} = $self->find_stock( $fields[0] );
+        if ( !$data->{stock_id} ) {
+            $self->logger->debug(
+                "Failed import of publication for $fields[0]");
+            next;
+        }
+        $data->{pub_id} = $self->find_pub( $fields[1] );
+        if ( !$data->{pub_id} ) {
+            $self->logger->warn("missing pubmed id $fields[1]");
+            next;
+        }
+        push @stock_data, $data;
+        $self->logger->debug("processed data for $fields[0] and $fields[1]");
     }
     $io->close();
-    my $missed = $csv->record_number() / 2 - scalar @stock_data;
+    my $missed = $count - scalar @stock_data;
     if ( $self->schema->resultset('Stock::StockPub')->populate( \@stock_data )
         )
     {
@@ -273,8 +271,10 @@ sub import_images {
             $data->{type_id} = $image_type_id;
             $data->{value}   = $image_url;
             push @stock_data, $data;
-        } else {
-            $self->logger->warn("issue in retrieving image info for $image_url");
+        }
+        else {
+            $self->logger->warn(
+                "issue in retrieving image info for $image_url");
         }
     }
     if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
