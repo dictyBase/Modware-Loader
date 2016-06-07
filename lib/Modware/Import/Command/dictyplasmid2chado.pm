@@ -43,7 +43,7 @@ has image_url => (
     is  => 'rw',
     isa => 'Str',
     default =>
-        'https://raw.github.com/dictyBase/migration-data/master/plasmid/images/',
+        'https://raw.githubusercontent.com/dictyBase/migration-data/master/plasmid/images/',
     documentation => 'Base URL for plasmid map images. Default github-url'
 );
 
