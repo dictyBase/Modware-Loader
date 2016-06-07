@@ -263,6 +263,7 @@ sub import_images {
         my $image_url = $base_url . $filename . ".jpg";
         my $data;
         if ( head($image_url) ) {
+            $self->logger->debug("image $image_url found");
             $data->{stock_id} = $self->find_stock($dbp_id);
             if ( !$data->{stock_id} ) {
                 $self->logger->debug(
@@ -272,6 +273,8 @@ sub import_images {
             $data->{type_id} = $image_type_id;
             $data->{value}   = $image_url;
             push @stock_data, $data;
+        } else {
+            $self->logger->warn("issue in retrieving image info for $image_url");
         }
     }
     if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
@@ -292,6 +295,7 @@ sub import_plasmid_sequence {
 
     my $seq_dir = Path::Class::Dir->new($data_dir);
     while ( my $file = $seq_dir->next ) {
+        next if $file->is_dir;
         my $fasta_seq_io;
         ( my $dbp_id = $file->basename ) =~ s/.[a-z]{5,7}$//;
         if ( $file->basename =~ m/^DBP[0-9]{7}.genbank/ ) {
