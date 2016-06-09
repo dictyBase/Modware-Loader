@@ -23,13 +23,14 @@ has wiki_converter => (
 with 'Modware::Role::Stock::Import::DataStash';
 
 sub prune_stock {
-    my ($self) = @_;
+    my ($self, $type_id) = @_;
     $self->schema->storage->dbh_do(
         sub {
             my ( $storage, $dbh ) = @_;
+            $dbh->do(qq{DELETE FROM stock where type_id = ?}, {}, $type_id);
             my $sth;
             for my $table (
-                qw/stockcollection stockcollection_stock feature stock stockprop stock_cvterm stock_pub stock_genotype genotype phenotype environment stock_relationship phenstatement phenotypeprop/
+                qw/stockcollection stockcollection_stock feature stockprop stock_cvterm stock_pub stock_genotype genotype phenotype environment stock_relationship phenstatement phenotypeprop/
                 )
             {
                 $sth = $dbh->prepare(qq{DELETE FROM $table});

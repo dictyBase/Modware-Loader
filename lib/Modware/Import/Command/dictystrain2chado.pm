@@ -11,6 +11,7 @@ use Modware::Import::Stock::StrainImporter;
 
 extends qw/Modware::Import::Command/;
 with 'Modware::Role::Command::WithLogger';
+with 'Modware::Role::Stock::Import::DataStash';
 
 has 'prune' => ( is => 'rw', isa => 'Bool', default => 0 );
 
@@ -54,7 +55,9 @@ sub execute {
     $utils->logger( $self->logger );
 
     if ( $self->prune ) {
-        $utils->prune_stock();
+        my $type_id
+            = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
+        $utils->prune_stock($type_id);
     }
     if ( $self->mock_pubs ) {
         $utils->mock_publications();

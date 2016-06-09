@@ -11,6 +11,7 @@ use Modware::Import::Stock::PlasmidImporter;
 
 extends qw/Modware::Import::Command/;
 with 'Modware::Role::Command::WithLogger';
+with 'Modware::Role::Stock::Import::DataStash';
 
 has 'prune' => ( is => 'rw', isa => 'Bool', default => 0 );
 
@@ -57,6 +58,8 @@ sub execute {
     $utils->logger( $self->logger );
 
     if ( $self->prune ) {
+        my $type_id
+            = $self->find_or_create_cvterm( 'plasmid', 'dicty_stockcenter' );
         $utils->prune_stock();
     }
     if ( $self->mock_pubs ) {
