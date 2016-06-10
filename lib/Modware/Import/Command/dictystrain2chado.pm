@@ -53,12 +53,6 @@ sub execute {
     my $utils = Modware::Import::Utils->new();
     $utils->schema( $self->schema );
     $utils->logger( $self->logger );
-
-    if ( $self->prune ) {
-        my $type_id
-            = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
-        $utils->prune_stock($type_id);
-    }
     if ( $self->mock_pubs ) {
         $utils->mock_publications();
     }
@@ -68,21 +62,23 @@ sub execute {
     $importer->schema( $self->schema );
     $importer->utils($utils);
 
-    my $prefix = 'strain_';
-    my $input_file = catfile( $self->data_dir, $prefix . 'strain.tsv' );
-    $importer->import_stock($input_file);
+    my $prefix         = 'strain_';
+    my $input_file     = catfile( $self->data_dir, $prefix . 'strain.tsv' );
+    my $existing_stock = $importer->import_stock($input_file);
     foreach my $data ( @{ $self->data } ) {
         my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
         my $import_data = 'import_' . $data;
         if ( $data eq 'phenotype' ) {
-            $importer->$import_data( $input_file, $self->dsc_phenotypes );
+            $importer->$import_data( $input_file, $self->dsc_phenotypes,
+                $existing_stock );
             next;
         }
         if ( $data eq 'plasmid' ) {
-            $importer->$import_data( $input_file, $self->strain_plasmid );
+            $importer->$import_data( $input_file, $self->strain_plasmid,
+                $existing_stock );
             next;
         }
-        $importer->$import_data($input_file);
+        $importer->$import_data( $input_file, $existing_stock );
     }
 
     $guard->commit;
