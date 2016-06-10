@@ -17,7 +17,8 @@ with 'Modware::Role::Stock::Import::DataStash';
 sub import_stock {
     my ( $self, $input ) = @_;
     $self->logger->debug("Importing data from $input");
-    my $io = IO::File->new( $input, 'r' ) or $self->logger->logdie("Cannot open file: $input");
+    my $io = IO::File->new( $input, 'r' )
+        or $self->logger->logdie("Cannot open file: $input");
     my $count = 0;
     my $type_id
         = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
@@ -36,7 +37,7 @@ sub import_stock {
                 "Line starts with $fields[0]. Expected DBS ID");
             next;
         }
-        if (my $stock_obj = $self->find_stock_object($fields[0])) {
+        if ( my $stock_obj = $self->find_stock_object( $fields[0] ) ) {
             push @$existing_stock, $stock_obj;
             $self->logger->debug("$fields[0] exists in database");
             next;
@@ -57,9 +58,8 @@ sub import_stock {
         push @$new_stock, $strain;
     }
     $io->close();
-    my $missed = $count - (scalar @$new_stock + scalar @$existing_stock);
-    if ( $self->schema->resultset('Stock::Stock')->populate( $new_stock ) )
-    {
+    my $missed = $count - ( scalar @$new_stock + scalar @$existing_stock );
+    if ( $self->schema->resultset('Stock::Stock')->populate($new_stock) ) {
         $self->logger->info( "Imported "
                 . scalar @$new_stock
                 . " strain entries. Missed $missed entries" );
@@ -68,14 +68,27 @@ sub import_stock {
 }
 
 sub import_props {
-    my ( $self, $input ) = @_;
-    $self->logger->info("Importing data from $input");
+    my ( $self, $input, $existing_stock ) = @_;
+    $self->logger->debug("Importing data from $input");
 
-    croak "Please load strain data first!"
+    $self->logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
 
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my @stock_props;
+    # Remove existing props
+    my $cvterm_ids = $self->find_all_cvterms('dicty_stockcenter');
+    for my $row (@$existing_stock) {
+        for my $prop ( $row->props ) {
+            $prop->delete({'type_id' => { -in => $cvterm_ids}});
+        }
+    }
+    $self->logger->debug(
+        sprintf( "removed props for %d stock entries",
+            scalar @$existing_stock )
+    );
+
+    my $io = IO::File->new( $input, 'r' )
+        or $self->logger->logcroak("Cannot open file: $input");
+    my $stock_props;
     my $rank             = 0;
     my $previous_type_id = 0;
     my $count            = 0;
@@ -84,7 +97,7 @@ sub import_props {
         $count++;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-            $self->logger->debug(
+            $self->logger->warn(
                 "Line starts with $fields[0]. Expected DBS ID");
             next;
         }
@@ -92,7 +105,7 @@ sub import_props {
         my $strain_props;
         $strain_props->{stock_id} = $self->find_stock( $fields[0] );
         if ( !$strain_props->{stock_id} ) {
-            $self->logger->debug("Failed import of props for $fields[0]");
+            $self->logger->warn("Failed import of props for $fields[0]");
             next;
         }
         $strain_props->{type_id}
@@ -100,20 +113,18 @@ sub import_props {
         $rank = 0 if $previous_type_id ne $strain_props->{type_id};
         $strain_props->{value} = $fields[2];
         $strain_props->{rank}  = $rank;
-        push @stock_props, $strain_props;
+        push @$stock_props, $strain_props;
         $rank             = $rank + 1;
         $previous_type_id = $strain_props->{type_id};
     }
     $io->close();
-    my $missed = $count - scalar @stock_props;
-    if ( $self->schema->resultset('Stock::Stockprop')
-        ->populate( \@stock_props ) )
+    my $missed = $count - scalar @$stock_props;
+    if ($self->schema->resultset('Stock::Stockprop')->populate($stock_props) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_props
+                . scalar @$stock_props
                 . " strain property entries. Missed $missed entries" );
     }
-    return;
 }
 
 sub import_inventory {

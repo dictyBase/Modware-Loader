@@ -65,6 +65,13 @@ has '_cvterm_row' => (
     }
 );
 
+sub find_all_cvterms {
+    my ( $self, $cv ) = @_;
+    return [ map { $_->cvterm_id }
+            $self->schema->resultset('Cv::Cvterm')
+            ->search( { 'cv.name' => $cv }, { join => 'cv' } ) ];
+}
+
 sub find_cvterm {
     my ( $self, $name, $cv_name ) = @_;
 
@@ -142,7 +149,6 @@ has '_stock_row' => (
         get_dbs_ids   => 'keys'
     }
 );
-
 
 sub find_stock_object {
     my ( $self, $id ) = @_;
