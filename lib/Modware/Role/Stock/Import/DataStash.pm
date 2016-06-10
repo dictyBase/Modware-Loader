@@ -111,13 +111,16 @@ sub find_or_create_cv {
 
 sub find_or_create_dbxref {
     my ( $self, $accession ) = @_;
-    my $dbxref_rs
-        = $self->schema->resultset('General::Dbxref')->find_or_create(
-        {   accession => $accession,
-            db_id     => $self->find_or_create_db()
-        }
-        );
-    return $dbxref_rs->dbxref_id;
+    my $params = {
+        accession => $accession,
+        db_id     => $self->find_or_create_db()
+    };
+    my $rs = $self->schema->resultset('General::Dbxref')->search( $params );
+    if ($rs->count) {
+        return $rs->first->dbxref_id;
+    }
+    my $row = $self->schema->resultset('General::Dbxref')->create($params);
+    return $row->dbxref_id;
 }
 
 sub find_or_create_db {
@@ -280,8 +283,7 @@ sub find_or_create_genotype {
         return $self->get_strain_genotype($dbs_id)->genotype_id;
     }
 
-    my $stock_rs
-        = $self->schema->resultset('Stock::StockGenotype')
+    my $stock_rs = $self->schema->resultset('Stock::StockGenotype')
         ->search( { 'stock.uniquename' => $dbs_id }, { join => 'stock' } );
     if ( $stock_rs->count > 0 ) {
         $self->set_strain_genotype( $dbs_id, $stock_rs->first );
@@ -353,8 +355,7 @@ sub find_or_create_phenotype {
         = [ { type_id => $note_type_id, value => $note } ]
         if $note;
 
-    my $phenotype_rs
-        = $self->schema->resultset('Phenotype::Phenotype')
+    my $phenotype_rs = $self->schema->resultset('Phenotype::Phenotype')
         ->find_or_create($phenotype_hash);
 
     if ($phenotype_rs) {
