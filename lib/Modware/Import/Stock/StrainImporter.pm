@@ -2,8 +2,6 @@ package Modware::Import::Stock::StrainImporter;
 
 use strict;
 use feature 'say';
-
-use Carp;
 use Moose;
 use namespace::autoclean;
 use Text::CSV;
@@ -38,6 +36,11 @@ sub import_stock {
                 "Line starts with $fields[0]. Expected DBS ID");
             next;
         }
+        if (my $stock_obj = $self->find_stock_object($fields[0])) {
+            push @$existing_stock, $stock_obj;
+            $self->logger->debug("$fields[0] exists in database");
+            next;
+        }
 
         my $strain;
         $strain->{uniquename}  = $fields[0];
@@ -51,17 +54,17 @@ sub import_stock {
         $strain->{type_id} = $type_id;
         $strain->{stockcollection_stocks}
             = [ { stockcollection_id => $stockcollection_id } ];
-        push @stock_data, $strain;
+        push @$new_stock, $strain;
     }
     $io->close();
-    my $missed = $num_line - scalar @stock_data;
-    if ( $self->schema->resultset('Stock::Stock')->populate( \@stock_data ) )
+    my $missed = $count - (scalar @$new_stock + scalar @$existing_stock);
+    if ( $self->schema->resultset('Stock::Stock')->populate( $new_stock ) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data
+                . scalar @$new_stock
                 . " strain entries. Missed $missed entries" );
     }
-    return;
+    return $new_stock;
 }
 
 sub import_props {
