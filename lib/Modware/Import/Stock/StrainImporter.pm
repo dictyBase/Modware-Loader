@@ -18,23 +18,23 @@ with 'Modware::Role::Stock::Import::DataStash';
 
 sub import_stock {
     my ( $self, $input ) = @_;
-    $self->logger->info("Importing data from $input");
-
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $num_line = 0;
+    $self->logger->debug("Importing data from $input");
+    my $io = IO::File->new( $input, 'r' ) or $self->logger->logdie("Cannot open file: $input");
+    my $count = 0;
     my $type_id
         = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
     my $stockcollection_id
         = $self->find_or_create_stockcolletion( 'Dicty Stockcenter',
         $type_id );
 
-    my @stock_data;
+    my $existing_stock;
+    my $new_stock;
     while ( my $line = $io->getline() ) {
         chomp $line;
-        $num_line += 1;
+        $count++;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-            $self->logger->debug(
+            $self->logger->warn(
                 "Line starts with $fields[0]. Expected DBS ID");
             next;
         }
