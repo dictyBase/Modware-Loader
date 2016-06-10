@@ -80,41 +80,37 @@ sub import_props {
         if !$self->utils->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    $csv->sep_char("\t");
-
     my @stock_props;
     my $rank             = 0;
     my $previous_type_id = 0;
+    my $count = 0;
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
-
-            my $strain_props;
-            $strain_props->{stock_id} = $self->find_stock( $fields[0] );
-            if ( !$strain_props->{stock_id} ) {
-                $self->logger->debug("Failed import of props for $fields[0]");
-                next;
-            }
-            $strain_props->{type_id}
-                = $self->find_or_create_cvterm( $fields[1],
-                'dicty_stockcenter' );
-            $rank = 0 if $previous_type_id ne $strain_props->{type_id};
-            $strain_props->{value} = $fields[2];
-            $strain_props->{rank}  = $rank;
-            push @stock_props, $strain_props;
-            $rank             = $rank + 1;
-            $previous_type_id = $strain_props->{type_id};
+        chomp $line;
+        $count++;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $self->logger->debug(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
         }
+
+        my $strain_props;
+        $strain_props->{stock_id} = $self->find_stock( $fields[0] );
+        if ( !$strain_props->{stock_id} ) {
+            $self->logger->debug("Failed import of props for $fields[0]");
+            next;
+        }
+        $strain_props->{type_id}
+            = $self->find_or_create_cvterm( $fields[1], 'dicty_stockcenter' );
+        $rank = 0 if $previous_type_id ne $strain_props->{type_id};
+        $strain_props->{value} = $fields[2];
+        $strain_props->{rank}  = $rank;
+        push @stock_props, $strain_props;
+        $rank             = $rank + 1;
+        $previous_type_id = $strain_props->{type_id};
     }
     $io->close();
-    my $missed = $csv->record_number() / 3 - scalar @stock_props;
+    my $missed = $count - scalar @stock_props;
     if ( $self->schema->resultset('Stock::Stockprop')
         ->populate( \@stock_props ) )
     {
@@ -521,15 +517,11 @@ sub import_plasmid {
         $self->logger->info("Importing data from $f");
 
         my $io = IO::File->new( $f, 'r' )
-            or confess "Cannot open file: $f";
-        my $csv = Text::CSV->new( { binary => 1 } )
-            or confess "Cannot use CSV: " . Text::CSV->error_diag();
-        $csv->sep_char("\t");
-
+            or $self->logger->logdie("Cannot open file: $f");
         my @stock_data;
         while ( my $line = $io->getline() ) {
-            if ( $csv->parse($line) ) {
-                my @fields = $csv->fields();
+            chomp $line;
+                my @fields = split "\t",$line;
                 if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
                     $self->logger->debug(
                         "Line starts with $fields[0]. Expected DBS ID");
@@ -595,7 +587,6 @@ sub import_plasmid {
                 $data->{type_id}    = $stock_rel_type_id;
                 $self->schema->resultset('Stock::StockRelationship')
                     ->find_or_create($data);
-            }
         }
         $io->close();
     }
