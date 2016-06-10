@@ -143,6 +143,21 @@ has '_stock_row' => (
     }
 );
 
+
+sub find_stock_object {
+    my ( $self, $id ) = @_;
+    if ( $self->has_stock_row($id) ) {
+        return $self->get_stock_row($id);
+    }
+    my $row = $self->schema->resultset('Stock::Stock')
+        ->search( { uniquename => $id }, {} );
+    if ( $row->count > 0 ) {
+        $self->set_stock_row( $id, $row->first );
+        return $self->get_stock_row($id);
+    }
+    return;
+}
+
 sub find_stock {
     my ( $self, $id ) = @_;
     if ( $self->has_stock_row($id) ) {
