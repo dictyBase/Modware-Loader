@@ -13,8 +13,6 @@ extends qw/Modware::Import::Command/;
 with 'Modware::Role::Command::WithLogger';
 with 'Modware::Role::Stock::Import::DataStash';
 
-has 'prune' => ( is => 'rw', isa => 'Bool', default => 0 );
-
 has data => (
     is      => 'rw',
     isa     => 'ArrayRef',
