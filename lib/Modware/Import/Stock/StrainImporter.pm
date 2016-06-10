@@ -21,20 +21,12 @@ sub import_stock {
     $self->logger->info("Importing data from $input");
 
     my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
-
-    #my $csv = Text::CSV->new( { binary => 1 } )
-    #or croak "Cannot use CSV: " . Text::CSV->error_diag();
-    #$csv->sep_char("\t");
-
     my $num_line = 0;
     my $type_id
         = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
-    my $stockcollection_id = 0;
-    $stockcollection_id = $self->find_stockcollection('Dicty Stockcenter');
-    if ( !$stockcollection_id ) {
-        $stockcollection_id
-            = $self->create_stockcollection( 'Dicty Stockcenter', $type_id );
-    }
+    my $stockcollection_id
+        = $self->find_or_create_stockcolletion( 'Dicty Stockcenter',
+        $type_id );
 
     my @stock_data;
     while ( my $line = $io->getline() ) {
@@ -83,7 +75,7 @@ sub import_props {
     my @stock_props;
     my $rank             = 0;
     my $previous_type_id = 0;
-    my $count = 0;
+    my $count            = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
         $count++;
@@ -521,72 +513,68 @@ sub import_plasmid {
         my @stock_data;
         while ( my $line = $io->getline() ) {
             chomp $line;
-                my @fields = split "\t",$line;
-                if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                    $self->logger->debug(
-                        "Line starts with $fields[0]. Expected DBS ID");
+            my @fields = split "\t", $line;
+            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+                $self->logger->debug(
+                    "Line starts with $fields[0]. Expected DBS ID");
+                next;
+            }
+
+            my $data;
+            $data->{object_id} = $self->find_stock( $fields[0] );
+            if ( !$data->{object_id} ) {
+                $self->logger->debug(
+                    "Failed import of strain-plasmid for $fields[0]");
+                next;
+            }
+            my $stock_plasmid_id;
+            if ( $fields[1] =~ m/^[0-9]{1,3}$/ ) {
+                $fields[1] = sprintf( "DBP%07d", $fields[1] );
+            }
+            if ( $fields[1] =~ m/DBP[0-9]{7}/ ) {
+                $stock_plasmid_id = $self->find_stock( $fields[1] );
+                if ( !$stock_plasmid_id ) {
+                    $self->logger->warn(
+                        $fields[1] . " plasmid entry not found" );
                     next;
                 }
-
-                my $data;
-                $data->{object_id} = $self->find_stock( $fields[0] );
-                if ( !$data->{object_id} ) {
+            }
+            else {
+                $stock_plasmid_id = $self->find_stock_by_name( $fields[1] );
+                if ( !$stock_plasmid_id ) {
                     $self->logger->debug(
-                        "Failed import of strain-plasmid for $fields[0]");
-                    next;
-                }
-                my $stock_plasmid_id;
-                if ( $fields[1] =~ m/^[0-9]{1,3}$/ ) {
-                    $fields[1] = sprintf( "DBP%07d", $fields[1] );
-                }
-                if ( $fields[1] =~ m/DBP[0-9]{7}/ ) {
-                    $stock_plasmid_id = $self->find_stock( $fields[1] );
-                    if ( !$stock_plasmid_id ) {
-                        $self->logger->warn(
-                            $fields[1] . " plasmid entry not found" );
-                        next;
-                    }
-                }
-                else {
-                    $stock_plasmid_id
-                        = $self->find_stock_by_name( $fields[1] );
-                    if ( !$stock_plasmid_id ) {
-                        $self->logger->debug(
-                            "Couldn't find $fields[1] strain-plasmid. Creating one"
-                        );
+                        "Couldn't find $fields[1] strain-plasmid. Creating one"
+                    );
 
-                        my $stockcollection_id = 0;
+                    my $stockcollection_id = 0;
+                    $stockcollection_id
+                        = $self->find_stockcollection('Dicty Azkaban');
+                    if ( !$stockcollection_id ) {
                         $stockcollection_id
-                            = $self->find_stockcollection('Dicty Azkaban');
-                        if ( !$stockcollection_id ) {
-                            $stockcollection_id
-                                = $self->create_stockcollection(
-                                'Dicty Azkaban',
-                                $plasmid_type_id );
-                        }
-
-                        my $new_plasmid;
-                        $new_plasmid->{name} = $fields[1];
-                        $new_plasmid->{uniquename}
-                            = $self->utils->nextval( 'stock', 'DBP' );
-                        $new_plasmid->{type_id} = $plasmid_type_id;
-                        $new_plasmid->{description}
-                            = 'Autocreated strain-plasmid';
-                        $new_plasmid->{stockcollection_stocks}
-                            = [
-                            { stockcollection_id => $stockcollection_id }
-                            ];
-
-                        my $plasmid_rs
-                            = $self->schema->resultset('Stock::Stock')
-                            ->find_or_create($new_plasmid);
-                        $stock_plasmid_id = $plasmid_rs->stock_id;
+                            = $self->create_stockcollection( 'Dicty Azkaban',
+                            $plasmid_type_id );
                     }
+
+                    my $new_plasmid;
+                    $new_plasmid->{name} = $fields[1];
+                    $new_plasmid->{uniquename}
+                        = $self->utils->nextval( 'stock', 'DBP' );
+                    $new_plasmid->{type_id} = $plasmid_type_id;
+                    $new_plasmid->{description}
+                        = 'Autocreated strain-plasmid';
+                    $new_plasmid->{stockcollection_stocks}
+                        = [ { stockcollection_id => $stockcollection_id } ];
+
+                    my $plasmid_rs
+                        = $self->schema->resultset('Stock::Stock')
+                        ->find_or_create($new_plasmid);
+                    $stock_plasmid_id = $plasmid_rs->stock_id;
                 }
-                $data->{subject_id} = $stock_plasmid_id;
-                $data->{type_id}    = $stock_rel_type_id;
-                $self->schema->resultset('Stock::StockRelationship')
-                    ->find_or_create($data);
+            }
+            $data->{subject_id} = $stock_plasmid_id;
+            $data->{type_id}    = $stock_rel_type_id;
+            $self->schema->resultset('Stock::StockRelationship')
+                ->find_or_create($data);
         }
         $io->close();
     }

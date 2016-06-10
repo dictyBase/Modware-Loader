@@ -115,8 +115,8 @@ sub find_or_create_dbxref {
         accession => $accession,
         db_id     => $self->find_or_create_db()
     };
-    my $rs = $self->schema->resultset('General::Dbxref')->search( $params );
-    if ($rs->count) {
+    my $rs = $self->schema->resultset('General::Dbxref')->search($params);
+    if ( $rs->count ) {
         return $rs->first->dbxref_id;
     }
     my $row = $self->schema->resultset('General::Dbxref')->create($params);
@@ -364,6 +364,13 @@ sub find_or_create_phenotype {
     }
 }
 
+sub find_or_create_stockcolletion {
+    my ( $self, $name, $type_id ) = @_;
+    my $id = $self->find_stockcollection($name);
+    return $id if $id;
+    return $self->create_stockcollection( $name, $type_id );
+}
+
 sub find_stockcollection {
     my ( $self, $name ) = @_;
     my $rs = $self->schema->resultset('Stock::Stockcollection')
@@ -371,7 +378,6 @@ sub find_stockcollection {
     if ( $rs->count > 0 ) {
         return $rs->first->stockcollection_id;
     }
-    return;
 }
 
 sub create_stockcollection {
@@ -383,10 +389,7 @@ sub create_stockcollection {
             uniquename => $self->utils->nextval( 'stockcollection', 'DSC' )
         }
         );
-    if ($stockcollection_rs) {
-        return $stockcollection_rs->stockcollection_id;
-    }
-    return;
+    return $stockcollection_rs->stockcollection_id;
 }
 
 1;
