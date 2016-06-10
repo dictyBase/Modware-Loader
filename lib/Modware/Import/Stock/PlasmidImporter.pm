@@ -243,7 +243,7 @@ sub import_images {
     my ( $self, $base_url ) = @_;
     $self->logger->info("Importing data from images");
 
-    croak "Please load plasmid data first!"
+    $self->logger->logcroak("Please load plasmid data first!")
         if !$self->utils->is_stock_loaded('plasmid');
 
     my $dbh = $self->schema->storage->dbh;
