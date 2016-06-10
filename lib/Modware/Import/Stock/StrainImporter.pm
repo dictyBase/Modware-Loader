@@ -58,10 +58,13 @@ sub import_stock {
         push @$new_stock, $strain;
     }
     $io->close();
-    my $missed = $count - ( scalar @$new_stock + scalar @$existing_stock );
+    my $new_count = defined @$new_count ? scalar @$new_stock : 0;
+    my $existing_count
+        = defined @$existing_stock ? scalar @$existing_stock : 0;
+    my $missed = $count - ( $new_count + $existing_count );
     if ( $self->schema->resultset('Stock::Stock')->populate($new_stock) ) {
         $self->logger->info( "Imported "
-                . scalar @$new_stock
+                . $new_count
                 . " strain entries. Missed $missed entries" );
     }
     return $new_stock;
@@ -76,15 +79,17 @@ sub import_props {
 
     # Remove existing props
     my $cvterm_ids = $self->find_all_cvterms('dicty_stockcenter');
-    for my $row (@$existing_stock) {
-        for my $prop ( $row->props ) {
-            $prop->delete( { 'type_id' => { -in => $cvterm_ids } } );
+    if ( defined @$existing_stock ) {
+        for my $row (@$existing_stock) {
+            for my $prop ( $row->props ) {
+                $prop->delete( { 'type_id' => { -in => $cvterm_ids } } );
+            }
         }
+        $self->logger->debug(
+            sprintf( "removed props for %d stock entries",
+                scalar @$existing_stock )
+        );
     }
-    $self->logger->debug(
-        sprintf( "removed props for %d stock entries",
-            scalar @$existing_stock )
-    );
 
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
@@ -118,11 +123,12 @@ sub import_props {
         $previous_type_id = $strain_props->{type_id};
     }
     $io->close();
-    my $missed = $count - scalar @$stock_props;
+    my $new_count = defined @$stock_props ? scalar @$stock_props : 0;
+    my $missed = $count - $new_count;
     if ($self->schema->resultset('Stock::Stockprop')->populate($stock_props) )
     {
         $self->logger->info( "Imported "
-                . scalar @$stock_props
+                . $new_count
                 . " strain property entries. Missed $missed entries" );
     }
 }
