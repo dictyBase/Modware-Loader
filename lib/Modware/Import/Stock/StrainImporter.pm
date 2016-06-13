@@ -301,50 +301,54 @@ sub import_characteristics {
         or $self->logger->logcroak("Cannot open file: $input");
     my $stock_data;
     my $counter = 0;
-    my $total = 0;
+    my $total   = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
         $counter++;
-            my @fields = split "\t", $line;
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->warn(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $self->logger->warn(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
+        }
 
-            my $data;
-            $data->{stock_id} = $self->find_stock( $fields[0] );
-            if ( !$data->{stock_id} ) {
-                $self->logger->warn(
-                    "Failed import of characteristics for $fields[0]");
-                next;
-            }
-            $data->{cvterm_id}
-                = $self->find_cvterm( $fields[1], 'strain_characteristics' );
-            if ( !$data->{stock_id} ) {
-                $self->logger->warn(
-                    "Couldn't find $fields[1] in strain_characteristics ontology"
-                );
-                next;
-            }
-            $data->{pub_id} = $char_pub_id;
-            push @$stock_data, $data;
-            $total++;
+        my $data;
+        $data->{stock_id} = $self->find_stock( $fields[0] );
+        if ( !$data->{stock_id} ) {
+            $self->logger->warn(
+                "Failed import of characteristics for $fields[0]");
+            next;
+        }
+        $data->{cvterm_id}
+            = $self->find_cvterm( $fields[1], 'strain_characteristics' );
+        if ( !$data->{stock_id} ) {
+            $self->logger->warn(
+                "Couldn't find $fields[1] in strain_characteristics ontology"
+            );
+            next;
+        }
+        $data->{pub_id} = $char_pub_id;
+        push @$stock_data, $data;
+        $total++;
     }
     $io->close();
-    if ( $self->schema->resultset('Stock::StockCvterm')
-        ->populate( $stock_data ) )
+    if ( $self->schema->resultset('Stock::StockCvterm')->populate($stock_data)
+        )
     {
-        $self->logger->info( "Imported "
+        $self->logger->info(
+            "Imported "
                 . scalar @$stock_data
-                . " strain characteristics entries. Missed ", ($counter - $total), " entries" );
+                . " strain characteristics entries. Missed ",
+            ( $counter - $total ),
+            " entries"
+        );
     }
     return;
 }
 
 sub import_genotype {
-    my ( $self, $input ) = @_;
-    $self->logger->info("Importing data from $input");
+    my ( $self, $input, $existing_stock ) = @_;
+    $self->logger->debug("Importing data from $input");
 
     $self->logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
@@ -352,41 +356,54 @@ sub import_genotype {
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
 
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $sg ( $row->stock_genotypes ) {
+                $sg->genotype->delete;
+            }
+        }
+        $self->logger->info(
+            sprintf( "removed genotypes for %d stock entries",
+                scalar @$existing_stock )
+        );
+    }
+
     my $genotype_type_id
         = $self->find_or_create_cvterm( 'genotype', 'dicty_stockcenter' );
     my $stock_data;
+    my $counter = 0;
+    my $total = 0;
     while ( my $line = $io->getline() ) {
+        $counter++;
         chomp $line;
-            my @fields = split "\t", $line;
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $self->logger->warn(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
+        }
 
-            my $data;
-            my $stock_id = $self->find_stock( $fields[0] );
-            if ( !$stock_id ) {
-                $self->logger->debug(
-                    "Failed import of genotype for $fields[0]");
-                next;
-            }
-            $data->{name} = $fields[2];
+        my $data;
+        my $stock_id = $self->find_stock( $fields[0] );
+        if ( !$stock_id ) {
+            $self->logger->warn("Failed import of genotype for $fields[0]");
+            next;
+        }
+        $data->{name} = $fields[2];
 
-            # $data->{uniquename}      = $self->generate_uniquename('DSC_G');
-            $data->{uniquename}
-                = $self->utils->nextval( 'genotype', 'DSC_G' );
-            $data->{type_id} = $genotype_type_id;
-            $data->{stock_genotypes} = [ { stock_id => $stock_id } ];
-            push $stock_data, $data;
+        # $data->{uniquename}      = $self->generate_uniquename('DSC_G');
+        $data->{uniquename} = $self->utils->nextval( 'genotype', 'DSC_G' );
+        $data->{type_id} = $genotype_type_id;
+        $data->{stock_genotypes} = [ { stock_id => $stock_id } ];
+        push @$stock_data, $data;
+        $total++;
     }
     $io->close();
-    if ( $self->schema->resultset('Genetic::Genotype')
-        ->populate( $stock_data ) )
+    if ($self->schema->resultset('Genetic::Genotype')->populate($stock_data) )
     {
         $self->logger->info( "Imported "
                 . scalar @$stock_data
-                . " genotype entries. Missed $missed entries" );
+                . " genotype entries. Missed ", ($counter - $total)," entries" );
     }
     return;
 }
