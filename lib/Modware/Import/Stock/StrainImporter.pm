@@ -26,8 +26,8 @@ sub import_stock {
         = $self->find_or_create_stockcolletion( 'Dicty Stockcenter',
         $type_id );
 
-    my $existing_stock;
-    my $new_stock;
+    my $existing_stock = [];
+    my $new_stock = [];
     while ( my $line = $io->getline() ) {
         chomp $line;
         $count++;
@@ -58,16 +58,16 @@ sub import_stock {
         push @$new_stock, $strain;
     }
     $io->close();
-    my $new_count = defined @$new_count ? scalar @$new_stock : 0;
+    my $new_count = @$new_stock ? scalar @$new_stock : 0;
     my $existing_count
-        = defined @$existing_stock ? scalar @$existing_stock : 0;
+        = @$existing_stock ? scalar @$existing_stock : 0;
     my $missed = $count - ( $new_count + $existing_count );
     if ( $self->schema->resultset('Stock::Stock')->populate($new_stock) ) {
         $self->logger->info( "Imported "
                 . $new_count
                 . " strain entries. Missed $missed entries" );
     }
-    return $new_stock;
+    return $existing_stock;
 }
 
 sub import_props {
@@ -79,9 +79,9 @@ sub import_props {
 
     # Remove existing props
     my $cvterm_ids = $self->find_all_cvterms('dicty_stockcenter');
-    if ( defined @$existing_stock ) {
+    if ( @$existing_stock > 0 ) {
         for my $row (@$existing_stock) {
-            for my $prop ( $row->props ) {
+            for my $prop ( $row->stockprops ) {
                 $prop->delete( { 'type_id' => { -in => $cvterm_ids } } );
             }
         }
@@ -123,7 +123,7 @@ sub import_props {
         $previous_type_id = $strain_props->{type_id};
     }
     $io->close();
-    my $new_count = defined @$stock_props ? scalar @$stock_props : 0;
+    my $new_count = @$stock_props ? scalar @$stock_props : 0;
     my $missed = $count - $new_count;
     if ($self->schema->resultset('Stock::Stockprop')->populate($stock_props) )
     {
