@@ -27,7 +27,7 @@ sub import_stock {
         $type_id );
 
     my $existing_stock = [];
-    my $new_stock = [];
+    my $new_stock      = [];
     while ( my $line = $io->getline() ) {
         chomp $line;
         $count++;
@@ -58,9 +58,8 @@ sub import_stock {
         push @$new_stock, $strain;
     }
     $io->close();
-    my $new_count = @$new_stock ? scalar @$new_stock : 0;
-    my $existing_count
-        = @$existing_stock ? scalar @$existing_stock : 0;
+    my $new_count      = @$new_stock      ? scalar @$new_stock      : 0;
+    my $existing_count = @$existing_stock ? scalar @$existing_stock : 0;
     my $missed = $count - ( $new_count + $existing_count );
     if ( $self->schema->resultset('Stock::Stock')->populate($new_stock) ) {
         $self->logger->info( "Imported "
@@ -85,7 +84,7 @@ sub import_props {
                 $prop->delete( { 'type_id' => { -in => $cvterm_ids } } );
             }
         }
-        $self->logger->debug(
+        $self->logger->info(
             sprintf( "removed props for %d stock entries",
                 scalar @$existing_stock )
         );
@@ -134,7 +133,7 @@ sub import_props {
 }
 
 sub import_inventory {
-    my ( $self, $input ) = @_;
+    my ( $self, $input, $existing_stock ) = @_;
     my $logger = $self->logger;
     $logger->info("Importing data from $input");
 
@@ -143,12 +142,26 @@ sub import_inventory {
     $logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
 
+    # Remove existing props
+    my $cvterm_ids = $self->find_all_cvterms('strain_inventory');
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $prop ( $row->stockprops ) {
+                $prop->delete( { 'type_id' => { -in => $cvterm_ids } } );
+            }
+        }
+        $self->logger->info(
+            sprintf( "pruned inventories for %d stock entries",
+                scalar @$existing_stock )
+        );
+    }
+
     my $io = IO::File->new( $input, 'r' )
         or $logger->logcroak("Cannot open file: $input");
 
     my $transform = Modware::Import::Stock::DataTransformer->new();
 
-    my @stock_data;
+    my $stock_data;
     my $rank              = 0;
     my $previous_stock_id = 0;
     my $counter           = 0;
@@ -159,12 +172,12 @@ STOCK:
         $counter++;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-            $logger->debug("Line starts with $fields[0]. Expected DBS ID");
+            $logger->warn("Line starts with $fields[0]. Expected DBS ID");
             next;
         }
         my $stock_id = $self->find_stock( $fields[0] );
         if ( !$stock_id ) {
-            $logger->debug("Failed import of inventory for $fields[0]");
+            $logger->warn("Failed import of inventory for $fields[0]");
             next STOCK;
         }
 
@@ -183,22 +196,21 @@ STOCK:
             $data->{stock_id} = $stock_id;
             $data->{type_id} = $self->find_cvterm( $key, 'strain_inventory' );
             if ( !$data->{type_id} ) {
-                $logger->debug(
+                $logger->warn(
                     "Couldn't find $key from strain_inventory ontology");
                 next INVENTORY;
             }
             $data->{value} = $inventory->{$key};
             $data->{rank}  = $rank;
-            push @stock_data, $data;
+            push @$stock_data, $data;
         }
         $previous_stock_id = $stock_id;
         $total++;
     }
     $io->close();
-    if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
-        )
+    if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
     {
-        $logger->info( "imported $counter invertory records, missed "
+        $logger->info( "imported $total invertory records, missed "
                 . ( $counter - $total )
                 . " entries" );
     }
@@ -258,8 +270,8 @@ sub import_publications {
 }
 
 sub import_characteristics {
-    my ( $self, $input ) = @_;
-    $self->logger->debug("Importing data from $input");
+    my ( $self, $input, $existing_stock ) = @_;
+    $self->logger->info("Importing data from $input");
 
     $self->logger->logcroak("Please load strain_characteristics ontology!")
         if !$self->utils->is_ontology_loaded('strain_characteristics');
@@ -271,19 +283,31 @@ sub import_characteristics {
         or $self->logger->logcroak(
         "Pub reference for strain_characteristics ontology not found!");
 
+    # Remove existing props
+    my $cvterm_ids = $self->find_all_cvterms('strain_characteristics');
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $cvt ( $row->stock_cvterms ) {
+                $cvt->delete( { 'cvterm_id' => { -in => $cvterm_ids } } );
+            }
+        }
+        $self->logger->info(
+            sprintf( "removed characteristics for %d stock entries",
+                scalar @$existing_stock )
+        );
+    }
+
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or $self->logger->logcroak(
-        "Cannot use CSV: " . Text::CSV->error_diag() );
-    $csv->sep_char("\t");
-
-    my @stock_data;
+    my $stock_data;
+    my $counter = 0;
+    my $total = 0;
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
+        chomp $line;
+        $counter++;
+            my @fields = split "\t", $line;
             if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
+                $self->logger->warn(
                     "Line starts with $fields[0]. Expected DBS ID");
                 next;
             }
@@ -291,55 +315,49 @@ sub import_characteristics {
             my $data;
             $data->{stock_id} = $self->find_stock( $fields[0] );
             if ( !$data->{stock_id} ) {
-                $self->logger->debug(
+                $self->logger->warn(
                     "Failed import of characteristics for $fields[0]");
                 next;
             }
             $data->{cvterm_id}
                 = $self->find_cvterm( $fields[1], 'strain_characteristics' );
             if ( !$data->{stock_id} ) {
-                $self->logger->debug(
+                $self->logger->warn(
                     "Couldn't find $fields[1] in strain_characteristics ontology"
                 );
                 next;
             }
             $data->{pub_id} = $char_pub_id;
-            push @stock_data, $data;
-        }
+            push @$stock_data, $data;
+            $total++;
     }
     $io->close();
-    my $missed = $csv->record_number() / 2 - scalar @stock_data;
     if ( $self->schema->resultset('Stock::StockCvterm')
-        ->populate( \@stock_data ) )
+        ->populate( $stock_data ) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data
-                . " strain characteristics entries. Missed $missed entries" );
+                . scalar @$stock_data
+                . " strain characteristics entries. Missed ", ($counter - $total), " entries" );
     }
     return;
 }
 
 sub import_genotype {
     my ( $self, $input ) = @_;
-    $self->logger->debug("Importing data from $input");
+    $self->logger->info("Importing data from $input");
 
     $self->logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
 
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or $self->logger->logcroak(
-        "Cannot use CSV: " . Text::CSV->error_diag() );
-    $csv->sep_char("\t");
 
     my $genotype_type_id
         = $self->find_or_create_cvterm( 'genotype', 'dicty_stockcenter' );
-
-    my @stock_data;
+    my $stock_data;
     while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
+        chomp $line;
+            my @fields = split "\t", $line;
             if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
                 $self->logger->debug(
                     "Line starts with $fields[0]. Expected DBS ID");
@@ -360,16 +378,14 @@ sub import_genotype {
                 = $self->utils->nextval( 'genotype', 'DSC_G' );
             $data->{type_id} = $genotype_type_id;
             $data->{stock_genotypes} = [ { stock_id => $stock_id } ];
-            push @stock_data, $data;
-        }
+            push $stock_data, $data;
     }
     $io->close();
-    my $missed = $csv->record_number() / 3 - scalar @stock_data;
     if ( $self->schema->resultset('Genetic::Genotype')
-        ->populate( \@stock_data ) )
+        ->populate( $stock_data ) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data
+                . scalar @$stock_data
                 . " genotype entries. Missed $missed entries" );
     }
     return;
