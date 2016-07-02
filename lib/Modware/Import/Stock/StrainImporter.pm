@@ -11,6 +11,8 @@ use Modware::Import::Utils;
 has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
+has cv_namespace =>
+    ( is => 'rw', is => 'Str', default => 'dicty_stockcenter' );
 
 with 'Modware::Role::Stock::Import::DataStash';
 
@@ -21,7 +23,7 @@ sub import_stock {
         or $self->logger->logdie("Cannot open file: $input");
     my $count = 0;
     my $type_id
-        = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
+        = $self->find_or_create_cvterm( 'strain', $self->cv_namespace );
     my $stockcollection_id
         = $self->find_or_create_stockcolletion( 'Dicty Stock Center',
         $type_id );
@@ -46,8 +48,7 @@ sub import_stock {
         my $strain;
         $strain->{uniquename}  = $fields[0];
         $strain->{name}        = $fields[1];
-        $strain->{organism_id} = $self->find_or_create_organism( $fields[2] )
-            if $fields[2];
+        $strain->{organism_id} = $self->find_or_create_organism( $fields[2] );
         $strain->{description}
             = $self->utils->wiki_converter->html2wiki(
             $self->utils->trim( $fields[3] ) )
@@ -77,7 +78,7 @@ sub import_props {
         if !$self->utils->is_stock_loaded('strain');
 
     # Remove existing props
-    my $cvterm_ids = $self->find_all_cvterms('dicty_stockcenter');
+    my $cvterm_ids = $self->find_all_cvterms( $self->cv_namespace );
     if ( @$existing_stock > 0 ) {
         for my $row (@$existing_stock) {
             for my $prop ( $row->stockprops ) {
@@ -113,7 +114,7 @@ sub import_props {
             next;
         }
         $strain_props->{type_id}
-            = $self->find_or_create_cvterm( $fields[1], 'dicty_stockcenter' );
+            = $self->find_or_create_cvterm( $fields[1], $self->cv_namespace );
         $rank = 0 if $previous_type_id ne $strain_props->{type_id};
         $strain_props->{value} = $fields[2];
         $strain_props->{rank}  = $rank;
@@ -372,7 +373,7 @@ sub import_genotype {
         = $self->find_or_create_cvterm( 'genotype', 'dicty_stockcenter' );
     my $stock_data;
     my $counter = 0;
-    my $total = 0;
+    my $total   = 0;
     while ( my $line = $io->getline() ) {
         $counter++;
         chomp $line;
@@ -401,9 +402,11 @@ sub import_genotype {
     $io->close();
     if ($self->schema->resultset('Genetic::Genotype')->populate($stock_data) )
     {
-        $self->logger->info( "Imported "
-                . scalar @$stock_data
-                . " genotype entries. Missed ", ($counter - $total)," entries" );
+        $self->logger->info(
+            "Imported " . scalar @$stock_data . " genotype entries. Missed ",
+            ( $counter - $total ),
+            " entries"
+        );
     }
     return;
 }
