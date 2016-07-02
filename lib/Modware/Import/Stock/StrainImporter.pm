@@ -23,7 +23,7 @@ sub import_stock {
     my $type_id
         = $self->find_or_create_cvterm( 'strain', 'dicty_stockcenter' );
     my $stockcollection_id
-        = $self->find_or_create_stockcolletion( 'Dicty Stockcenter',
+        = $self->find_or_create_stockcolletion( 'Dicty Stock Center',
         $type_id );
 
     my $existing_stock = [];
