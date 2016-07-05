@@ -362,19 +362,8 @@ sub import_genotype {
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
 
-    if ( @$existing_stock > 0 ) {
-        for my $row (@$existing_stock) {
-            for my $sg ( $row->stock_genotypes ) {
-                my $g = $sg->genotype;
-                $g->delete if $g;
-            }
-        }
-        $self->logger->info(
-            sprintf( "removed genotypes for %d stock entries",
-                scalar @$existing_stock )
-        );
-    }
-
+    #cleanup all genotypes
+    $self->schema->resultset('Genetic::Genotype')->delete;
     my $genotype_type_id
         = $self->find_or_create_cvterm( 'genotype', 'dicty_stockcenter' );
     my $stock_data;
