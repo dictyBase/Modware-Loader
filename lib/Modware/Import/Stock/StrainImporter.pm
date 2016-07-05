@@ -499,7 +499,7 @@ sub import_phenotype {
 }
 
 sub import_parent {
-    my ( $self, $input ) = @_;
+    my ( $self, $input, $existing_stock ) = @_;
     $self->logger->debug("Importing data from $input");
 
     $self->logger->logcroak("Please load strain data first!")
@@ -510,14 +510,30 @@ sub import_parent {
 
     my $stock_rel_type_id
         = $self->find_or_create_cvterm( 'is_parent_of', 'stock_relation' );
-    my @stock_data;
+
+    # cleanup previous data
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $obj ( $row->stock_relationship_objects ) {
+                $obj->delete;
+            }
+            for my $obj ( $row->stock_relationship_subjects ) {
+                $obj->delete;
+            }
+        }
+        $self->logger->info(
+            sprintf( "removed parents/children for %d stock entries",
+                @$existing_stock )
+        );
+    }
+    my $stock_data;
     my $counter = 0;
     while ( my $line = $io->getline() ) {
         $counter++;
         chomp $line;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-            $self->logger->debug(
+            $self->logger->warn(
                 "Line starts with $fields[0]. Expected DBS ID");
             next;
         }
@@ -525,30 +541,29 @@ sub import_parent {
         my $data;
         $data->{object_id} = $self->find_stock( $fields[0] );
         if ( !$data->{object_id} ) {
-            $self->logger->debug(
+            $self->logger->warn(
                 "Failed import of parental strain for $fields[0]");
             next;
         }
         $data->{subject_id} = $self->find_stock( $fields[1] );
         if ( !$data->{subject_id} ) {
-            $self->logger->debug(
+            $self->logger->warn(
                 "Couldn't find $fields[1] parental strain entry");
             $self->logger->warn("$fields[0] no parent exists in database");
             next;
         }
         $data->{type_id} = $stock_rel_type_id;
-        push @stock_data, $data;
+        push @$stock_data, $data;
     }
     $io->close();
-    my $missed = $counter - scalar @stock_data;
+    my $missed = $counter - @$stock_data;
     if ( $self->schema->resultset('Stock::StockRelationship')
-        ->populate( \@stock_data ) )
+        ->populate( $stock_data ) )
     {
         $self->logger->info( "Imported "
                 . scalar @stock_data
                 . " parental strain entries. Missed $missed entries" );
     }
-    return;
 }
 
 sub import_plasmid {
