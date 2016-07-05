@@ -439,6 +439,8 @@ sub import_phenotype {
         or $logger->logcroak(
         "Dicty Phenotypes ontology reference not available");
 
+    #cleanup existing phenotype
+    $self->schema->resultset('Phenotype::Phenotype')->delete;
     my @files = ( $input, $dsc_phenotypes );
     for my $f (@files) {
         next if !$f;
@@ -446,7 +448,11 @@ sub import_phenotype {
         my $io = IO::File->new( $f, 'r' )
             or $logger->logcroak("Cannot open file: $f");
 
+        my $stock_data;
+        my $counter = 0;
         while ( my $line = $io->getline() ) {
+            chomp $line;
+            $counter++;
             my @fields = split "\t", $line;
             if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
                 $self->logger->warn(
@@ -455,18 +461,18 @@ sub import_phenotype {
             }
 
             my $data;
-            $data->{genotype_id}
-                = $self->find_or_create_genotype( $fields[0] );
-            if ( !$data->{genotype_id} ) {
-                $self->logger->warn("Couldn't find genotype for $fields[0]");
-                next;
-            }
             $data->{phenotype_id}
                 = $self->find_or_create_phenotype( $fields[1], $fields[3],
                 $fields[5] );
             if ( !$data->{phenotype_id} ) {
-                $self->logger->warn(
-                    "Couldn't find phenotype for $fields[1]");
+                $self->logger->warn("Couldn't find phenotype for $fields[1]");
+                next;
+            }
+
+            # The genotype needs to be present
+            $data->{genotype_id} = $self->find_genotype( $fields[0] );
+            if ( !$data->{genotype_id} ) {
+                $self->logger->warn("Couldn't find genotype for $fields[0]");
                 next;
             }
             $data->{environment_id}
@@ -486,17 +492,20 @@ sub import_phenotype {
                 $self->logger->warn($msg);
                 $data->{pub_id} = $default_pub_id;
             }
-
-            my $pst_rs
-                = $self->schema->resultset('Genetic::Phenstatement')
-                ->find_or_create($data);
-            if ( !$pst_rs ) {
-                $self->logger->debug(
-                    "Error creating phenstatement entry for $fields[0], $fields[1]"
-                );
-            }
+            push @$stock_data, $data;
         }
         $io->close();
+        my $missed = $counter - @$stock_data;
+        my $ret    = $self->schema->resultset('Genetic::Phenstatement')
+            ->populate($stock_data);
+        if ($ret) {
+            $self->logger->info(
+                sprintf(
+                    "Imported %d, missed %d entries from %s\n",
+                    @$stock_data, $missed, $f
+                )
+            );
+        }
     }
 }
 
