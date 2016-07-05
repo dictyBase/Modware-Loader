@@ -298,6 +298,20 @@ has '_strain_genotype' => (
     }
 );
 
+sub find_genotype {
+    my ( $self, $dbs_id ) = @_;
+    if ( $self->has_strain_genotype($dbs_id) ) {
+        return $self->get_strain_genotype($dbs_id)->genotype_id;
+    }
+
+    my $stock_rs = $self->schema->resultset('Stock::StockGenotype')
+        ->search( { 'stock.uniquename' => $dbs_id }, { join => 'stock' } );
+    if ( $stock_rs->count > 0 ) {
+        $self->set_strain_genotype( $dbs_id, $stock_rs->first );
+        return $self->get_strain_genotype($dbs_id)->genotype_id;
+    }
+}
+
 sub find_or_create_genotype {
     my ( $self, $dbs_id ) = @_;
     if ( $self->has_strain_genotype($dbs_id) ) {
