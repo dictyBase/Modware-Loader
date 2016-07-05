@@ -5,6 +5,7 @@ use strict;
 use File::Spec::Functions qw/catfile/;
 use Moose;
 use namespace::autoclean;
+use List::Util qw/any/;
 
 use Modware::Import::Utils;
 use Modware::Import::Stock::StrainImporter;
@@ -64,19 +65,32 @@ sub execute {
     my $input_file     = catfile( $self->data_dir, $prefix . 'strain.tsv' );
     my $existing_stock = $importer->import_stock($input_file);
     foreach my $data ( @{ $self->data } ) {
-        my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
-        my $import_data = 'import_' . $data;
-        if ( $data eq 'phenotype' ) {
-            $importer->$import_data( $input_file, $self->dsc_phenotypes,
-                $existing_stock );
+
+        # skip if either of genotype or phenotype
+        # as they have loaded in order
+        if ( $data eq 'genotype' or $data eq 'phenotype' ) {
             next;
         }
+        my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
+        my $import_data = 'import_' . $data;
         if ( $data eq 'plasmid' ) {
             $importer->$import_data( $input_file, $self->strain_plasmid,
                 $existing_stock );
             next;
         }
         $importer->$import_data( $input_file, $existing_stock );
+    }
+    # load phenotype only after genotype
+    if ( any { $_ eq 'genotype' } @{ $self->data } ) {
+        $importer->import_genotype(
+            catfile( $self->data_dir, $prefix . 'genotype.tsv' ),
+            $existing_stock );
+        if ( any { $_ eq 'phenotype' } @{ $self->data } ) {
+            $importer->import_phenotype(
+                catfile( $self->data_dir, $prefix . 'phenotype.tsv' ),
+                $self->dsc_phenotypes, $existing_stock );
+
+        }
     }
 
     $guard->commit;
