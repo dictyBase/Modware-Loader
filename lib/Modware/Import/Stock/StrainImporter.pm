@@ -215,11 +215,10 @@ STOCK:
                 . ( $counter - $total )
                 . " entries" );
     }
-    return;
 }
 
 sub import_publications {
-    my ( $self, $input ) = @_;
+    my ( $self, $input, $existing_stock ) = @_;
     $self->logger->info("Importing data from $input");
 
     $self->logger->logcroak("Please load strain data first!")
@@ -227,47 +226,53 @@ sub import_publications {
 
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
-    my $csv = Text::CSV->new( { binary => 1 } )
-        or $self->logger->logcroak(
-        "Cannot use CSV: " . Text::CSV->error_diag() );
-    $csv->sep_char("\t");
 
-    my @stock_data;
-    while ( my $line = $io->getline() ) {
-        if ( $csv->parse($line) ) {
-            my @fields = $csv->fields();
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
+    # Remove existing stock and pub links
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $pub_rel ( $row->stock_pubs ) {
+                $pub_rel->delete;
             }
-
-            my $data;
-            $data->{stock_id} = $self->find_stock( $fields[0] );
-            if ( !$data->{stock_id} ) {
-                $self->logger->debug(
-                    "Failed import of publication for $fields[0]");
-                next;
-            }
-            $data->{pub_id} = $self->find_pub( $fields[1] );
-            if ( !$data->{pub_id} ) {
-                $self->logger->debug(
-                    "Couldn't find publication for $fields[1]");
-                next;
-            }
-            push @stock_data, $data;
         }
+        $self->logger->info(
+            sprintf( "pruned publication links for %d stock entries",
+                scalar @$existing_stock )
+        );
+    }
+    my $stock_data;
+    my $counter = 0;
+    while ( my $line = $io->getline() ) {
+        chomp $line;
+        $counter++;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $self->logger->warn(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
+        }
+
+        my $data;
+        $data->{stock_id} = $self->find_stock( $fields[0] );
+        if ( !$data->{stock_id} ) {
+            $self->logger->warn(
+                "Failed import of publication for $fields[0]");
+            next;
+        }
+        $data->{pub_id} = $self->find_pub( $fields[1] );
+        if ( !$data->{pub_id} ) {
+            $self->logger->warn("Couldn't find publication for $fields[1]");
+            next;
+        }
+        push @$stock_data, $data;
     }
     $io->close();
-    my $missed = $csv->record_number() / 2 - scalar @stock_data;
-    if ( $self->schema->resultset('Stock::StockPub')->populate( \@stock_data )
-        )
+    my $missed = $counter - @$stock_data;
+    if ( $self->schema->resultset('Stock::StockPub')->populate($stock_data) )
     {
         $self->logger->info( "Imported "
                 . scalar @stock_data
                 . " strain publication entries. Missed $missed entries" );
     }
-    return;
 }
 
 sub import_characteristics {
