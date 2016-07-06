@@ -638,9 +638,9 @@ sub import_plasmid {
 
                     my 
                     $stockcollection_id
-                        = $self->find_or_create_stockcollection('Dicty Azkaban', $plasmid_type_id);
+                        = $self->find_or_create_stockcollection('External laboratory', $plasmid_type_id);
                     if ( !$stockcollection_id ) {
-                        $self->logger->warn("Could not create stock collection Dicty Azkaban for plasmid $fields[1]");
+                        $self->logger->warn("Could not create stock collection External laboratory for plasmid $fields[1]");
                         next;
                     }
 
