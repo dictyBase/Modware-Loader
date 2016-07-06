@@ -567,7 +567,7 @@ sub import_parent {
 }
 
 sub import_plasmid {
-    my ( $self, $input, $strain_plasmid ) = @_;
+    my ( $self, $input, $strain_plasmid, $existing_stock ) = @_;
 
     $self->logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
@@ -579,7 +579,19 @@ sub import_plasmid {
         = $self->find_or_create_cvterm( 'part_of', 'stock_relation' );
 
     my $plasmid_type_id
-        = $self->find_or_create_cvterm( 'plasmid', 'dicty_stockcenter' );
+        = $self->find_or_create_cvterm( 'plasmid', $self->cv_namespace );
+
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $obj ( $row->stock_relationship_subjects ) {
+                $obj->delete({type_id => $stock_rel_type_id});
+            }
+        }
+        $self->logger->info(
+            sprintf( "removed plasmid relationships for %d stock entries",
+                @$existing_stock )
+        );
+    }
 
     my @files = ( $input, $strain_plasmid );
     for my $f (@files) {
@@ -587,13 +599,13 @@ sub import_plasmid {
         $self->logger->info("Importing data from $f");
 
         my $io = IO::File->new( $f, 'r' )
-            or $self->logger->logdie("Cannot open file: $f");
-        my @stock_data;
+            or $self->logger->logcroak("Cannot open file: $f");
+        my $stock_data;
         while ( my $line = $io->getline() ) {
             chomp $line;
             my @fields = split "\t", $line;
             if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->debug(
+                $self->logger->warn(
                     "Line starts with $fields[0]. Expected DBS ID");
                 next;
             }
@@ -601,7 +613,7 @@ sub import_plasmid {
             my $data;
             $data->{object_id} = $self->find_stock( $fields[0] );
             if ( !$data->{object_id} ) {
-                $self->logger->debug(
+                $self->logger->warn(
                     "Failed import of strain-plasmid for $fields[0]");
                 next;
             }
@@ -624,13 +636,12 @@ sub import_plasmid {
                         "Couldn't find $fields[1] strain-plasmid. Creating one"
                     );
 
-                    my $stockcollection_id = 0;
+                    my 
                     $stockcollection_id
-                        = $self->find_stockcollection('Dicty Azkaban');
+                        = $self->find_or_create_stockcollection('Dicty Azkaban', $plasmid_type_id);
                     if ( !$stockcollection_id ) {
-                        $stockcollection_id
-                            = $self->create_stockcollection( 'Dicty Azkaban',
-                            $plasmid_type_id );
+                        $self->logger->warn("Could not create stock collection Dicty Azkaban for plasmid $fields[1]");
+                        next;
                     }
 
                     my $new_plasmid;
@@ -645,18 +656,21 @@ sub import_plasmid {
 
                     my $plasmid_rs
                         = $self->schema->resultset('Stock::Stock')
-                        ->find_or_create($new_plasmid);
+                        ->create($new_plasmid);
                     $stock_plasmid_id = $plasmid_rs->stock_id;
+                    $self->logger->info("created plasmid $fields[1]");
                 }
             }
             $data->{subject_id} = $stock_plasmid_id;
             $data->{type_id}    = $stock_rel_type_id;
-            $self->schema->resultset('Stock::StockRelationship')
-                ->find_or_create($data);
+            push @$stock_data, $data;
         }
         $io->close();
+        my $retval = $self->schema->resultset('Stock::StockRelationship')->populate($stock_data);
+        if ($retval) {
+            $self->logger->info(sprintf("created %d strain plasmid relationships", @$stock_data));
+        }
     }
-    return;
 }
 
 1;
