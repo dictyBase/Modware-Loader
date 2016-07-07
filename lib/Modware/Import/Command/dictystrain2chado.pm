@@ -44,6 +44,13 @@ has mock_pubs => (
     documentation => 'Boolean to create mock publications. Default 0'
 );
 
+has prune => (
+    is => 'rw',
+    isa => 'Bool',
+    default => 0,
+    documentation => 'Deletes all existing strain records before loading'
+);
+
 sub execute {
     my ($self) = @_;
 
@@ -61,6 +68,9 @@ sub execute {
     $importer->schema( $self->schema );
     $importer->utils($utils);
 
+    if ($self->prune) {
+        $importer->prune_stock;
+    }
     my $prefix         = 'strain_';
     my $input_file     = catfile( $self->data_dir, $prefix . 'strain.tsv' );
     my $existing_stock = $importer->import_stock($input_file);

@@ -12,9 +12,26 @@ has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
 has cv_namespace =>
-    ( is => 'rw', is => 'Str', default => 'dicty_stockcenter' );
+    ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
+has stock_collection => (
+    is => 'rw', isa => 'Str', default => 'Dicty stock center'
+);
 
 with 'Modware::Role::Stock::Import::DataStash';
+
+sub prune_stock {
+    my ($self) = @_;
+    my $type_id
+        = $self->find_cvterm( 'strain', $self->cv_namespace );
+        if (!$type_id) {
+            $self->logger->warn(
+                "could not find strain cvterm, nothing to be pruned");
+            return;
+        }
+    $self->schema->resultset('Stock::Stock')->delete({
+            'type_id' => $type_id
+        });
+}
 
 sub import_stock {
     my ( $self, $input ) = @_;
@@ -25,7 +42,7 @@ sub import_stock {
     my $type_id
         = $self->find_or_create_cvterm( 'strain', $self->cv_namespace );
     my $stockcollection_id
-        = $self->find_or_create_stockcolletion( 'Dicty Stock Center',
+        = $self->find_or_create_stockcolletion( $self->stock_collection,
         $type_id );
 
     my $existing_stock = [];
@@ -424,7 +441,7 @@ sub import_phenotype {
         = $self->find_or_create_cvterm( "observation", "dicty_stockcenter" );
 
     my $default_pub_id
-        = $self->find_pub_by_title("Dicty Stock Center Phenotyping 2003-2008")
+        = $self->find_pub_by_title("Dicty stock center phenotyping 2003-2008")
         or $logger->logcroak(
         "Dicty Phenotypes ontology reference not available");
 
