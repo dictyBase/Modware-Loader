@@ -232,7 +232,7 @@ sub import_inventory {
         }
         $self->logger->info(
             sprintf( "pruned inventories for %d stock entries",
-                 @$existing_stock )
+                @$existing_stock )
         );
     }
     my $transform = Modware::Import::Stock::DataTransformer->new();
@@ -283,40 +283,49 @@ sub import_inventory {
         $rank = $rank + 1;
     }
     $io->close();
-    my $missed = $counter - @$stock_data ;
-    if ($self->schema->resultset('Stock::Stockprop')->populate( $stock_data )
-        )
+    my $missed = $counter - @$stock_data;
+    if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
     {
-        $self->logger->info( "Imported "
-                .  @$stock_data ,
-                . " plasmid inventory entries. Missed $missed entries" );
+        $self->logger->info( "Imported " . @$stock_data,
+            . " plasmid inventory entries. Missed $missed entries" );
     }
 }
 
 sub import_images {
-    my ( $self, $base_url ) = @_;
+    my ( $self, $base_url, $existing_stock ) = @_;
     $self->logger->info("Importing data from images");
-
     $self->logger->logcroak("Please load plasmid data first!")
         if !$self->utils->is_stock_loaded('plasmid');
 
-    my $dbh = $self->schema->storage->dbh;
-    my $stock_ids
-        = $dbh->selectall_arrayref(
-        qq{SELECT s.uniquename FROM stock s JOIN cvterm typ ON typ.cvterm_id = s.type_id WHERE typ.name = 'plasmid'}
-        );
-
     my $image_type_id
         = $self->find_or_create_cvterm( 'plasmid map', 'dicty_stockcenter' );
-
-    my @stock_data;
-    for my $dbp_id ( @{$stock_ids} ) {
-        ( my $filename = $dbp_id->[0] ) =~ s/^DBP[0]+//;
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $prop ( $row->stockprops ) {
+                $prop->delete( { 'type_id' => $image_type_id } );
+            }
+            $self->logger->info(
+                sprintf( "pruned image links for %d stock entries",
+                    @$existing_stock )
+            );
+        }
+    }
+    my $type_id = $self->find_cvterm( 'plasmid', $self->cv_namespace );
+    if ( !$type_id ) {
+        $self->logger->logcroak("could not find plasmid cvterm");
+    }
+    my $stock_rs = $self->schema->resultset('Stock::Stock')
+        ->search( { type_id => $type_id } );
+    my $stock_data;
+    my $counter = 0;
+    while ( my $row = $stock_rs->next ) {
+        $counter++;
+        ( my $filename = $row->uniquename ) =~ s/^DBP[0]+//;
         my $image_url = $base_url . $filename . ".jpg";
         my $data;
         if ( head($image_url) ) {
-            $self->logger->debug("image $image_url found");
-            $data->{stock_id} = $self->find_stock($dbp_id);
+            $self->logger->warn("image $image_url found");
+            $data->{stock_id} = $self->find_stock( $row->uniquename );
             if ( !$data->{stock_id} ) {
                 $self->logger->debug(
                     "Failed to import plasmid map for $dbp_id");
@@ -324,20 +333,23 @@ sub import_images {
             }
             $data->{type_id} = $image_type_id;
             $data->{value}   = $image_url;
-            push @stock_data, $data;
+            push @$stock_data, $data;
         }
         else {
             $self->logger->warn(
                 "issue in retrieving image info for $image_url");
         }
     }
-    if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
-        )
+    my $missed = $counter - @$stock_data;
+    if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
     {
         $self->logger->info(
-            "Imported " . scalar @stock_data . " plasmid map entries." );
+            sprintf(
+                "Linked %d plasmid map images, missed %d entries\n",
+                @$stock_data, $missed
+            )
+        );
     }
-    return;
 }
 
 sub import_plasmid_sequence {
@@ -450,7 +462,8 @@ sub import_genes {
     croak "Please load plasmid data first!"
         if !$self->utils->is_stock_loaded('plasmid');
 
-    my $io = IO::File->new( $input, 'r' ) or croak "Cannot open file: $input";
+    my $io = IO::File->new( $input, 'r' )
+        or croak "Cannot open file: $input";
     my $csv = Text::CSV->new( { binary => 1 } )
         or croak "Cannot use CSV: " . Text::CSV->error_diag();
     $csv->sep_char("\t");
