@@ -21,23 +21,23 @@ has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
 has cv_namespace =>
     ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
 has stock_collection => (
-    is => 'rw', isa => 'Str', default => 'Dicty stock center'
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'Dicty stock center'
 );
 
 with 'Modware::Role::Stock::Import::DataStash';
 
 sub prune_plasmid {
     my ($self) = @_;
-    my $type_id
-        = $self->find_cvterm( 'plasmid', $self->cv_namespace );
-        if (!$type_id) {
-            $self->logger->warn(
-                "could not find plasmid cvterm, nothing to be pruned");
-            return;
-        }
-    $self->schema->resultset('Stock::Stock')->delete({
-            'type_id' => $type_id
-        });
+    my $type_id = $self->find_cvterm( 'plasmid', $self->cv_namespace );
+    if ( !$type_id ) {
+        $self->logger->warn(
+            "could not find plasmid cvterm, nothing to be pruned");
+        return;
+    }
+    $self->schema->resultset('Stock::Stock')
+        ->delete( { 'type_id' => $type_id } );
 }
 
 sub import_plasmid {
@@ -49,13 +49,12 @@ sub import_plasmid {
 
     my $type_id
         = $self->find_or_create_cvterm( 'plasmid', $self->cv_namespace );
-    my $sc_id
-        = $self->find_or_create_stockcolletion( $self->stock_collection,
+    my $sc_id = $self->find_or_create_stockcolletion( $self->stock_collection,
         $type_id );
 
     my $existing_stock = [];
     my $new_stock      = [];
-    my $counter = 0;
+    my $counter        = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
         $counter++;
@@ -81,13 +80,12 @@ sub import_plasmid {
         push @$stock_data, $data;
     }
     $io->close();
-    my $new_count      = @$new_stock      ?  @$new_stock      : 0;
-    my $existing_count = @$existing_stock ?  @$existing_stock : 0;
+    my $new_count      = @$new_stock      ? @$new_stock      : 0;
+    my $existing_count = @$existing_stock ? @$existing_stock : 0;
     my $missed = $counter - ( $new_count + $existing_count );
-    if ( $self->schema->resultset('Stock::Stock')->populate( $stock_data ) )
-    {
+    if ( $self->schema->resultset('Stock::Stock')->populate($stock_data) ) {
         $self->logger->info( "Imported "
-                .  @$stock_data
+                . @$stock_data
                 . " plasmid entries. Missed $missed entries" );
     }
     return $existing_stock;
@@ -109,8 +107,7 @@ sub import_props {
             }
         }
         $self->logger->info(
-            sprintf( "removed props for %d stock entries",
-                 @$existing_stock )
+            sprintf( "removed props for %d stock entries", @$existing_stock )
         );
     }
 
@@ -119,7 +116,7 @@ sub import_props {
     my $stock_props;
     my $rank             = 0;
     my $previous_type_id = 0;
-    my $counter            = 0;
+    my $counter          = 0;
     while ( my $line = $io->getline() ) {
         $counter++;
         chomp $line;
@@ -146,33 +143,45 @@ sub import_props {
         $previous_type_id = $strain_props->{type_id};
     }
     $io->close();
-    my $missed = $counter -  @$stock_props;
-    if ( $self->schema->resultset('Stock::Stockprop')
-        ->populate( @$stock_props ) )
+    my $missed = $counter - @$stock_props;
+    if ( $self->schema->resultset('Stock::Stockprop')->populate(@$stock_props)
+        )
     {
         $self->logger->info( "Imported "
-                .  @$stock_props
+                . @$stock_props
                 . " plasmid property entries. Missed $missed entries" );
     }
 }
 
 sub import_publications {
-    my ( $self, $input ) = @_;
+    my ( $self, $input, $existing_stock ) = @_;
     $self->logger->info("Importing data from $input");
 
     croak "Please load plasmid data first!"
         if !$self->utils->is_stock_loaded('plasmid');
 
+    # Remove existing stock and pub links
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $pub_rel ( $row->stock_pubs ) {
+                $pub_rel->delete;
+            }
+        }
+        $self->logger->info(
+            sprintf( "pruned publication links for %d stock entries",
+                @$existing_stock )
+        );
+    }
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
-    my @stock_data;
-    my $count = 0;
+    my @$stock_data;
+    my $counter = 0;
     while ( my $line = $io->getline() ) {
-        $count++;
+        $counter++;
         chomp $line;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
-            $self->logger->debug(
+            $self->logger->warn(
                 "Line starts with $fields[0]. Expected DBS ID");
             next;
         }
@@ -180,7 +189,7 @@ sub import_publications {
         my $data;
         $data->{stock_id} = $self->find_stock( $fields[0] );
         if ( !$data->{stock_id} ) {
-            $self->logger->debug(
+            $self->logger->warn(
                 "Failed import of publication for $fields[0]");
             next;
         }
@@ -189,16 +198,15 @@ sub import_publications {
             $self->logger->warn("missing pubmed id $fields[1]");
             next;
         }
-        push @stock_data, $data;
+        push @$stock_data, $data;
         $self->logger->debug("processed data for $fields[0] and $fields[1]");
     }
     $io->close();
-    my $missed = $count - scalar @stock_data;
-    if ( $self->schema->resultset('Stock::StockPub')->populate( \@stock_data )
-        )
+    my $missed = $counter - @$stock_data;
+    if ( $self->schema->resultset('Stock::StockPub')->populate($stock_data) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data
+                . @$stock_data
                 . " plasmid publication entries. Missed $missed entries" );
     }
     return;
