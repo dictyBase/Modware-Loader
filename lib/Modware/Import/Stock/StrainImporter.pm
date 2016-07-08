@@ -47,9 +47,10 @@ sub import_stock {
 
     my $existing_stock = [];
     my $new_stock      = [];
+    my $counter = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
-        $count++;
+        $counter++;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
             $self->logger->warn(
@@ -78,7 +79,7 @@ sub import_stock {
     $io->close();
     my $new_count      = @$new_stock      ? scalar @$new_stock      : 0;
     my $existing_count = @$existing_stock ? scalar @$existing_stock : 0;
-    my $missed = $count - ( $new_count + $existing_count );
+    my $missed = $counter - ( $new_count + $existing_count );
     if ( $self->schema->resultset('Stock::Stock')->populate($new_stock) ) {
         $self->logger->info( "Imported "
                 . $new_count
