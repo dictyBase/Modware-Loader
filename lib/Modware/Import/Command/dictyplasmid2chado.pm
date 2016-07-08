@@ -13,7 +13,12 @@ extends qw/Modware::Import::Command/;
 with 'Modware::Role::Command::WithLogger';
 with 'Modware::Role::Stock::Import::DataStash';
 
-has 'prune' => ( is => 'rw', isa => 'Bool', default => 0 );
+has prune => (
+    is => 'rw',
+    isa => 'Bool',
+    default => 0,
+    documentation => 'Deletes all existing plasmid records before loading'
+);
 
 has data => (
     is      => 'rw',
@@ -50,27 +55,15 @@ has image_url => (
 
 sub execute {
     my ($self) = @_;
-
     my $guard = $self->schema->txn_scope_guard;
-
-    my $utils = Modware::Import::Utils->new();
-    $utils->schema( $self->schema );
-    $utils->logger( $self->logger );
-
-    if ( $self->prune ) {
-        my $type_id
-            = $self->find_or_create_cvterm( 'plasmid', 'dicty_stockcenter' );
-        $utils->prune_stock();
-    }
-    if ( $self->mock_pubs ) {
-        $utils->mock_publications();
-    }
 
     my $importer = Modware::Import::Stock::PlasmidImporter->new();
     $importer->logger( $self->logger );
     $importer->schema( $self->schema );
     $importer->utils($utils);
-
+    if ($self->prune) {
+        $importer->prune_plasmid;
+    }
     my $prefix = 'plasmid_';
     my $input_file = catfile( $self->data_dir, $prefix . 'plasmid.tsv' );
     $importer->import_stock($input_file);

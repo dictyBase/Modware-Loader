@@ -20,8 +20,27 @@ use Modware::Import::Stock::DataTransformer;
 has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
+has cv_namespace =>
+    ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
+has stock_collection => (
+    is => 'rw', isa => 'Str', default => 'Dicty stock center'
+);
 
 with 'Modware::Role::Stock::Import::DataStash';
+
+sub prune_plasmid {
+    my ($self) = @_;
+    my $type_id
+        = $self->find_cvterm( 'plasmid', $self->cv_namespace );
+        if (!$type_id) {
+            $self->logger->warn(
+                "could not find plasmid cvterm, nothing to be pruned");
+            return;
+        }
+    $self->schema->resultset('Stock::Stock')->delete({
+            'type_id' => $type_id
+        });
+}
 
 sub import_stock {
     my ( $self, $input ) = @_;
