@@ -414,20 +414,20 @@ sub _load_fasta {
     if ( !$type_id ) {
         $self->logger->logcroak("plasmid_vector SO term not found");
     }
-    my $organism_id
-        = $self->find_organism('Dictyostelium discoideum');
-    if (!$organism_id) {
-        $self->logger->logcroak("organism Dictyostelium discoideum does not exist");
+    my $organism_id = $self->find_organism('Dictyostelium discoideum');
+    if ( !$organism_id ) {
+        $self->logger->logcroak(
+            "organism Dictyostelium discoideum does not exist");
     }
     while ( my $seq = $seqio->next_seq ) {
         my $stock_name = $self->find_stock_name($dbp_id);
         my $dbxref_id;
-        if ( $seq->id ne $dbp_id) {
+        if ( $seq->id ne $dbp_id ) {
             $self->db('GenBank');
             $dbxref_id = $self->find_or_create_dbxref($dbxref_accession);
         }
         my $feature = {
-            uniquename  => $self->utils->nextval('feature', 'DDB'),
+            uniquename  => $self->utils->nextval( 'feature', 'DBP' ),
             residues    => $seq->seq,
             seqlen      => $seq->length,
             md5checksum => md5_hex( $seq->seq ),
@@ -463,25 +463,38 @@ sub import_genes {
     my $io = IO::File->new( $input, 'r' )
         or croak "Cannot open file: $input";
 
-    my $rel_type = $self->find_cvterm( 'part_of', 'ro' );
-    if (!$rel_type) {
+    my $rel_type_id = $self->find_cvterm( 'part_of', 'ro' );
+    if ( !$rel_type ) {
         $self->logger->logcroak("part_of relationship term not found");
     }
-    my $seq_type = $self->find_cvterm('plasmid_vector', 'sequence');
-    if (!$seq_type) {
+    my $seq_type_id = $self->find_cvterm( 'plasmid_vector', 'sequence' );
+    if ( !$seq_type ) {
         $self->logger->logcroak("plasmid_vector SO term not found");
     }
-    my $organism_id
-        = $self->find_organism('Dictyostelium discoideum');
-    if (!$organism_id) {
-        $self->logger->logcroak("organism Dictyostelium discoideum does not exist");
+    my $organism_id = $self->find_organism('Dictyostelium discoideum');
+    if ( !$organism_id ) {
+        $self->logger->logcroak(
+            "organism Dictyostelium discoideum does not exist");
     }
+    my $gene_type_id
+        = $self->find_or_create_cvterm( 'plasmid gene', 'dicty_stockcenter' );
 
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            my @props = $row->stockprops( { type_id => $gene_type_id } );
+            $self->schema->resultset('Sequence::Feature')
+                ->delete( { uniquename => $props[0]->value } );
+            $props[0]->delete;
+        }
+        $self->logger->info(
+            sprintf( "removed gene links for %d stock entries",
+                @$existing_stock )
+        );
+    }
     my $stock_props;
-    my $rank              = 0;
-    my $previous_stock_id = 0;
-    my $counter           = 0;
+    my $counter = 0;
     while ( my $line = $io->getline() ) {
+        $counter++;
         chomp $line;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
@@ -489,6 +502,23 @@ sub import_genes {
                 "Line starts with $fields[0]. Expected DBS ID");
             next;
         }
+        my $frow = $self->schema->resultset('Sequence::Feature')
+            ->find( { uniquename => $fields[1] } );
+        if ( !$frow ) {
+            $self->logger->warn("could not find gene id $fields[1]");
+            next;
+        }
+        my $prow = $self->schema->resultset('Sequence::Feature')->create(
+            {   uniquename  => $self->utils->nextval( 'feature', 'DBP' ),
+                type_id     => $seq_type_id,
+                organism_id => $organism_id,
+                feature_relationship_subjects => [
+                    {   type_id    => $rel_type_id,
+                        subject_id => $frow->feature_id
+                    }
+                ]
+            }
+        );
 
         my $plasmid_genes;
         $plasmid_genes->{stock_id} = $self->find_stock( $fields[0] );
@@ -496,14 +526,11 @@ sub import_genes {
             $self->logger->warn("Failed import of props for $fields[0]");
             next;
         }
+
         # create the plasmid feature
-        $plasmid_genes->{type_id} = $type_id;
-        $rank = 0 if $previous_stock_id ne $plasmid_genes->{stock_id};
-        $plasmid_genes->{value} = $fields[1];
-        $plasmid_genes->{rank}  = $rank;
+        $plasmid_genes->{type_id} = $seq_type_id;
+        $plasmid_genes->{value}   = $prow->uniquename;
         push @$stock_props, $plasmid_genes;
-        $rank              = $rank + 1;
-        $previous_stock_id = $plasmid_genes->{stock_id};
     }
     $io->close();
     my $missed = $counter - @$stock_props;
