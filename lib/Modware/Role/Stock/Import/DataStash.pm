@@ -24,6 +24,23 @@ has '_organism_row' => (
     }
 );
 
+
+sub find_organism {
+    my ( $self, $species ) = @_;
+    my @organism = split( / /, $species );
+    if ( $self->has_organism_row($species) ) {
+        return $self->get_organism_row($species)->organism_id;
+    }
+    my $row
+        = $self->schema->resultset('Organism::Organism')
+        ->search( { species => $organism[1] },
+        { select => [qw/organism_id species/] } );
+    if ( $row->count > 0 ) {
+        $self->set_organism_row( $species, $row->first );
+        return $self->get_organism_row($species)->organism_id;
+    }
+}
+
 sub find_or_create_organism {
     my ( $self, $species ) = @_;
     my @organism = split( / /, $species );
