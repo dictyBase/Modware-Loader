@@ -213,7 +213,7 @@ sub import_publications {
 }
 
 sub import_inventory {
-    my ( $self, $input ) = @_;
+    my ( $self, $input, $existing_stock ) = @_;
     $self->logger->info("Importing data from $input");
 
     my $inventory_ontology_name = 'plasmid_inventory';
@@ -222,14 +222,27 @@ sub import_inventory {
     $self->logger->logcroak("Please load plasmid data first!")
         if !$self->utils->is_stock_loaded('plasmid');
 
+    # Remove existing inventory
+    my $cvterm_ids = $self->find_all_cvterms('plasmid_inventory');
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $prop ( $row->stockprops ) {
+                $prop->delete( { 'type_id' => { -in => $cvterm_ids } } );
+            }
+        }
+        $self->logger->info(
+            sprintf( "pruned inventories for %d stock entries",
+                 @$existing_stock )
+        );
+    }
     my $transform = Modware::Import::Stock::DataTransformer->new();
-    my @stock_data;
+    my $stock_data;
     my $rank              = 0;
     my $previous_stock_id = 0;
 
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
-    my $count = 0;
+    my $counter = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
         my @fields = split "\t", $line;
@@ -262,7 +275,7 @@ sub import_inventory {
             $rank = 0 if $previous_stock_id ne $data->{stock_id};
             $data->{value} = $inventory->{$key};
             $data->{rank}  = $rank;
-            push @stock_data, $data;
+            push @$stock_data, $data;
 
             $previous_stock_id = $data->{stock_id};
 
@@ -270,15 +283,14 @@ sub import_inventory {
         $rank = $rank + 1;
     }
     $io->close();
-    my $missed = ( $count - scalar @stock_data ) / 6;
-    if ($self->schema->resultset('Stock::Stockprop')->populate( \@stock_data )
+    my $missed = $counter - @$stock_data ;
+    if ($self->schema->resultset('Stock::Stockprop')->populate( $stock_data )
         )
     {
         $self->logger->info( "Imported "
-                . ( scalar @stock_data / 6 )
+                .  @$stock_data ,
                 . " plasmid inventory entries. Missed $missed entries" );
     }
-    return;
 }
 
 sub import_images {
