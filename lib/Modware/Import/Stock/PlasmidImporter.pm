@@ -13,8 +13,6 @@ use LWP::Simple qw/head/;
 use Moose;
 use namespace::autoclean;
 use Path::Class::Dir;
-use Text::CSV;
-
 use Modware::Import::Stock::DataTransformer;
 
 has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
@@ -42,7 +40,7 @@ sub prune_plasmid {
         });
 }
 
-sub import_stock {
+sub import_plasmid {
     my ( $self, $input ) = @_;
     $self->logger->info("Importing data from $input");
 
@@ -50,26 +48,28 @@ sub import_stock {
         or $self->logger->logcroak("Cannot open file: $input");
 
     my $type_id
-        = $self->find_or_create_cvterm( 'plasmid', 'dicty_stockcenter' );
-    my $stockcollection_id = 0;
-    $stockcollection_id = $self->find_stockcollection('Dicty Stockcenter');
-    if ( !$stockcollection_id ) {
-        $stockcollection_id
-            = $self->create_stockcollection( 'Dicty Stockcenter', $type_id );
-    }
+        = $self->find_or_create_cvterm( 'plasmid', $self->cv_namespace );
+    my $sc_id
+        = $self->find_or_create_stockcolletion( $self->stock_collection,
+        $type_id );
 
-    my @stock_data;
-    my $count = 0;
+    my $existing_stock = [];
+    my $new_stock      = [];
+    my $counter = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
-        $count++;
+        $counter++;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
-            $self->logger->debug(
+            $self->logger->warn(
                 "Line starts with $fields[0]. Expected DBP ID");
             next;
         }
-
+        if ( my $stock_obj = $self->find_stock_object( $fields[0] ) ) {
+            push @$existing_stock, $stock_obj;
+            $self->logger->debug("$fields[0] exists in database");
+            next;
+        }
         my $data;
         $data->{uniquename}  = $fields[0];
         $data->{name}        = $fields[1];
@@ -77,18 +77,20 @@ sub import_stock {
             if $fields[2];
         $data->{type_id} = $type_id;
         $data->{stockcollection_stocks}
-            = [ { stockcollection_id => $stockcollection_id } ];
-        push @stock_data, $data;
+            = [ { stockcollection_id => $sc_id } ];
+        push @$stock_data, $data;
     }
     $io->close();
-    my $missed = $count - scalar @stock_data;
-    if ( $self->schema->resultset('Stock::Stock')->populate( \@stock_data ) )
+    my $new_count      = @$new_stock      ?  @$new_stock      : 0;
+    my $existing_count = @$existing_stock ?  @$existing_stock : 0;
+    my $missed = $counter - ( $new_count + $existing_count );
+    if ( $self->schema->resultset('Stock::Stock')->populate( $stock_data ) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data
+                .  @$stock_data
                 . " plasmid entries. Missed $missed entries" );
     }
-    return;
+    return $existing_stock;
 }
 
 sub import_props {
