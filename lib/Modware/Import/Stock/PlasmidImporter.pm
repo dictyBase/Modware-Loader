@@ -340,16 +340,12 @@ sub import_images {
                 "issue in retrieving image info for $image_url");
         }
     }
-    my $missed = $counter - @$stock_data;
     if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
     {
         $self->logger->info(
-            sprintf(
-                "Linked %d plasmid map images, missed %d entries\n",
-                @$stock_data, $missed
-            )
-        );
+            "Imported " . @$stock_data . " plasmid map entries." );
     }
+    return;
 }
 
 sub import_plasmid_sequence {
@@ -359,6 +355,20 @@ sub import_plasmid_sequence {
     croak "Please load plasmid data first!"
         if !$self->utils->is_stock_loaded('plasmid');
 
+    my $type_id = $self->find_cvterm( 'plasmid_vector', 'sequence' );
+    if ( !$type_id ) {
+        $self->logger->logcroak("plasmid_vector SO term not found");
+    }
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $prop ( $row->stockprops ) {
+                $prop->delete( { 'type_id' => $type_id } );
+            }
+        }
+        $self->logger->info(
+            sprintf( "removed props for %d stock entries", @$existing_stock )
+        );
+    }
     my $seq_dir = Path::Class::Dir->new($data_dir);
     while ( my $file = $seq_dir->next ) {
         next if $file->is_dir;
@@ -396,12 +406,14 @@ sub import_plasmid_sequence {
         $self->_load_fasta( $fasta_seq_io, $dbp_id ) if $fasta_seq_io;
     }
     File::Temp::cleanup();
-    return;
 }
 
 sub _load_fasta {
     my ( $self, $seqio, $dbp_id ) = @_;
-    my $type_id = $self->find_cvterm('plasmid');
+    my $type_id = $self->find_cvterm( 'plasmid_vector', 'sequence' );
+    if ( !$type_id ) {
+        $self->logger->logcroak("plasmid_vector SO term not found");
+    }
     my $organism_id
         = $self->find_or_create_organism('Dictyostelium discoideum');
     while ( my $seq = $seqio->next_seq ) {
@@ -420,7 +432,6 @@ sub _load_fasta {
             $self->db('GenBank');
             $dbxref_id = $self->find_or_create_dbxref($dbxref_accession);
         }
-        my @data;
         my $feature = {
             name        => $name,
             uniquename  => $dbp_id,
@@ -431,18 +442,14 @@ sub _load_fasta {
             dbxref_id   => $dbxref_id,
             organism_id => $organism_id
         };
-        push @data, $feature;
-        my $feat_rs = $self->schema->resultset('Sequence::Feature')
-            ->populate( \@data );
+        my $frow
+            = $self->schema->resultset('Sequence::Feature')->create($frow);
         my $stock_id = $self->find_stock($dbp_id);
         if ( $feat_rs and $stock_id ) {
-            my $feature_id = @{$feat_rs}[0]->feature_id;
-            my $sp_type_id
-                = $self->find_cvterm( 'plasmid_vector', 'sequence' );
             $self->schema->resultset('Stock::Stockprop')->create(
                 {   stock_id => $stock_id,
-                    type_id  => $sp_type_id,
-                    value    => $feature_id
+                    type_id  => $type_id,
+                    value    => $frow->feature_id
                 }
             );
         }
@@ -451,7 +458,6 @@ sub _load_fasta {
                 'Sequence present but no stock entry for ' . $dbp_id );
         }
     }
-    return;
 }
 
 sub import_genes {
