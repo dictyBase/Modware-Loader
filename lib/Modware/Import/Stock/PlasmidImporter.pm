@@ -94,20 +94,34 @@ sub import_plasmid {
 }
 
 sub import_props {
-    my ( $self, $input ) = @_;
+    my ( $self, $input, $existing_stock ) = @_;
     $self->logger->info("Importing data from $input");
 
     croak "Please load plasmid data first!"
         if !$self->utils->is_stock_loaded('plasmid');
 
+    # Remove existing props
+    my $cvterm_ids = $self->find_all_cvterms( $self->cv_namespace );
+    if ( @$existing_stock > 0 ) {
+        for my $row (@$existing_stock) {
+            for my $prop ( $row->stockprops ) {
+                $prop->delete( { 'type_id' => { -in => $cvterm_ids } } );
+            }
+        }
+        $self->logger->info(
+            sprintf( "removed props for %d stock entries",
+                 @$existing_stock )
+        );
+    }
+
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
-    my @stock_props;
+    my $stock_props;
     my $rank             = 0;
     my $previous_type_id = 0;
-    my $count            = 0;
+    my $counter            = 0;
     while ( my $line = $io->getline() ) {
-        $count++;
+        $counter++;
         chomp $line;
         my @fields = split "\t", $line;
         if ( $fields[0] !~ m/^DBP[0-9]{7}/ ) {
@@ -123,24 +137,23 @@ sub import_props {
             next;
         }
         $strain_props->{type_id}
-            = $self->find_or_create_cvterm( $fields[1], 'dicty_stockcenter' );
+            = $self->find_or_create_cvterm( $fields[1], $self->cv_namespace );
         $rank = 0 if $previous_type_id ne $strain_props->{type_id};
         $strain_props->{value} = $fields[2];
         $strain_props->{rank}  = $rank;
-        push @stock_props, $strain_props;
+        push @$stock_props, $strain_props;
         $rank             = $rank + 1;
         $previous_type_id = $strain_props->{type_id};
     }
     $io->close();
-    my $missed = $count - scalar @stock_props;
+    my $missed = $counter -  @$stock_props;
     if ( $self->schema->resultset('Stock::Stockprop')
-        ->populate( \@stock_props ) )
+        ->populate( @$stock_props ) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_props
+                .  @$stock_props
                 . " plasmid property entries. Missed $missed entries" );
     }
-    return;
 }
 
 sub import_publications {
