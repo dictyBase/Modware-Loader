@@ -15,11 +15,10 @@ use namespace::autoclean;
 use Path::Class::Dir;
 use Modware::Import::Stock::DataTransformer;
 
-has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
-has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
-has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
-has cv_namespace =>
-    ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
+has schema       => ( is => 'rw', isa => 'DBIx::Class::Schema' );
+has logger       => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has utils        => ( is => 'rw', isa => 'Modware::Import::Utils' );
+has cv_namespace => ( is => 'rw', isa => 'Str' );
 has stock_collection => (
     is      => 'rw',
     isa     => 'Str',
@@ -334,8 +333,8 @@ sub import_images {
             $self->logger->warn("image $image_url found");
             $data->{stock_id} = $self->find_stock( $row->uniquename );
             if ( !$data->{stock_id} ) {
-                $self->logger->warn(
-                    "Failed to import plasmid map for ", $row->uniquename);
+                $self->logger->warn( "Failed to import plasmid map for ",
+                    $row->uniquename );
                 next;
             }
             $data->{type_id} = $image_type_id;
@@ -430,7 +429,7 @@ sub _load_fasta {
         my $dbxref_id;
         if ( $seq->id ne $dbp_id ) {
             $self->db('GenBank');
-            $dbxref_id = $self->find_or_create_dbxref($seq->id);
+            $dbxref_id = $self->find_or_create_dbxref( $seq->id );
         }
         my $feature = {
             uniquename  => $self->utils->nextval( 'feature', 'DBP' ),

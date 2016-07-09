@@ -45,10 +45,17 @@ has mock_pubs => (
 );
 
 has prune => (
-    is => 'rw',
-    isa => 'Bool',
-    default => 0,
+    is            => 'rw',
+    isa           => 'Bool',
+    default       => 0,
     documentation => 'Deletes all existing strain records before loading'
+);
+
+has cv => (
+    is            => 'rw',
+    isa           => 'Str',
+    default       => 'dicty_stockcenter',
+    documentation => 'The default cv namespace to use for stocks'
 );
 
 sub execute {
@@ -67,8 +74,9 @@ sub execute {
     $importer->logger( $self->logger );
     $importer->schema( $self->schema );
     $importer->utils($utils);
+    $importer->cv_namespace( $self->cv );
 
-    if ($self->prune) {
+    if ( $self->prune ) {
         $importer->prune_stock;
     }
     my $prefix         = 'strain_';
@@ -90,6 +98,7 @@ sub execute {
         }
         $importer->$import_data( $input_file, $existing_stock );
     }
+
     # load phenotype only after genotype
     if ( any { $_ eq 'genotype' } @{ $self->data } ) {
         $importer->import_genotype(

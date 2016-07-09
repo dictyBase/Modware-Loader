@@ -12,7 +12,7 @@ has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
 has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
 has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
 has cv_namespace =>
-    ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
+    ( is => 'rw', isa => 'Str' );
 has stock_collection => (
     is => 'rw', isa => 'Str', default => 'Dicty stock center'
 );

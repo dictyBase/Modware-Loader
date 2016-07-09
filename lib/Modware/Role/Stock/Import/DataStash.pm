@@ -9,8 +9,12 @@ use namespace::autoclean;
 requires 'schema';
 requires 'logger';
 
-has 'db' => ( is => 'rw', isa => 'Str', default => 'internal' );
-has 'cv' => ( is => 'rw', isa => 'Str', default => 'dicty_stockcenter' );
+has 'db' => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'internal',
+    traits  => [qw/NoGetopt/]
+);
 
 has '_organism_row' => (
     is      => 'rw',
@@ -24,10 +28,9 @@ has '_organism_row' => (
     }
 );
 
-
 sub find_organism {
     my ( $self, $species ) = @_;
-    my @organism = split( / /, $species );
+    my @organism = split( /\s+/, $species );
     if ( $self->has_organism_row($species) ) {
         return $self->get_organism_row($species)->organism_id;
     }

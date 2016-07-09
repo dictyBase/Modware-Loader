@@ -13,10 +13,17 @@ extends qw/Modware::Import::Command/;
 with 'Modware::Role::Command::WithLogger';
 with 'Modware::Role::Stock::Import::DataStash';
 
+has cv => (
+    is            => 'rw',
+    isa           => 'Str',
+    default       => 'dicty_stockcenter',
+    documentation => 'The default cv namespace to use for stocks'
+);
+
 has prune => (
-    is => 'rw',
-    isa => 'Bool',
-    default => 0,
+    is            => 'rw',
+    isa           => 'Bool',
+    default       => 0,
     documentation => 'Deletes all existing plasmid records before loading'
 );
 
@@ -66,12 +73,13 @@ sub execute {
     $importer->logger( $self->logger );
     $importer->schema( $self->schema );
     $importer->utils($utils);
+    $importer->cv_namespace( $self->cv );
 
-    if ($self->prune) {
+    if ( $self->prune ) {
         $importer->prune_plasmid;
     }
-    my $prefix = 'plasmid_';
-    my $input_file = catfile( $self->data_dir, $prefix . 'plasmid.tsv' );
+    my $prefix         = 'plasmid_';
+    my $input_file     = catfile( $self->data_dir, $prefix . 'plasmid.tsv' );
     my $existing_stock = $importer->import_stock($input_file);
     foreach my $data ( @{ $self->data } ) {
         if ( $data eq 'images' ) {
@@ -80,7 +88,8 @@ sub execute {
         }
         if ( $data eq 'sequence' ) {
             if ( $self->seq_data_dir ) {
-                $importer->import_plasmid_sequence( $self->seq_data_dir, $existing_stock );
+                $importer->import_plasmid_sequence( $self->seq_data_dir,
+                    $existing_stock );
             }
             else {
                 $self->logger->warn("seq_data_folder not set");
@@ -90,7 +99,7 @@ sub execute {
 
         my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
         my $import_data = 'import_' . $data;
-        $importer->$import_data($input_file, $existing_stock);
+        $importer->$import_data( $input_file, $existing_stock );
     }
 
     $guard->commit;
