@@ -77,16 +77,19 @@ sub import_plasmid {
         $data->{type_id} = $type_id;
         $data->{stockcollection_stocks}
             = [ { stockcollection_id => $sc_id } ];
-        push @$stock_data, $data;
+        push @$new_stock, $data;
     }
     $io->close();
     my $new_count      = @$new_stock      ? @$new_stock      : 0;
     my $existing_count = @$existing_stock ? @$existing_stock : 0;
     my $missed = $counter - ( $new_count + $existing_count );
-    if ( $self->schema->resultset('Stock::Stock')->populate($stock_data) ) {
-        $self->logger->info( "Imported "
-                . @$stock_data
-                . " plasmid entries. Missed $missed entries" );
+    if ( $self->schema->resultset('Stock::Stock')->populate($new_stock) ) {
+        $self->logger->info(
+            sprintf(
+                "Imported %d plasmid entries, missed %d entries",
+                @$new_stock, $missed
+            )
+        );
     }
     return $existing_stock;
 }
@@ -174,7 +177,7 @@ sub import_publications {
     }
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
-    my @$stock_data;
+    my $stock_data;
     my $counter = 0;
     while ( my $line = $io->getline() ) {
         $counter++;
@@ -256,7 +259,7 @@ sub import_inventory {
             = $transform->convert_row_to_plasmid_inventory_hash(@fields);
         foreach my $key ( keys %$inventory ) {
             my $data;
-            $count++;
+            $counter++;
             $data->{stock_id} = $self->find_stock( $fields[0] );
             if ( !$data->{stock_id} ) {
                 $self->logger->debug(
@@ -286,8 +289,12 @@ sub import_inventory {
     my $missed = $counter - @$stock_data;
     if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
     {
-        $self->logger->info( "Imported " . @$stock_data,
-            . " plasmid inventory entries. Missed $missed entries" );
+        $self->logger->info(
+            sprintf(
+                "Imported %d plasmid inventory entries, missed %d entries",
+                @$stock_data, $missed
+            )
+        );
     }
 }
 
@@ -327,8 +334,8 @@ sub import_images {
             $self->logger->warn("image $image_url found");
             $data->{stock_id} = $self->find_stock( $row->uniquename );
             if ( !$data->{stock_id} ) {
-                $self->logger->debug(
-                    "Failed to import plasmid map for $dbp_id");
+                $self->logger->warn(
+                    "Failed to import plasmid map for ", $row->uniquename);
                 next;
             }
             $data->{type_id} = $image_type_id;
@@ -349,7 +356,7 @@ sub import_images {
 }
 
 sub import_plasmid_sequence {
-    my ( $self, $data_dir ) = @_;
+    my ( $self, $data_dir, $existing_stock ) = @_;
     $self->logger->info("Importing plasmid sequences");
 
     croak "Please load plasmid data first!"
@@ -420,11 +427,10 @@ sub _load_fasta {
             "organism Dictyostelium discoideum does not exist");
     }
     while ( my $seq = $seqio->next_seq ) {
-        my $stock_name = $self->find_stock_name($dbp_id);
         my $dbxref_id;
         if ( $seq->id ne $dbp_id ) {
             $self->db('GenBank');
-            $dbxref_id = $self->find_or_create_dbxref($dbxref_accession);
+            $dbxref_id = $self->find_or_create_dbxref($seq->id);
         }
         my $feature = {
             uniquename  => $self->utils->nextval( 'feature', 'DBP' ),
@@ -436,9 +442,9 @@ sub _load_fasta {
             organism_id => $organism_id
         };
         my $frow
-            = $self->schema->resultset('Sequence::Feature')->create($frow);
+            = $self->schema->resultset('Sequence::Feature')->create($feature);
         my $stock_id = $self->find_stock($dbp_id);
-        if ( $feat_rs and $stock_id ) {
+        if ( $frow->in_storage and $stock_id ) {
             $self->schema->resultset('Stock::Stockprop')->create(
                 {   stock_id => $stock_id,
                     type_id  => $type_id,
@@ -464,11 +470,11 @@ sub import_genes {
         or croak "Cannot open file: $input";
 
     my $rel_type_id = $self->find_cvterm( 'part_of', 'ro' );
-    if ( !$rel_type ) {
+    if ( !$rel_type_id ) {
         $self->logger->logcroak("part_of relationship term not found");
     }
     my $seq_type_id = $self->find_cvterm( 'plasmid_vector', 'sequence' );
-    if ( !$seq_type ) {
+    if ( !$seq_type_id ) {
         $self->logger->logcroak("plasmid_vector SO term not found");
     }
     my $organism_id = $self->find_organism('Dictyostelium discoideum');

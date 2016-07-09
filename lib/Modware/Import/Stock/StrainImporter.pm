@@ -288,7 +288,7 @@ sub import_publications {
     if ( $self->schema->resultset('Stock::StockPub')->populate($stock_data) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data
+                . @$stock_data
                 . " strain publication entries. Missed $missed entries" );
     }
 }
@@ -579,7 +579,7 @@ sub import_parent {
         ->populate( $stock_data ) )
     {
         $self->logger->info( "Imported "
-                . scalar @stock_data
+                . @$stock_data
                 . " parental strain entries. Missed $missed entries" );
     }
 }
