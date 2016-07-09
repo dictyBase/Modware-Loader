@@ -55,26 +55,32 @@ has image_url => (
 
 sub execute {
     my ($self) = @_;
+
     my $guard = $self->schema->txn_scope_guard;
+
+    my $utils = Modware::Import::Utils->new();
+    $utils->schema( $self->schema );
+    $utils->logger( $self->logger );
 
     my $importer = Modware::Import::Stock::PlasmidImporter->new();
     $importer->logger( $self->logger );
     $importer->schema( $self->schema );
     $importer->utils($utils);
+
     if ($self->prune) {
         $importer->prune_plasmid;
     }
     my $prefix = 'plasmid_';
     my $input_file = catfile( $self->data_dir, $prefix . 'plasmid.tsv' );
-    $importer->import_stock($input_file);
+    my $existing_stock = $importer->import_stock($input_file);
     foreach my $data ( @{ $self->data } ) {
         if ( $data eq 'images' ) {
-            $importer->import_images( $self->image_url );
+            $importer->import_images( $self->image_url, $existing_stock );
             next;
         }
         if ( $data eq 'sequence' ) {
             if ( $self->seq_data_dir ) {
-                $importer->import_plasmid_sequence( $self->seq_data_dir );
+                $importer->import_plasmid_sequence( $self->seq_data_dir, $existing_stock );
             }
             else {
                 $self->logger->warn("seq_data_folder not set");
@@ -84,7 +90,7 @@ sub execute {
 
         my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
         my $import_data = 'import_' . $data;
-        $importer->$import_data($input_file);
+        $importer->$import_data($input_file, $existing_stock);
     }
 
     $guard->commit;
