@@ -80,7 +80,7 @@ sub execute {
     }
     my $prefix         = 'plasmid_';
     my $input_file     = catfile( $self->data_dir, $prefix . 'plasmid.tsv' );
-    my $existing_stock = $importer->import_stock($input_file);
+    my $existing_stock = $importer->import_plasmid($input_file);
     foreach my $data ( @{ $self->data } ) {
         if ( $data eq 'images' ) {
             $importer->import_images( $self->image_url, $existing_stock );

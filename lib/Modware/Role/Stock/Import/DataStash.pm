@@ -16,6 +16,12 @@ has 'db' => (
     traits  => [qw/NoGetopt/]
 );
 
+has 'cv' => (
+    is      => 'rw',
+    isa     => 'Str',
+    traits  => [qw/NoGetopt/]
+);
+
 has '_organism_row' => (
     is      => 'rw',
     isa     => 'HashRef',

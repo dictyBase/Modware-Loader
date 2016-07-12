@@ -36,7 +36,7 @@ sub prune_plasmid {
         return;
     }
     $self->schema->resultset('Stock::Stock')
-        ->delete( { 'type_id' => $type_id } );
+        ->search( { 'type_id' => $type_id } )->delete;
 }
 
 sub import_plasmid {
@@ -79,14 +79,14 @@ sub import_plasmid {
         push @$new_stock, $data;
     }
     $io->close();
-    my $new_count      = @$new_stock      ? @$new_stock      : 0;
-    my $existing_count = @$existing_stock ? @$existing_stock : 0;
+    my $new_count      = @$new_stock      ? scalar @$new_stock      : 0;
+    my $existing_count = @$existing_stock ? scalar @$existing_stock : 0;
     my $missed = $counter - ( $new_count + $existing_count );
     if ( $self->schema->resultset('Stock::Stock')->populate($new_stock) ) {
         $self->logger->info(
             sprintf(
                 "Imported %d plasmid entries, missed %d entries",
-                @$new_stock, $missed
+                scalar @$new_stock, $missed
             )
         );
     }
@@ -109,7 +109,8 @@ sub import_props {
             }
         }
         $self->logger->info(
-            sprintf( "removed props for %d stock entries", @$existing_stock )
+            sprintf( "removed props for %d stock entries",
+                scalar @$existing_stock )
         );
     }
 
@@ -145,12 +146,11 @@ sub import_props {
         $previous_type_id = $strain_props->{type_id};
     }
     $io->close();
-    my $missed = $counter - @$stock_props;
-    if ( $self->schema->resultset('Stock::Stockprop')->populate(@$stock_props)
-        )
+    my $missed = $counter - scalar @$stock_props;
+    if ($self->schema->resultset('Stock::Stockprop')->populate($stock_props) )
     {
         $self->logger->info( "Imported "
-                . @$stock_props
+                . scalar @$stock_props
                 . " plasmid property entries. Missed $missed entries" );
     }
 }
@@ -171,7 +171,7 @@ sub import_publications {
         }
         $self->logger->info(
             sprintf( "pruned publication links for %d stock entries",
-                @$existing_stock )
+                scalar @$existing_stock )
         );
     }
     my $io = IO::File->new( $input, 'r' )
@@ -204,11 +204,11 @@ sub import_publications {
         $self->logger->debug("processed data for $fields[0] and $fields[1]");
     }
     $io->close();
-    my $missed = $counter - @$stock_data;
+    my $missed = $counter - scalar @$stock_data;
     if ( $self->schema->resultset('Stock::StockPub')->populate($stock_data) )
     {
         $self->logger->info( "Imported "
-                . @$stock_data
+                . scalar @$stock_data
                 . " plasmid publication entries. Missed $missed entries" );
     }
     return;
@@ -234,7 +234,7 @@ sub import_inventory {
         }
         $self->logger->info(
             sprintf( "pruned inventories for %d stock entries",
-                @$existing_stock )
+                scalar @$existing_stock )
         );
     }
     my $transform = Modware::Import::Stock::DataTransformer->new();
@@ -285,13 +285,13 @@ sub import_inventory {
         $rank = $rank + 1;
     }
     $io->close();
-    my $missed = $counter - @$stock_data;
+    my $missed = $counter - scalar @$stock_data;
     if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
     {
         $self->logger->info(
             sprintf(
                 "Imported %d plasmid inventory entries, missed %d entries",
-                @$stock_data, $missed
+                scalar @$stock_data, $missed
             )
         );
     }
@@ -312,7 +312,7 @@ sub import_images {
             }
             $self->logger->info(
                 sprintf( "pruned image links for %d stock entries",
-                    @$existing_stock )
+                    scalar @$existing_stock )
             );
         }
     }
@@ -349,7 +349,7 @@ sub import_images {
     if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
     {
         $self->logger->info(
-            "Imported " . @$stock_data . " plasmid map entries." );
+            "Imported " . scalar @$stock_data . " plasmid map entries." );
     }
     return;
 }
@@ -372,7 +372,8 @@ sub import_plasmid_sequence {
             }
         }
         $self->logger->info(
-            sprintf( "removed props for %d stock entries", @$existing_stock )
+            sprintf( "removed props for %d stock entries",
+                scalar @$existing_stock )
         );
     }
     my $seq_dir = Path::Class::Dir->new($data_dir);
@@ -493,7 +494,7 @@ sub import_genes {
         }
         $self->logger->info(
             sprintf( "removed gene links for %d stock entries",
-                @$existing_stock )
+                scalar @$existing_stock )
         );
     }
     my $stock_props;
@@ -538,11 +539,11 @@ sub import_genes {
         push @$stock_props, $plasmid_genes;
     }
     $io->close();
-    my $missed = $counter - @$stock_props;
+    my $missed = $counter - scalar @$stock_props;
     if ($self->schema->resultset('Stock::Stockprop')->populate($stock_props) )
     {
         $self->logger->info( "Imported "
-                . @$stock_props
+                . scalar @$stock_props
                 . " plasmid-gene entries. Missed $missed entries" );
     }
 }
