@@ -5,6 +5,7 @@ use strict;
 
 use Moose::Role;
 use namespace::autoclean;
+use feature qw/say/;
 
 requires 'schema';
 requires 'logger';
@@ -40,11 +41,12 @@ sub find_organism {
     if ( $self->has_organism_row($name) ) {
         return $self->get_organism_row($name)->organism_id;
     }
-    my $species = @organism == 3 : join(@organism[1,2], ' ') : $organism[1];
-    my $row
-        = $self->schema->resultset('Organism::Organism')
-        ->search( { species => $species, genus => $organism[0] },
-        { select => [qw/organism_id/] } );
+    my $species
+        = ( scalar @organism == 3 )
+        ? join( ' ', @organism[ 1, 2 ] )
+        : $organism[1];
+    my $row = $self->schema->resultset('Organism::Organism')
+        ->search( { species => $species, genus => $organism[0] } );
     if ( $row->count > 0 ) {
         $self->set_organism_row( $name, $row->first );
         return $self->get_organism_row($name)->organism_id;
@@ -53,11 +55,12 @@ sub find_organism {
 
 sub find_or_create_organism {
     my ( $self, $name ) = @_;
-    if ( $id = $self->find_organism($name) ) {
+    if ( my $id = $self->find_organism($name) ) {
         return $id;
     }
     my @organism = split( /\s+/, $name );
-    my $species = @organism == 3 : join(@organism[1,2], ' ') : $organism[1];
+    my $species
+        = @organism == 3 ? join( ' ', @organism[ 1, 2 ] ) : $organism[1];
     my $new_organism_row
         = $self->schema->resultset('Organism::Organism')->create(
         {   genus        => $organism[0],
