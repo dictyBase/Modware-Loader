@@ -201,7 +201,6 @@ sub import_publications {
             next;
         }
         push @$stock_data, $data;
-        $self->logger->debug("processed data for $fields[0] and $fields[1]");
     }
     $io->close();
     my $missed = $counter - scalar @$stock_data;
@@ -330,11 +329,11 @@ sub import_images {
         my $image_url = $base_url . $filename . ".jpg";
         my $data;
         if ( head($image_url) ) {
-            $self->logger->warn("image $image_url found");
+            $self->logger->debug("image $image_url found");
             $data->{stock_id} = $self->find_stock( $row->uniquename );
             if ( !$data->{stock_id} ) {
-                $self->logger->warn( "Failed to import plasmid map for ",
-                    $row->uniquename );
+                $self->logger->warn(
+                    sprintf( "plasmid %s not found", $row->uniquename ) );
                 next;
             }
             $data->{type_id} = $image_type_id;
@@ -343,7 +342,11 @@ sub import_images {
         }
         else {
             $self->logger->warn(
-                "issue in retrieving image info for $image_url");
+                sprintf(
+                    "No image %s for plasmid %s",
+                    $filename, $row->uniquename
+                )
+            );
         }
     }
     if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
@@ -421,10 +424,10 @@ sub _load_fasta {
     if ( !$type_id ) {
         $self->logger->logcroak("plasmid_vector SO term not found");
     }
-    my $organism_id = $self->find_organism('Dictyostelium discoideum');
+    my $organism_id = $self->find_organism('Dictyostelium discoideum AX4');
     if ( !$organism_id ) {
         $self->logger->logcroak(
-            "organism Dictyostelium discoideum does not exist");
+            "organism Dictyostelium discoideum AX4 does not exist");
     }
     while ( my $seq = $seqio->next_seq ) {
         my $dbxref_id;
