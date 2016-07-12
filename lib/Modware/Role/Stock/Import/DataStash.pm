@@ -17,9 +17,9 @@ has 'db' => (
 );
 
 has 'cv' => (
-    is      => 'rw',
-    isa     => 'Str',
-    traits  => [qw/NoGetopt/]
+    is     => 'rw',
+    isa    => 'Str',
+    traits => [qw/NoGetopt/]
 );
 
 has '_organism_row' => (
@@ -35,48 +35,38 @@ has '_organism_row' => (
 );
 
 sub find_organism {
-    my ( $self, $species ) = @_;
-    my @organism = split( /\s+/, $species );
-    if ( $self->has_organism_row($species) ) {
-        return $self->get_organism_row($species)->organism_id;
+    my ( $self, $name ) = @_;
+    my @organism = split( /\s+/, $name );
+    if ( $self->has_organism_row($name) ) {
+        return $self->get_organism_row($name)->organism_id;
     }
+    my $species = @organism == 3 : join(@organism[1,2], ' ') : $organism[1];
     my $row
         = $self->schema->resultset('Organism::Organism')
-        ->search( { species => $organism[1] },
-        { select => [qw/organism_id species/] } );
+        ->search( { species => $species, genus => $organism[0] },
+        { select => [qw/organism_id/] } );
     if ( $row->count > 0 ) {
-        $self->set_organism_row( $species, $row->first );
-        return $self->get_organism_row($species)->organism_id;
+        $self->set_organism_row( $name, $row->first );
+        return $self->get_organism_row($name)->organism_id;
     }
 }
 
 sub find_or_create_organism {
-    my ( $self, $species ) = @_;
-    my @organism = split( / /, $species );
-    if ( $self->has_organism_row($species) ) {
-        return $self->get_organism_row($species)->organism_id;
+    my ( $self, $name ) = @_;
+    if ( $id = $self->find_organism($name) ) {
+        return $id;
     }
-    my $row
-        = $self->schema->resultset('Organism::Organism')
-        ->search( { species => $organism[1] },
-        { select => [qw/organism_id species/] } );
-    if ( $row->count > 0 ) {
-        $self->set_organism_row( $species, $row->first );
-        return $self->get_organism_row($species)->organism_id;
-    }
-    else {
-        my $new_organism_row
-            = $self->schema->resultset('Organism::Organism')->create(
-            {   genus        => $organism[0],
-                species      => $organism[1],
-                common_name  => $organism[1],
-                abbreviation => substr( $organism[0], 0, 1 ) . "."
-                    . $organism[1]
-            }
-            );
-        $self->set_organism_row( $species, $new_organism_row );
-        return $self->get_organism_row($species)->organism_id;
-    }
+    my @organism = split( /\s+/, $name );
+    my $species = @organism == 3 : join(@organism[1,2], ' ') : $organism[1];
+    my $new_organism_row
+        = $self->schema->resultset('Organism::Organism')->create(
+        {   genus        => $organism[0],
+            species      => $species,
+            abbreviation => substr( $organism[0], 0, 1 ) . "." . $species
+        }
+        );
+    $self->set_organism_row( $name, $new_organism_row );
+    return $self->get_organism_row($name)->organism_id;
 }
 
 has '_cvterm_row' => (
