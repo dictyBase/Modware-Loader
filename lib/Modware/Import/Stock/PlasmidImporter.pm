@@ -480,7 +480,7 @@ sub import_genes {
     if ( !$seq_type_id ) {
         $self->logger->logcroak("plasmid_vector SO term not found");
     }
-    my $organism_id = $self->find_organism('Dictyostelium discoideum');
+    my $organism_id = $self->find_organism('Dictyostelium discoideum AX4');
     if ( !$organism_id ) {
         $self->logger->logcroak(
             "organism Dictyostelium discoideum does not exist");
@@ -521,7 +521,7 @@ sub import_genes {
             {   uniquename  => $self->utils->nextval( 'feature', 'DBP' ),
                 type_id     => $seq_type_id,
                 organism_id => $organism_id,
-                feature_relationship_subjects => [
+                feature_relationship_objects => [
                     {   type_id    => $rel_type_id,
                         subject_id => $frow->feature_id
                     }
