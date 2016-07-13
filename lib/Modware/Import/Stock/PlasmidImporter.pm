@@ -485,14 +485,11 @@ sub import_genes {
         $self->logger->logcroak(
             "organism Dictyostelium discoideum does not exist");
     }
-    my $gene_type_id
-        = $self->find_or_create_cvterm( 'plasmid gene', 'dicty_stockcenter' );
-
     if ( @$existing_stock > 0 ) {
         for my $row (@$existing_stock) {
-            my @props = $row->stockprops( { type_id => $gene_type_id } );
+            my @props = $row->stockprops( { type_id => $seq_type_id } );
             $self->schema->resultset('Sequence::Feature')
-                ->delete( { uniquename => $props[0]->value } );
+                ->search( { uniquename => $props[0]->value } )->delete;
             $props[0]->delete;
         }
         $self->logger->info(
@@ -502,6 +499,7 @@ sub import_genes {
     }
     my $stock_props;
     my $counter = 0;
+    my $plasmid_cache;
     while ( my $line = $io->getline() ) {
         $counter++;
         chomp $line;
@@ -517,7 +515,16 @@ sub import_genes {
             $self->logger->warn("could not find gene id $fields[1]");
             next;
         }
-        my $prow = $self->schema->resultset('Sequence::Feature')->create(
+        my $prow;
+        if (exists $plasmid_cache->{$fields[0]}) {
+            $prow = $plasmid_cache->{$fields[0]};
+            $prow->add_to_feature_relationship_objects({
+                    type_id => $rel_type_id,
+                    subject_id => $frow->feature_id
+                });
+            next;
+        } 
+        $prow = $self->schema->resultset('Sequence::Feature')->create(
             {   uniquename  => $self->utils->nextval( 'feature', 'DBP' ),
                 type_id     => $seq_type_id,
                 organism_id => $organism_id,
@@ -528,6 +535,7 @@ sub import_genes {
                 ]
             }
         );
+        $plasmid_cache->{$fields[0]} = $prow;
 
         my $plasmid_genes;
         $plasmid_genes->{stock_id} = $self->find_stock( $fields[0] );
