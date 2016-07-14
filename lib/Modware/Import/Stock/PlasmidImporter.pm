@@ -499,6 +499,7 @@ sub import_genes {
     }
     my $stock_props;
     my $counter = 0;
+    my $extra = 0;
     my $plasmid_cache;
     while ( my $line = $io->getline() ) {
         $counter++;
@@ -522,6 +523,7 @@ sub import_genes {
                     type_id => $rel_type_id,
                     subject_id => $frow->feature_id
                 });
+            $extra++;
             next;
         } 
         $prow = $self->schema->resultset('Sequence::Feature')->create(
@@ -550,7 +552,7 @@ sub import_genes {
         push @$stock_props, $plasmid_genes;
     }
     $io->close();
-    my $missed = $counter - scalar @$stock_props;
+    my $missed = $counter - ($extra + scalar @$stock_props);
     if ($self->schema->resultset('Stock::Stockprop')->populate($stock_props) )
     {
         $self->logger->info( "Imported "
