@@ -8,29 +8,28 @@ use Text::CSV;
 use Modware::Import::Stock::DataTransformer;
 use Modware::Import::Utils;
 
-has schema => ( is => 'rw', isa => 'DBIx::Class::Schema' );
-has logger => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
-has utils  => ( is => 'rw', isa => 'Modware::Import::Utils' );
-has cv_namespace =>
-    ( is => 'rw', isa => 'Str' );
+has schema       => ( is => 'rw', isa => 'DBIx::Class::Schema' );
+has logger       => ( is => 'rw', isa => 'Log::Log4perl::Logger' );
+has utils        => ( is => 'rw', isa => 'Modware::Import::Utils' );
+has cv_namespace => ( is => 'rw', isa => 'Str' );
 has stock_collection => (
-    is => 'rw', isa => 'Str', default => 'Dicty stock center'
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'Dicty stock center'
 );
 
 with 'Modware::Role::Stock::Import::DataStash';
 
 sub prune_stock {
     my ($self) = @_;
-    my $type_id
-        = $self->find_cvterm( 'strain', $self->cv_namespace );
-        if (!$type_id) {
-            $self->logger->warn(
-                "could not find strain cvterm, nothing to be pruned");
-            return;
-        }
-    $self->schema->resultset('Stock::Stock')->delete({
-            'type_id' => $type_id
-        });
+    my $type_id = $self->find_cvterm( 'strain', $self->cv_namespace );
+    if ( !$type_id ) {
+        $self->logger->warn(
+            "could not find strain cvterm, nothing to be pruned");
+        return;
+    }
+    $self->schema->resultset('Stock::Stock')
+        ->delete( { 'type_id' => $type_id } );
 }
 
 sub import_stock {
@@ -47,7 +46,7 @@ sub import_stock {
 
     my $existing_stock = [];
     my $new_stock      = [];
-    my $counter = 0;
+    my $counter        = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
         $counter++;
@@ -288,7 +287,7 @@ sub import_publications {
     if ( $self->schema->resultset('Stock::StockPub')->populate($stock_data) )
     {
         $self->logger->info( "Imported "
-                . @$stock_data
+                . scalar @$stock_data
                 . " strain publication entries. Missed $missed entries" );
     }
 }
@@ -413,7 +412,7 @@ sub import_genotype {
         $total++;
     }
     $io->close();
-    my $missed = $counter - @$stock_data;
+    my $missed = $counter - scalar @$stock_data;
     if ($self->schema->resultset('Genetic::Genotype')->populate($stock_data) )
     {
         $self->logger->info(
@@ -509,7 +508,8 @@ sub import_phenotype {
             $self->logger->info(
                 sprintf(
                     "Imported %d, missed %d entries from %s\n",
-                    @$stock_data, $missed, $f
+                    scalar @$stock_data,
+                    $missed, $f
                 )
             );
         }
@@ -541,7 +541,7 @@ sub import_parent {
         }
         $self->logger->info(
             sprintf( "removed parents/children for %d stock entries",
-                @$existing_stock )
+                scalar @$existing_stock )
         );
     }
     my $stock_data;
@@ -576,10 +576,10 @@ sub import_parent {
     $io->close();
     my $missed = $counter - @$stock_data;
     if ( $self->schema->resultset('Stock::StockRelationship')
-        ->populate( $stock_data ) )
+        ->populate($stock_data) )
     {
         $self->logger->info( "Imported "
-                . @$stock_data
+                . scalar @$stock_data
                 . " parental strain entries. Missed $missed entries" );
     }
 }
@@ -602,12 +602,12 @@ sub import_plasmid {
     if ( @$existing_stock > 0 ) {
         for my $row (@$existing_stock) {
             for my $obj ( $row->stock_relationship_subjects ) {
-                $obj->delete({type_id => $stock_rel_type_id});
+                $obj->delete( { type_id => $stock_rel_type_id } );
             }
         }
         $self->logger->info(
             sprintf( "removed plasmid relationships for %d stock entries",
-                @$existing_stock )
+                scalar @$existing_stock )
         );
     }
 
@@ -654,11 +654,14 @@ sub import_plasmid {
                         "Couldn't find $fields[1] strain-plasmid. Creating one"
                     );
 
-                    my 
-                    $stockcollection_id
-                        = $self->find_or_create_stockcollection('External laboratory', $plasmid_type_id);
+                    my $stockcollection_id
+                        = $self->find_or_create_stockcollection(
+                        'External laboratory',
+                        $plasmid_type_id );
                     if ( !$stockcollection_id ) {
-                        $self->logger->warn("Could not create stock collection External laboratory for plasmid $fields[1]");
+                        $self->logger->warn(
+                            "Could not create stock collection External laboratory for plasmid $fields[1]"
+                        );
                         next;
                     }
 
@@ -684,9 +687,13 @@ sub import_plasmid {
             push @$stock_data, $data;
         }
         $io->close();
-        my $retval = $self->schema->resultset('Stock::StockRelationship')->populate($stock_data);
+        my $retval = $self->schema->resultset('Stock::StockRelationship')
+            ->populate($stock_data);
         if ($retval) {
-            $self->logger->info(sprintf("created %d strain plasmid relationships", @$stock_data));
+            $self->logger->info(
+                sprintf( "created %d strain plasmid relationships",
+                    scalar @$stock_data )
+            );
         }
     }
 }
