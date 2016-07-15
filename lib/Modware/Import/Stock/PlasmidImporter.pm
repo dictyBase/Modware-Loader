@@ -368,15 +368,20 @@ sub import_plasmid_sequence {
     if ( !$type_id ) {
         $self->logger->logcroak("plasmid_vector SO term not found");
     }
+    my $rcount = 0;
     if ( @$existing_stock > 0 ) {
         for my $row (@$existing_stock) {
-            for my $prop ( $row->stockprops ) {
-                $prop->delete( { 'type_id' => $type_id } );
+            my @props = $row->stockprops( { type_id => $type_id } );
+            if (@props) {
+                $self->schema->resultset('Sequence::Feature')
+                    ->search( { uniquename => $props[0]->value } )->delete;
+                $props[0]->delete;
+                $rcount++ ;
             }
         }
         $self->logger->info(
-            sprintf( "removed props for %d stock entries",
-                scalar @$existing_stock )
+            sprintf( "removed props and feature entries for %d stock entries",
+                $rcount )
         );
     }
     my $seq_dir = Path::Class::Dir->new($data_dir);
@@ -451,7 +456,7 @@ sub _load_fasta {
             $self->schema->resultset('Stock::Stockprop')->create(
                 {   stock_id => $stock_id,
                     type_id  => $type_id,
-                    value    => $frow->feature_id
+                    value    => $frow->uniquename
                 }
             );
         }
@@ -464,14 +469,13 @@ sub _load_fasta {
 
 sub import_genes {
     my ( $self, $input, $existing_stock ) = @_;
-    $self->logger->info("Importing data from $input");
-
     croak "Please load plasmid data first!"
         if !$self->utils->is_stock_loaded('plasmid');
 
+    $self->logger->info("Importing data from $input");
     my $io = IO::File->new( $input, 'r' )
         or croak "Cannot open file: $input";
-
+    my $type_id     = $self->find_cvterm( 'plasmid', $self->cv_namespace );
     my $rel_type_id = $self->find_cvterm( 'part_of', 'ro' );
     if ( !$rel_type_id ) {
         $self->logger->logcroak("part_of relationship term not found");
@@ -485,22 +489,28 @@ sub import_genes {
         $self->logger->logcroak(
             "organism Dictyostelium discoideum does not exist");
     }
-    if ( @$existing_stock > 0 ) {
-        for my $row (@$existing_stock) {
-            my @props = $row->stockprops( { type_id => $seq_type_id } );
-            $self->schema->resultset('Sequence::Feature')
-                ->search( { uniquename => $props[0]->value } )->delete;
-            $props[0]->delete;
-        }
-        $self->logger->info(
-            sprintf( "removed gene links for %d stock entries",
-                scalar @$existing_stock )
-        );
-    }
     my $stock_props;
     my $counter = 0;
-    my $extra = 0;
+    my $extra   = 0;
     my $plasmid_cache;
+
+# Get all the plasmid features that's been added during loading their sequence
+    my $rs = $self->schema->resultset('Stock::Stockprop')->search(
+        {   'me.type_id'    => $seq_type_id,
+            'stock.type_id' => $type_id
+        },
+        { join => 'stock' }
+    );
+    while ( my $row = $rs->next ) {
+        my $prow = $self->schema->resultset('Sequence::Feature')
+            ->find( { uniquename => $row->value } );
+        if ( !$prow ) {
+            $self->logger->warn( "could not find plasmid feature ",
+                $row->value );
+            next;
+        }
+        $plasmid_cache->{ $row->stock->uniquename } = $prow;
+    }
     while ( my $line = $io->getline() ) {
         $counter++;
         chomp $line;
@@ -517,15 +527,16 @@ sub import_genes {
             next;
         }
         my $prow;
-        if (exists $plasmid_cache->{$fields[0]}) {
-            $prow = $plasmid_cache->{$fields[0]};
-            $prow->add_to_feature_relationship_objects({
-                    type_id => $rel_type_id,
+        if ( exists $plasmid_cache->{ $fields[0] } ) {
+            $prow = $plasmid_cache->{ $fields[0] };
+            $prow->add_to_feature_relationship_objects(
+                {   type_id    => $rel_type_id,
                     subject_id => $frow->feature_id
-                });
+                }
+            );
             $extra++;
             next;
-        } 
+        }
         $prow = $self->schema->resultset('Sequence::Feature')->create(
             {   uniquename  => $self->utils->nextval( 'feature', 'DBP' ),
                 type_id     => $seq_type_id,
@@ -537,7 +548,7 @@ sub import_genes {
                 ]
             }
         );
-        $plasmid_cache->{$fields[0]} = $prow;
+        $plasmid_cache->{ $fields[0] } = $prow;
 
         my $plasmid_genes;
         $plasmid_genes->{stock_id} = $self->find_stock( $fields[0] );
@@ -552,7 +563,7 @@ sub import_genes {
         push @$stock_props, $plasmid_genes;
     }
     $io->close();
-    my $missed = $counter - ($extra + scalar @$stock_props);
+    my $missed = $counter - ( $extra + scalar @$stock_props );
     if ($self->schema->resultset('Stock::Stockprop')->populate($stock_props) )
     {
         $self->logger->info( "Imported "
