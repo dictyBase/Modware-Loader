@@ -6,9 +6,18 @@ use strict;
 use Moose::Role;
 use namespace::autoclean;
 use feature qw/say/;
+use LWP::Simple;
+use JSON;
 
 requires 'schema';
 requires 'logger';
+
+has '_pmc_url' => (
+    is  => 'rw',
+    isa => 'Str',
+    default =>
+        'http://www.ebi.ac.uk/europepmc/webservices/rest/search?query=ext_id:'
+);
 
 has 'db' => (
     is      => 'rw',
@@ -249,14 +258,71 @@ sub find_pub {
     }
 }
 
+sub find_or_create_pub {
+    my ($self, $pmid) = @_;
+    if (my $pub_id = $self->find_pub($pmid)) {
+        return $pub_id;
+    }
+    my $pub_row = $self->create_pub_entry($pmid);
+    if ($pub_row) {
+        $self->set_pub_row($pmid, $pub_row);
+        return $pub_row->pub_id;
+    }
+}
+
 sub find_pub_by_title {
     my ( $self, $title ) = @_;
-    my $row
-        = $self->schema->resultset('Pub::Pub')->search( { title => $title },
-        { select => [qw/title uniquename pub_id/] } );
+    my $row = $self->schema->resultset('Pub::Pub')
+        ->search( { title => $title }, { rows => 1 } )->single;
     if ($row) {
-        $self->set_pub_row( $row->first->uniquename, $row->first );
-        return $self->get_pub_row( $row->first->uniquename )->pub_id;
+        $self->set_pub_row( $row->uniquename, $row );
+        return $self->get_pub_row( $row->uniquename )->pub_id;
+    }
+}
+
+sub create_pub_entry {
+    my ( $self, $pubmed_id ) = @_;
+    my $url     = $self->_pmc_url . $pubmed_id . '&format=json';
+    my $content = get($url);
+    if ($content) {
+        $str = decode_json($content);
+        my $result   = $str->{resultList}->{result}->[0];
+        my $pub_type = $self->find_cvterm( "journal article", "pub_type" );
+        my $schema   = $self->schema;
+        my $pub_row  = $schema->resultset('Pub::Pub')->create(
+            {   pubplace    => 'PubMed',
+                uniquename  => $pubmed,
+                series_name => $result->{journalTitle},
+                title       => $result->{title},
+                volume      => $result->{journalVolume},
+                pyear       => $result->{pubYear},
+                pages       => $result->{pageInfo}
+            }
+        );
+        my $pub_id = $pub_row->pub_id;
+        my @authors = split( ",", $result->{authorString} );
+        for my $name (@authors) {
+            my ( $surname, $first ) = split " ", $name;
+            $schema->resultset('Pub::Pubauthor')->create(
+                {   surname    => $surname,
+                    givennames => $first,
+                    pub_id     => $pub_id
+                }
+            );
+        }
+        $pub_row->create_related(
+            'pubprops',
+            {   type_id => $self->find_cvterm( 'doi', 'pub_type' ),
+                value   => $result->{doi}
+            }
+        );
+        $pub_row->create_related(
+            'pubprops',
+            {   type_id => $self->find_cvterm( 'issn', 'pub_type' ),
+                value   => $result->{journalIssn}
+            }
+        );
+        return $pub_row;
     }
 }
 
