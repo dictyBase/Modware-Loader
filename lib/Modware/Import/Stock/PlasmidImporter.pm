@@ -48,7 +48,7 @@ sub import_plasmid {
 
     my $type_id
         = $self->find_or_create_cvterm( 'plasmid', $self->cv_namespace );
-    my $sc_id = $self->find_or_create_stockcolletion( $self->stock_collection,
+    my $sc_id = $self->find_or_create_stockcollection( $self->stock_collection,
         $type_id );
 
     my $existing_stock = [];
