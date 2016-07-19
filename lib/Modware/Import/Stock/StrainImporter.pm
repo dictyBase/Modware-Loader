@@ -302,7 +302,7 @@ sub import_characteristics {
         if !$self->utils->is_stock_loaded('strain');
 
     my $strain_char_pub_title = 'Dicty Strain Characteristics';
-    my $char_pub_id = $self->find_pub_by_title($strain_char_pub_title)
+    my $char_pub_id = $self->find_or_create_pub('23494302')
         or $self->logger->logcroak(
         "Pub reference for strain_characteristics ontology not found!");
 

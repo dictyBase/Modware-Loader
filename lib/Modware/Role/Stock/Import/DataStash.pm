@@ -259,13 +259,13 @@ sub find_pub {
 }
 
 sub find_or_create_pub {
-    my ($self, $pmid) = @_;
-    if (my $pub_id = $self->find_pub($pmid)) {
+    my ( $self, $pmid ) = @_;
+    if ( my $pub_id = $self->find_pub($pmid) ) {
         return $pub_id;
     }
     my $pub_row = $self->create_pub_entry($pmid);
     if ($pub_row) {
-        $self->set_pub_row($pmid, $pub_row);
+        $self->set_pub_row( $pmid, $pub_row );
         return $pub_row->pub_id;
     }
 }
@@ -285,28 +285,30 @@ sub create_pub_entry {
     my $url     = $self->_pmc_url . $pubmed_id . '&format=json';
     my $content = get($url);
     if ($content) {
-        $str = decode_json($content);
+        my $str      = decode_json($content);
         my $result   = $str->{resultList}->{result}->[0];
-        my $pub_type = $self->find_cvterm( "journal article", "pub_type" );
+        my $pub_type = $self->find_cvterm( "journal_article", "pub_type" );
         my $schema   = $self->schema;
         my $pub_row  = $schema->resultset('Pub::Pub')->create(
             {   pubplace    => 'PubMed',
-                uniquename  => $pubmed,
+                uniquename  => $pubmed_id,
                 series_name => $result->{journalTitle},
                 title       => $result->{title},
                 volume      => $result->{journalVolume},
                 pyear       => $result->{pubYear},
-                pages       => $result->{pageInfo}
+                pages       => $result->{pageInfo},
+                type_id     => $pub_type
             }
         );
         my $pub_id = $pub_row->pub_id;
         my @authors = split( ",", $result->{authorString} );
-        for my $name (@authors) {
-            my ( $surname, $first ) = split " ", $name;
+        for my $i ( 0 .. $#authors ) {
+            my ( $surname, $first ) = split " ", $authors[$i];
             $schema->resultset('Pub::Pubauthor')->create(
                 {   surname    => $surname,
                     givennames => $first,
-                    pub_id     => $pub_id
+                    pub_id     => $pub_id,
+                    rank       => $i + 1
                 }
             );
         }
