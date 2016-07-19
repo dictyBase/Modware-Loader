@@ -486,7 +486,7 @@ sub find_or_create_phenotype {
     }
 }
 
-sub find_or_create_stockcolletion {
+sub find_or_create_stockcollection {
     my ( $self, $name, $type_id ) = @_;
     my $id = $self->find_stockcollection($name);
     return $id if $id;

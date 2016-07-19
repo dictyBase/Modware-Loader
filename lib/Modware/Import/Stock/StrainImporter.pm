@@ -29,7 +29,7 @@ sub prune_stock {
         return;
     }
     $self->schema->resultset('Stock::Stock')
-        ->delete( { 'type_id' => $type_id } );
+        ->search( { 'type_id' => $type_id } )->delete;
 }
 
 sub import_stock {
@@ -41,7 +41,7 @@ sub import_stock {
     my $type_id
         = $self->find_or_create_cvterm( 'strain', $self->cv_namespace );
     my $stockcollection_id
-        = $self->find_or_create_stockcolletion( $self->stock_collection,
+        = $self->find_or_create_stockcollection( $self->stock_collection,
         $type_id );
 
     my $existing_stock = [];
