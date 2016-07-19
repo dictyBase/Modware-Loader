@@ -282,7 +282,8 @@ sub find_pub_by_title {
 
 sub create_pub_entry {
     my ( $self, $pubmed_id ) = @_;
-    my $url     = $self->_pmc_url . $pubmed_id . '&format=json';
+    my $url     = $self->_pmc_url . $pubmed_id . '&resulttype=core&format=json';
+    $self->logger->debug("fetching $pubmed_id from $url");
     my $content = get($url);
     if ($content) {
         my $str      = decode_json($content);
@@ -292,21 +293,20 @@ sub create_pub_entry {
         my $pub_row  = $schema->resultset('Pub::Pub')->create(
             {   pubplace    => 'PubMed',
                 uniquename  => $pubmed_id,
-                series_name => $result->{journalTitle},
+                series_name => $result->{journalInfo}->{journal}->{medlineAbbreviation},
                 title       => $result->{title},
-                volume      => $result->{journalVolume},
+                volume      => $result->{volume},
                 pyear       => $result->{pubYear},
                 pages       => $result->{pageInfo},
                 type_id     => $pub_type
             }
         );
         my $pub_id = $pub_row->pub_id;
-        my @authors = split( ",", $result->{authorString} );
-        for my $i ( 0 .. $#authors ) {
-            my ( $surname, $first ) = split " ", $authors[$i];
+        my $authors = $result->{authorList}->{author};
+        for my $i ( 0 .. $#$authors ) {
             $schema->resultset('Pub::Pubauthor')->create(
-                {   surname    => $surname,
-                    givennames => $first,
+                {   surname    => $authors->[$i]->{lastName},
+                    givennames => $authors->[$i]->{firstName},
                     pub_id     => $pub_id,
                     rank       => $i + 1
                 }
@@ -321,7 +321,13 @@ sub create_pub_entry {
         $pub_row->create_related(
             'pubprops',
             {   type_id => $self->find_cvterm( 'issn', 'pub_type' ),
-                value   => $result->{journalIssn}
+                value   => $result->{journalInfo}->{journal}->{issn}
+            }
+        );
+        $pub_row->create_related(
+            'pubprops',
+            {   type_id => $self->find_cvterm( 'abstract', 'pub_type' ),
+                value   => $result->{abstractText}
             }
         );
         return $pub_row;
