@@ -514,6 +514,12 @@ sub create_stockcollection {
     return $stockcollection_rs->stockcollection_id;
 }
 
+sub has_strain_plasmid_map {
+    my ($self, $query) = @_;
+    my $count = $self->schema->resultset('Stock::StockRelationship')->count($query);
+    return $count if $count;
+}
+
 1;
 
 __END__

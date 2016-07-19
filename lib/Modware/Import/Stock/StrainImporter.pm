@@ -613,7 +613,7 @@ sub import_plasmid {
 
     $self->logger->info("Importing data from $input");
     my $io = IO::File->new( $input, 'r' )
-        or $self->logger->logcroak("Cannot open file: $f");
+        or $self->logger->logcroak("Cannot open file: $input");
     my $stock_data;
     my $counter;
     while ( my $line = $io->getline() ) {
@@ -675,7 +675,7 @@ sub import_strain_plasmid_map {
 
     $self->logger->info("Importing data from $input");
     my $io = IO::File->new( $input, 'r' )
-        or $self->logger->logcroak("Cannot open file: $f");
+        or $self->logger->logcroak("Cannot open file: $input");
     my $stock_data;
     my $counter;
     while ( my $line = $io->getline() ) {
@@ -706,6 +706,10 @@ sub import_strain_plasmid_map {
             next;
         }
         $data->{type_id} = $stock_rel_type_id;
+        if ($self->has_strain_plasmid_map($data)) {
+            $count--;
+            next;
+        }
         push @$stock_data, $data;
     }
     $io->close();
