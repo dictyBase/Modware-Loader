@@ -109,7 +109,7 @@ sub execute {
         if ( any { $_ eq 'phenotype' } @{ $self->data } ) {
             $importer->import_phenotype(
                 catfile( $self->data_dir, $prefix . 'phenotype.tsv' ),
-                $self->dsc_phenotypes, $existing_stock );
+                $existing_stock );
 
         }
     }
