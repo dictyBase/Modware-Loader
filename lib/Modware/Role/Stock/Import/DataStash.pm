@@ -282,7 +282,7 @@ sub find_pub_by_title {
 
 sub create_pub_entry {
     my ( $self, $pubmed_id ) = @_;
-    my $url     = $self->_pmc_url . $pubmed_id . '&resulttype=core&format=json';
+    my $url = $self->_pmc_url . $pubmed_id . '&resulttype=core&format=json';
     $self->logger->debug("fetching $pubmed_id from $url");
     my $content = get($url);
     if ($content) {
@@ -291,17 +291,18 @@ sub create_pub_entry {
         my $pub_type = $self->find_cvterm( "journal_article", "pub_type" );
         my $schema   = $self->schema;
         my $pub_row  = $schema->resultset('Pub::Pub')->create(
-            {   pubplace    => 'PubMed',
-                uniquename  => $pubmed_id,
-                series_name => $result->{journalInfo}->{journal}->{medlineAbbreviation},
-                title       => $result->{title},
-                volume      => $result->{volume},
-                pyear       => $result->{pubYear},
-                pages       => $result->{pageInfo},
-                type_id     => $pub_type
+            {   pubplace   => 'PubMed',
+                uniquename => $pubmed_id,
+                series_name =>
+                    $result->{journalInfo}->{journal}->{medlineAbbreviation},
+                title   => $result->{title},
+                volume  => $result->{volume},
+                pyear   => $result->{pubYear},
+                pages   => $result->{pageInfo},
+                type_id => $pub_type
             }
         );
-        my $pub_id = $pub_row->pub_id;
+        my $pub_id  = $pub_row->pub_id;
         my $authors = $result->{authorList}->{author};
         for my $i ( 0 .. $#$authors ) {
             $schema->resultset('Pub::Pubauthor')->create(
@@ -317,19 +318,19 @@ sub create_pub_entry {
             {   type_id => $self->find_cvterm( 'doi', 'pub_type' ),
                 value   => $result->{doi}
             }
-        );
+        ) if defined $result->{journalInfo}->{journal}->{doi};
         $pub_row->create_related(
             'pubprops',
             {   type_id => $self->find_cvterm( 'issn', 'pub_type' ),
-                value   => $result->{journalInfo}->{journal}->{issn}
+                value => $result->{journalInfo}->{journal}->{issn}
             }
-        );
+        ) if defined $result->{journalInfo}->{journal}->{issn};
         $pub_row->create_related(
             'pubprops',
             {   type_id => $self->find_cvterm( 'abstract', 'pub_type' ),
                 value   => $result->{abstractText}
             }
-        );
+        ) if defined $result->{abstractText};
         return $pub_row;
     }
 }
@@ -470,18 +471,20 @@ sub find_or_create_phenotype {
         my $msg = "Couldn't find \"$assay\" in Dicty assay ontology";
         $self->logger->warn($msg);
     }
-    $note =~ s/(\[.*\])//;
-    my $note_type_id
-        = $self->find_or_create_cvterm( 'curator note', 'dicty_stockcenter' );
 
     my $phenotype_hash;
     $phenotype_hash->{uniquename}
         = $self->utils->nextval( 'phenotype', 'DSC_PHEN' );
     $phenotype_hash->{observable_id} = $cvterm_phenotype;
     $phenotype_hash->{assay_id} = $cvterm_assay if $cvterm_assay;
-    $phenotype_hash->{phenotypeprops}
-        = [ { type_id => $note_type_id, value => $note } ]
-        if $note;
+    if ($note) {
+        $note =~ s/(\[.*\])//;
+        my $note_type_id = $self->find_or_create_cvterm( 'curator note',
+            'dicty_stockcenter' );
+        $phenotype_hash->{phenotypeprops}
+            = [ { type_id => $note_type_id, value => $note } ]
+
+    }
 
     my $phenotype_rs = $self->schema->resultset('Phenotype::Phenotype')
         ->find_or_create($phenotype_hash);
@@ -521,10 +524,26 @@ sub create_stockcollection {
 }
 
 sub has_strain_plasmid_map {
-    my ($self, $query) = @_;
-    my $count = $self->schema->resultset('Stock::StockRelationship')->count($query);
+    my ( $self, $query ) = @_;
+    my $count
+        = $self->schema->resultset('Stock::StockRelationship')->count($query);
     return $count if $count;
 }
+
+sub has_phenstatement {
+    my ( $self, $query ) = @_;
+    my $count
+        = $self->schema->resultset('Genetic::Phenstatement')->count($query);
+    return $count if $count;
+}
+
+sub has_stock_pub {
+    my ( $self, $query ) = @_;
+    my $count
+        = $self->schema->resultset('Stock::StockPub')->count($query);
+    return $count if $count;
+}
+
 
 1;
 

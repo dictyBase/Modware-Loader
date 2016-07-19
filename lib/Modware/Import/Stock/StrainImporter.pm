@@ -256,8 +256,8 @@ sub import_publications {
                 scalar @$existing_stock )
         );
     }
-    my $stock_data;
     my $counter = 0;
+    my $total   = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
         $counter++;
@@ -275,21 +275,23 @@ sub import_publications {
                 "Failed import of publication for $fields[0]");
             next;
         }
-        $data->{pub_id} = $self->find_pub( $fields[1] );
+        $data->{pub_id} = $self->find_or_create_pub( $fields[1] );
         if ( !$data->{pub_id} ) {
             $self->logger->warn("Couldn't find publication for $fields[1]");
             next;
         }
-        push @$stock_data, $data;
+        if ( $self->has_stock_pub($data) ) {
+            $counter--;
+            next;
+        }
+        $self->schema->resultset('Stock::StockPub')->create($data);
+        $total++;
     }
     $io->close();
-    my $missed = $counter - @$stock_data;
-    if ( $self->schema->resultset('Stock::StockPub')->populate($stock_data) )
-    {
-        $self->logger->info( "Imported "
-                . scalar @$stock_data
-                . " strain publication entries. Missed $missed entries" );
-    }
+    my $missed = $counter - $total;
+    $self->logger->info( "Imported "
+            . $total
+            . " strain publication entries. Missed $missed entries" );
 }
 
 sub import_characteristics {
@@ -451,6 +453,7 @@ sub import_phenotype {
 
     my $stock_data;
     my $counter = 0;
+    my $total   = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
         $counter++;
@@ -492,20 +495,21 @@ sub import_phenotype {
             $self->logger->warn($msg);
             $data->{pub_id} = $default_pub_id;
         }
-        push @$stock_data, $data;
+        if ( $self->has_phenstatement($data) ) {
+            $counter--;
+            next;
+        }
+        $self->schema->resultset('Genetic::Phenstatement')->create($data);
+        $total++;
     }
     $io->close();
-    my $missed = $counter - scalar @$stock_data;
-    my $ret    = $self->schema->resultset('Genetic::Phenstatement')
-        ->populate($stock_data);
-    if ($ret) {
-        $self->logger->info(
-            sprintf(
-                "Imported %d, missed %d entries\n",
-                scalar @$stock_data, $missed
-            )
-        );
-    }
+    my $missed = $counter - $total;
+    $self->logger->info(
+        sprintf(
+            "Imported %d phenotypes, missed %d entries\n",
+            $counter, $missed
+        )
+    );
 }
 
 sub import_parent {
@@ -669,7 +673,8 @@ sub import_strain_plasmid_map {
     my $io = IO::File->new( $input, 'r' )
         or $self->logger->logcroak("Cannot open file: $input");
     my $stock_data;
-    my $counter;
+    my $counter = 0;
+    my $total   = 0;
     while ( my $line = $io->getline() ) {
         chomp $line;
         $counter++;
@@ -702,20 +707,17 @@ sub import_strain_plasmid_map {
             $counter--;
             next;
         }
-        push @$stock_data, $data;
+        $self->schema->resultset('Stock::StockRelationship')->create($data);
+        $total++;
     }
     $io->close();
-    my $retval = $self->schema->resultset('Stock::StockRelationship')
-        ->populate($stock_data);
-    if ($retval) {
-        my $missed = $counter - scalar @$stock_data;
-        $self->logger->info(
-            sprintf(
-                "created: %d, missed: %d strain plasmid relationships",
-                scalar @$stock_data, $missed
-            )
-        );
-    }
+    my $missed = $counter - $total;
+    $self->logger->info(
+        sprintf(
+            "created: %d, missed: %d strain plasmid relationships",
+            $counter, $missed
+        )
+    );
 }
 
 1;
