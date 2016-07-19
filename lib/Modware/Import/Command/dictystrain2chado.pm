@@ -92,8 +92,10 @@ sub execute {
         my $input_file = catfile( $self->data_dir, $prefix . $data . '.tsv' );
         my $import_data = 'import_' . $data;
         if ( $data eq 'plasmid' ) {
-            $importer->$import_data( $input_file, $self->strain_plasmid,
-                $existing_stock );
+            $importer->$import_data( $input_file, $existing_stock );
+            if ( my $file = $self->strain_plasmid ) {
+                $importer->import_strain_plasmid_map($file);
+            }
             next;
         }
         $importer->$import_data( $input_file, $existing_stock );

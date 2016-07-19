@@ -302,7 +302,7 @@ sub import_characteristics {
         if !$self->utils->is_stock_loaded('strain');
 
     my $strain_char_pub_title = 'Dicty Strain Characteristics';
-    my $char_pub_id = $self->find_or_create_pub('23494302')
+    my $char_pub_id           = $self->find_or_create_pub('23494302')
         or $self->logger->logcroak(
         "Pub reference for strain_characteristics ontology not found!");
 
@@ -585,7 +585,7 @@ sub import_parent {
 }
 
 sub import_plasmid {
-    my ( $self, $input, $strain_plasmid, $existing_stock ) = @_;
+    my ( $self, $input, $existing_stock ) = @_;
 
     $self->logger->logcroak("Please load strain data first!")
         if !$self->utils->is_stock_loaded('strain');
@@ -611,90 +611,114 @@ sub import_plasmid {
         );
     }
 
-    my @files = ( $input, $strain_plasmid );
-    for my $f (@files) {
-        next if !$f;
-        $self->logger->info("Importing data from $f");
-
-        my $io = IO::File->new( $f, 'r' )
-            or $self->logger->logcroak("Cannot open file: $f");
-        my $stock_data;
-        while ( my $line = $io->getline() ) {
-            chomp $line;
-            my @fields = split "\t", $line;
-            if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
-                $self->logger->warn(
-                    "Line starts with $fields[0]. Expected DBS ID");
-                next;
-            }
-
-            my $data;
-            $data->{object_id} = $self->find_stock( $fields[0] );
-            if ( !$data->{object_id} ) {
-                $self->logger->warn(
-                    "Failed import of strain-plasmid for $fields[0]");
-                next;
-            }
-            my $stock_plasmid_id;
-            if ( $fields[1] =~ m/^[0-9]{1,3}$/ ) {
-                $fields[1] = sprintf( "DBP%07d", $fields[1] );
-            }
-            if ( $fields[1] =~ m/DBP[0-9]{7}/ ) {
-                $stock_plasmid_id = $self->find_stock( $fields[1] );
-                if ( !$stock_plasmid_id ) {
-                    $self->logger->warn(
-                        $fields[1] . " plasmid entry not found" );
-                    next;
-                }
-            }
-            else {
-                $stock_plasmid_id = $self->find_stock_by_name( $fields[1] );
-                if ( !$stock_plasmid_id ) {
-                    $self->logger->debug(
-                        "Couldn't find $fields[1] strain-plasmid. Creating one"
-                    );
-
-                    my $stockcollection_id
-                        = $self->find_or_create_stockcollection(
-                        'External laboratory',
-                        $plasmid_type_id );
-                    if ( !$stockcollection_id ) {
-                        $self->logger->warn(
-                            "Could not create stock collection External laboratory for plasmid $fields[1]"
-                        );
-                        next;
-                    }
-
-                    my $new_plasmid;
-                    $new_plasmid->{name} = $fields[1];
-                    $new_plasmid->{uniquename}
-                        = $self->utils->nextval( 'stock', 'DBP' );
-                    $new_plasmid->{type_id} = $plasmid_type_id;
-                    $new_plasmid->{description}
-                        = 'Autocreated strain-plasmid';
-                    $new_plasmid->{stockcollection_stocks}
-                        = [ { stockcollection_id => $stockcollection_id } ];
-
-                    my $plasmid_rs
-                        = $self->schema->resultset('Stock::Stock')
-                        ->create($new_plasmid);
-                    $stock_plasmid_id = $plasmid_rs->stock_id;
-                    $self->logger->info("created plasmid $fields[1]");
-                }
-            }
-            $data->{subject_id} = $stock_plasmid_id;
-            $data->{type_id}    = $stock_rel_type_id;
-            push @$stock_data, $data;
+    $self->logger->info("Importing data from $input");
+    my $io = IO::File->new( $input, 'r' )
+        or $self->logger->logcroak("Cannot open file: $f");
+    my $stock_data;
+    my $counter;
+    while ( my $line = $io->getline() ) {
+        chomp $line;
+        $counter++;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $self->logger->warn(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
         }
-        $io->close();
-        my $retval = $self->schema->resultset('Stock::StockRelationship')
-            ->populate($stock_data);
-        if ($retval) {
-            $self->logger->info(
-                sprintf( "created %d strain plasmid relationships",
-                    scalar @$stock_data )
-            );
+        my $data;
+        $data->{object_id} = $self->find_stock( $fields[0] );
+        if ( !$data->{object_id} ) {
+            $self->logger->warn("Could not find $fields[0] in database");
+            next;
         }
+        if ( $fields[1] !~ m/^DBP[0-9]{7}/ ) {
+            $self->logger->warn(
+                "Line starts wits $fields[1]. Expected DBP ID");
+            next;
+        }
+        $data->{subject_id} = $self->find_stock( $fields[1] );
+        if ( !$data->{subject_id} ) {
+            $self->logger->warn("Could not find $fields[1] in database");
+            next;
+        }
+        $data->{type_id} = $stock_rel_type_id;
+        push @$stock_data, $data;
+    }
+    $io->close();
+    my $retval = $self->schema->resultset('Stock::StockRelationship')
+        ->populate($stock_data);
+    if ($retval) {
+        my $missed = $counter - scalar @$stock_data;
+        $self->logger->info(
+            sprintf(
+                "created: %d, missed: %d strain plasmid relationships",
+                scalar @$stock_data, $missed
+            )
+        );
+    }
+}
+
+sub import_strain_plasmid_map {
+    my ( $self, $input ) = @_;
+
+    $self->logger->logcroak("Please load strain data first!")
+        if !$self->utils->is_stock_loaded('strain');
+    $self->logger->logcroak(
+        "Please load plasmid data before loading strain-plasmid!")
+        if !$self->utils->is_stock_loaded('plasmid');
+
+    my $stock_rel_type_id
+        = $self->find_or_create_cvterm( 'part_of', 'stock_relation' );
+
+    my $plasmid_type_id
+        = $self->find_or_create_cvterm( 'plasmid', $self->cv_namespace );
+
+    $self->logger->info("Importing data from $input");
+    my $io = IO::File->new( $input, 'r' )
+        or $self->logger->logcroak("Cannot open file: $f");
+    my $stock_data;
+    my $counter;
+    while ( my $line = $io->getline() ) {
+        chomp $line;
+        $counter++;
+        my @fields = split "\t", $line;
+        if ( $fields[0] !~ m/^DBS[0-9]{7}/ ) {
+            $self->logger->warn(
+                "Line starts with $fields[0]. Expected DBS ID");
+            next;
+        }
+        my $data;
+        $data->{object_id} = $self->find_stock( $fields[0] );
+        if ( !$data->{object_id} ) {
+            $self->logger->warn("Could not find $fields[0] in database");
+            next;
+        }
+        my $stock_plasmid_id;
+        if ( $fields[1] !~ m/^[0-9]{1,3}$/ ) {
+            $self->logger->warn(
+                "$fields[1] is not in expected format for plasmid id");
+            next;
+        }
+        my $plasmid_id = sprintf( "DBP%07d", $fields[1] );
+        $data->{subject_id} = $self->find_stock($plasmid_id);
+        if ( !$data->{subject_id} ) {
+            $self->logger->warn("Could not find $plasmid_id in database");
+            next;
+        }
+        $data->{type_id} = $stock_rel_type_id;
+        push @$stock_data, $data;
+    }
+    $io->close();
+    my $retval = $self->schema->resultset('Stock::StockRelationship')
+        ->populate($stock_data);
+    if ($retval) {
+        my $missed = $counter - scalar @$stock_data;
+        $self->logger->info(
+            sprintf(
+                "created: %d, missed: %d strain plasmid relationships",
+                scalar @$stock_data, $missed
+            )
+        );
     }
 }
 
