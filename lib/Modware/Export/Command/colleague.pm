@@ -11,7 +11,7 @@ with 'Modware::Role::Command::WithDBI';
 with 'Modware::Role::Command::WithLogger';
 
 has '+input' => ( traits => [qw/NoGetopt/] );
-has '+output' => ( traits => [qw/NoGetopt/] );
+has '+output' => ( traits => [qw/NoGetopt/] , required => 0);
 has '+data_dir' => ( traits => [qw/NoGetopt/] );
 
 has '_collg_rel_sql' => (
@@ -45,11 +45,11 @@ has '_colleague_sql' => (
     isa     => 'Str',
     lazy    => 1,
     default => q{
-        SELECT collg.colleague_id, 
+        SELECT collg.colleague_no, 
             email.email, 
             collg.first_name,
             collg.last_name, collg.suffix,
-            collg.profession, coll.job_title,
+            collg.profession, collg.job_title,
             collg.institution, collg.address1,
             (
                 collg.address2 || ' ' ||
@@ -67,9 +67,9 @@ has '_colleague_sql' => (
         FROM colleague collg
         JOIN coll_email on coll_email.colleague_no = collg.colleague_no
         JOIN email on email.email_no = coll_email.email_no
-        JOIN coll_phone on coll_phone.colleague_no = collg.colleague_no
-        JOIN phone on phone.phone_no = coll_phone.phone_no
-        JOIN colleague_remark on colleague_remark.colleague_no = collg.colleague_no
+        LEFT JOIN coll_phone on  collg.colleague_no = coll_phone.colleague_no
+        LEFT JOIN phone on  coll_phone.phone_no = phone.phone_no
+        LEFT JOIN colleague_remark on  collg.colleague_no = colleague_remark.colleague_no
     }
 );
 
@@ -81,12 +81,12 @@ has 'colleague_rel_output_handler' => (
     default => sub {
         my ($self) = @_;
         return $self->has_colleague_rel_output
-            ? $self->output->openw
+            ? $self->colleague_rel_output->openw
             : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
     }
 );
 
-has 'colleague-rel-output' => (
+has 'colleague_rel_output' => (
     is          => 'rw',
     isa         => File,
     cmd_aliases => 'crel',
@@ -97,7 +97,7 @@ has 'colleague-rel-output' => (
         'Name of the colleague relations output file,  if absent writes to STDOUT'
 );
 
-has 'colleague-output' => (
+has 'colleague_output' => (
     is          => 'rw',
     isa         => File,
     cmd_aliases => 'cout',
@@ -116,7 +116,7 @@ has 'colleague_output_handler' => (
     default => sub {
         my ($self) = @_;
         return $self->has_colleague_output
-            ? $self->output->openw
+            ? $self->colleague_output->openw
             : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
     }
 );
@@ -177,12 +177,12 @@ COLLEAGUE:
         );
         $cout->print("\n");
         $count++;
-        my ($count)
-            = $dbh->selectrow_array( $pth, {}, ( $hashref->{colleague_id} ) );
+        my ($pcount)
+            = $dbh->selectrow_array( $pth, {}, ( $hashref->{colleague_no} ) );
         next COLLEAGUE
-            if $count == 0;    # this colleague is not a pi(group leader)
+            if $pcount == 0;    # this colleague is not a pi(group leader)
 
-        my @vals = $dbh->selectall_array( $rth, {}, ( $hashref->{email} ) );
+        my @vals = @{$dbh->selectall_arrayref( $rth, {}, ( $hashref->{email} ) )};
         next COLLEAGUE
             if @vals == 0;     # this group leader has no member as colleague
         for my $email (@vals) {
