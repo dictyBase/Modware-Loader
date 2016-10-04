@@ -10,6 +10,10 @@ extends qw/Modware::Export::Command/;
 with 'Modware::Role::Command::WithDBI';
 with 'Modware::Role::Command::WithLogger';
 
+has '+input' => ( traits => [qw/NoGetopt/] );
+has '+output' => ( traits => [qw/NoGetopt/] );
+has '+data_dir' => ( traits => [qw/NoGetopt/] );
+
 has '_collg_rel_sql' => (
     is      => 'ro',
     isa     => 'Str',
