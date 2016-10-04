@@ -11,7 +11,7 @@ with 'Modware::Role::Command::WithDBI';
 with 'Modware::Role::Command::WithLogger';
 
 has '+input' => ( traits => [qw/NoGetopt/] );
-has '+output' => ( traits => [qw/NoGetopt/] );
+has '+output' => ( traits => [qw/NoGetopt/] , required => 0);
 has '+data_dir' => ( traits => [qw/NoGetopt/] );
 
 has '_plasmid_sql' => (
@@ -53,7 +53,7 @@ has '_strain_sql' => (
     }
 );
 
-has 'strain-output' => (
+has 'strain_output' => (
     is          => 'rw',
     isa         => File,
     traits      => [qw/Getopt/],
@@ -72,12 +72,12 @@ has 'strain_output_handler' => (
     default => sub {
         my ($self) = @_;
         return $self->has_strain_output
-            ? $self->output->openw
+            ? $self->strain_output->openw
             : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
     }
 );
 
-has 'plasmid-output' => (
+has 'plasmid_output' => (
     is          => 'rw',
     isa         => File,
     traits      => [qw/Getopt/],
@@ -96,7 +96,7 @@ has 'plasmid_output_handler' => (
     default => sub {
         my ($self) = @_;
         return $self->has_plasmid_output
-            ? $self->output->openw
+            ? $self->plasmid_output->openw
             : IO::Handle->new_from_fd( fileno(STDOUT), 'w' );
     }
 );
