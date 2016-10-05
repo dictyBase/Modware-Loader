@@ -10,8 +10,8 @@ extends qw/Modware::Export::Command/;
 with 'Modware::Role::Command::WithDBI';
 with 'Modware::Role::Command::WithLogger';
 
-has '+input' => ( traits => [qw/NoGetopt/] );
-has '+output' => ( traits => [qw/NoGetopt/] , required => 0);
+has '+input'    => ( traits => [qw/NoGetopt/] );
+has '+output'   => ( traits => [qw/NoGetopt/], required => 0 );
 has '+data_dir' => ( traits => [qw/NoGetopt/] );
 
 has '_collg_rel_sql' => (
@@ -153,15 +153,17 @@ sub execute {
             Country", "Zipcode", "Subscribed", "Phone no", "Resarch interest"
         ]
     );
-    $rsv->print( $rout, [ "Group leader email", "Member email" ] );
+    $rsv->print( $rout, [ "Group leader email", "Member emails" ] );
     $cout->print("\n");
     $rout->print("\n");
     $cth->execute;
 
     my $count  = 0;
     my $rcount = 0;
+    my $cache;
 COLLEAGUE:
     while ( my $hashref = $cth->fetchrow_hashref('NAME_lc') ) {
+        next COLLEAGUE if defined $cache->{$hashref->{email}};
         $csv->print(
             $cout,
             [   $hashref->{email},         $hashref->{first_name},
@@ -176,25 +178,28 @@ COLLEAGUE:
             ]
         );
         $cout->print("\n");
+        $cache->{$hashref->{email}} = 1;
         $count++;
         my ($pcount)
             = $dbh->selectrow_array( $pth, {}, ( $hashref->{colleague_no} ) );
         next COLLEAGUE
             if $pcount == 0;    # this colleague is not a pi(group leader)
 
-        my @vals = @{$dbh->selectall_arrayref( $rth, {}, ( $hashref->{email} ) )};
+        my $vals = [
+            map { $_->[0] } @{
+                $dbh->selectall_arrayref( $rth, {}, ( $hashref->{email} ) )
+            }
+        ];
         next COLLEAGUE
-            if @vals == 0;     # this group leader has no member as colleague
-        for my $email (@vals) {
-            $rsv->print( $rout, [ $hashref->{email}, $email ] );
-            $rout->print("\n");
-        }
+            if @$vals == 0;     # this group leader has no member as colleague
+        unshift @$vals, $hashref->{email};
+        $rsv->print( $rout, $vals );
+        $rout->print("\n");
         $rcount++;
     }
     $logger->info("written $count colleague entries");
     $logger->info("written $rcount colleague relation");
 }
-
 
 1;
 
