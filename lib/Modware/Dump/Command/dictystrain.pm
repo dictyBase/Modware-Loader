@@ -60,6 +60,10 @@ sub execute {
                 push @row, '';
             }
 
+            if ($strain->{systematic_name}) {
+                push @row,$self->trim($strain->{systematic_name});
+            }
+
             my $s = join( "\t", @row );
             $io->{strain}->write( $s . "\n" );
             $stats->{strain} = $stats->{strain} + 1;
