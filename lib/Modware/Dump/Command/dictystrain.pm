@@ -60,10 +60,6 @@ sub execute {
                 push @row, '';
             }
 
-            if ($strain->{systematic_name}) {
-                push @row,$self->trim($strain->{systematic_name});
-            }
-
             my $s = join( "\t", @row );
             $io->{strain}->write( $s . "\n" );
             $stats->{strain} = $stats->{strain} + 1;
@@ -370,6 +366,12 @@ sub execute {
                     $stats->{props} = $stats->{props} + 1;
                 }
             }
+            if ( $strain->{systematic_name} ) {
+                push @data,
+                    sprintf( "%s\tsystematic name\t%s",
+                    $self->trim( $strain->{systematic_name} ) );
+                $stats->{props} = $stats->{props} + 1;
+            }
             my $outstr = join( "\n", @data );
             $io->{props}->write( $outstr . "\n" ) if $outstr;
         }
@@ -429,8 +431,7 @@ sub _create_files {
             . " folder" );
 
     for my $data_type ( @{ $self->data } ) {
-        my $file_obj
-            = IO::File->new(
+        my $file_obj = IO::File->new(
             $self->output_dir . "/strain_" . $data_type . ".tsv", 'w' );
         $io->{$data_type}    = $file_obj;
         $stats->{$data_type} = 0;
