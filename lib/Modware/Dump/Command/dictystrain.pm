@@ -221,8 +221,26 @@ sub execute {
                 my $s = sprintf "%s\t%s\t%s\n", $dbs_id, $dscg_id, $genotype;
                 $io->{genotype}->write($s);
                 $stats->{genotype} = $stats->{genotype} + 1;
+                $dscg = $dscg + 1;
             }
-            $dscg = $dscg + 1;
+            else {
+                my $strain_char_rs
+                    = $self->legacy_schema->resultset('StrainCharCvterm')
+                    ->search( { strain_id => $strain->{id} },
+                    { cache => 1 } );
+                $strain_char_rs->result_class(
+                    'DBIx::Class::ResultClass::HashRefInflator');
+                while ( my $strain_char = $strain_char_rs->next ) {
+                    my $cvterm_name = $self->find_cvterm_name(
+                        $strain_char->{cvterm_id} );
+                    if ($cvterm_name == "natural isolate") {
+                        my $s = sprintf "%s\t%s\t%s\n", $dbs_id, $dscg_id, "wt";
+                        $io->{genotype}->write($s);
+                        $stats->{genotype} = $stats->{genotype} + 1;
+                        $dscg = $dscg + 1;
+                    }
+                }
+            }
         }
 
         if ( exists $io->{phenotype} ) {
@@ -369,7 +387,7 @@ sub execute {
             if ( $strain->{systematic_name} ) {
                 push @data,
                     sprintf( "%s\tsystematic name\t%s",
-                    $self->trim( $strain->{systematic_name} ) );
+                    $dbs_id, $self->trim( $strain->{systematic_name} ) );
                 $stats->{props} = $stats->{props} + 1;
             }
             my $outstr = join( "\n", @data );
