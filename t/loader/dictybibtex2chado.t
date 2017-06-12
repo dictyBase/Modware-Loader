@@ -79,8 +79,12 @@ subtest 'loading of discoideum genome publications to chado database' => sub {
     is( $pub->count_related( 'pubprops', {} ),
         4, 'should have 4 pubprop records' );
     my %propmap;
+    my $cvterm_source = 'Cvterm';
+    if ( $dbmanager->can('schema_namespace') ) {
+        $cvterm_source = 'Cv::Cvterm';
+    }
     for my $type (qw/doi status month issn abstract/) {
-        my $row = $schema->resultset('Cv::Cvterm')->find(
+        my $row = $schema->resultset($cvterm_source)->find(
             {   name      => $type,
                 'cv.name' => 'pub_type'
             },
