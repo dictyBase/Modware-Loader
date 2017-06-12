@@ -19,7 +19,7 @@ my %module_build_args = (
     "Siddhartha Basu <biosidd\@gmail.com>"
   ],
   "dist_name" => "Modware-Loader",
-  "dist_version" => "v1.10.1",
+  "dist_version" => "v1.10.2",
   "license" => "perl",
   "module_name" => "Modware::Loader",
   "recommends" => {
@@ -50,7 +50,7 @@ my %module_build_args = (
     "MooseX::Attribute::Dependent" => "v1.1.2",
     "MooseX::ConfigFromFile" => "0.10",
     "MooseX::Event" => "v0.2.0",
-    "MooseX::Getopt" => "0.56",
+    "MooseX::Getopt" => "0.70",
     "MooseX::Object::Pluggable" => "0.0013",
     "MooseX::Types::Path::Class" => "0.06",
     "Number::Compare" => "0.03",
