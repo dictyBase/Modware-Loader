@@ -195,7 +195,7 @@ sub import_publications {
                 "Failed import of publication for $fields[0]");
             next;
         }
-        $data->{pub_id} = $self->find_pub( $fields[1] );
+        $data->{pub_id} = $self->find_or_create_pub( $fields[1] );
         if ( !$data->{pub_id} ) {
             $self->logger->warn("missing pubmed id $fields[1]");
             next;
