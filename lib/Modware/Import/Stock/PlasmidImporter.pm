@@ -196,14 +196,13 @@ sub import_publications {
                 "Failed import of publication for $fields[0]");
             next;
         }
-        eval { $data->{pub_id} = $self->find_or_create_pub( $fields[1] ); }
-            if ($@)
-        {
-            $self->logger->warn("no pubmed id is present for $fields[0]");
+        if (not defined $fields[1]) {
+            $self->logger->warn("missing pubmed id for $fields[0]");
             next;
         }
+        $data->{pub_id} = $self->find_or_create_pub( $fields[1] ); 
         if ( !$data->{pub_id} ) {
-            $self->logger->warn("missing pubmed id $fields[1]");
+            $self->logger->warn("cannot find or create pubmed id $fields[1] for $fields[0]");
             next;
         }
         push @$stock_data, $data;
