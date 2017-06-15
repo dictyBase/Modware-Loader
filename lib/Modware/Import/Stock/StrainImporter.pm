@@ -340,12 +340,12 @@ sub import_characteristics {
         $data->{stock_id} = $self->find_stock( $fields[0] );
         if ( !$data->{stock_id} ) {
             $self->logger->warn(
-                "Failed import of characteristics for $fields[0]");
+                "Could not find $fields[0] in database");
             next;
         }
         $data->{cvterm_id}
             = $self->find_cvterm( $fields[1], 'strain_characteristics' );
-        if ( !$data->{stock_id} ) {
+        if ( !$data->{cvterm_id} ) {
             $self->logger->warn(
                 "Couldn't find $fields[1] in strain_characteristics ontology"
             );
