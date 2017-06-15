@@ -48,7 +48,8 @@ sub import_plasmid {
 
     my $type_id
         = $self->find_or_create_cvterm( 'plasmid', $self->cv_namespace );
-    my $sc_id = $self->find_or_create_stockcollection( $self->stock_collection,
+    my $sc_id
+        = $self->find_or_create_stockcollection( $self->stock_collection,
         $type_id );
 
     my $existing_stock = [];
@@ -195,7 +196,12 @@ sub import_publications {
                 "Failed import of publication for $fields[0]");
             next;
         }
-        $data->{pub_id} = $self->find_or_create_pub( $fields[1] );
+        eval { $data->{pub_id} = $self->find_or_create_pub( $fields[1] ); }
+            if ($@)
+        {
+            $self->logger->warn("no pubmed id is present for $fields[0]");
+            next;
+        }
         if ( !$data->{pub_id} ) {
             $self->logger->warn("missing pubmed id $fields[1]");
             next;
@@ -376,7 +382,7 @@ sub import_plasmid_sequence {
                 $self->schema->resultset('Sequence::Feature')
                     ->search( { uniquename => $props[0]->value } )->delete;
                 $props[0]->delete;
-                $rcount++ ;
+                $rcount++;
             }
         }
         $self->logger->info(
