@@ -9,7 +9,7 @@ use Carp;
 use Digest::MD5 qw(md5_hex);
 use File::Temp;
 use IO::String;
-use LWP::Simple qw/head/;
+use LWP::UserAgent;
 use Moose;
 use namespace::autoclean;
 use Path::Class::Dir;
@@ -196,13 +196,14 @@ sub import_publications {
                 "Failed import of publication for $fields[0]");
             next;
         }
-        if (not defined $fields[1]) {
+        if ( not defined $fields[1] ) {
             $self->logger->warn("missing pubmed id for $fields[0]");
             next;
         }
-        $data->{pub_id} = $self->find_or_create_pub( $fields[1] ); 
+        $data->{pub_id} = $self->find_or_create_pub( $fields[1] );
         if ( !$data->{pub_id} ) {
-            $self->logger->warn("cannot find or create pubmed id $fields[1] for $fields[0]");
+            $self->logger->warn(
+                "cannot find or create pubmed id $fields[1] for $fields[0]");
             next;
         }
         push @$stock_data, $data;
@@ -315,8 +316,8 @@ sub import_images {
                 $prop->delete( { 'type_id' => $image_type_id } );
             }
             $self->logger->info(
-                sprintf( "pruned image links for %d stock entries",
-                    scalar @$existing_stock )
+                sprintf( "pruned image links for plasmid id %s",
+                    $row->uniquename )
             );
         }
     }
@@ -328,12 +329,14 @@ sub import_images {
         ->search( { type_id => $type_id } );
     my $stock_data;
     my $counter = 0;
+    my $ua      = LWP::UserAgent->new;
     while ( my $row = $stock_rs->next ) {
         $counter++;
         ( my $filename = $row->uniquename ) =~ s/^DBP[0]+//;
         my $image_url = $base_url . $filename . ".jpg";
         my $data;
-        if ( head($image_url) ) {
+        my $res = $ua->head($image_url);
+        if ( $res->is_success ) {
             $self->logger->debug("image $image_url found");
             $data->{stock_id} = $self->find_stock( $row->uniquename );
             if ( !$data->{stock_id} ) {
@@ -348,16 +351,23 @@ sub import_images {
         else {
             $self->logger->warn(
                 sprintf(
-                    "No image %s for plasmid %s",
-                    $filename, $row->uniquename
+                    "No image %s for plasmid %s for url %s with status %s and message %s",
+                    $filename,  $row->uniquename, $image_url,
+                    $res->code, $res->message
                 )
             );
         }
     }
-    if ( $self->schema->resultset('Stock::Stockprop')->populate($stock_data) )
-    {
-        $self->logger->info(
-            "Imported " . scalar @$stock_data . " plasmid map entries." );
+    if ( defined $stock_data and scalar @$stock_data > 0 ) {
+        if ( $self->schema->resultset('Stock::Stockprop')
+            ->populate($stock_data) )
+        {
+            $self->logger->info(
+                "Imported " . scalar @$stock_data . " plasmid map entries." );
+        }
+    }
+    else {
+        $self->logger->info("no plasmid map entry has imported");
     }
     return;
 }
