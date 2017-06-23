@@ -53,6 +53,7 @@
             "File::Find::Rule" : "0.32",
             "HTML::WikiConverter" : "0.68",
             "HTML::WikiConverter::MediaWiki" : "0.59",
+            "LWP::Protocol::https" : "6.07",
             "List::Util" : "1.45",
             "Log::Log4perl" : "1.40",
             "MooseX::App::Cmd" : "0.09",
@@ -92,7 +93,7 @@
    },
    "release_status" : "stable",
    "resources" : {},
-   "version" : "v1.10.3",
+   "version" : "v1.10.4",
    "x_serialization_backend" : "Cpanel::JSON::XS version 3.0233"
 }
 
