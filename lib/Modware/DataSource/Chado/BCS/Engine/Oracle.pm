@@ -19,10 +19,17 @@ sub transform {
     $schema->source('Sequence::Synonym')->name('synonym_');
 
     $schema->source('Sequence::FeatureSynonym')->add_relationship(
-        'alternate_names',
-        'Bio::Chado::Schema::Result::Sequence::Synonym',
+        'alternate_name',
+        'Sequence::Synonym',
         { 'foreign.synonym_id' => 'self.synonym_id' },
-        { accessor             => 'single' }
+        { accessor             => 'single' , join_type => 'INNER' }
+    );
+
+    $schema->class('Sequence::FeatureSynonym')->add_relationship(
+        'alternate_name',
+        'Sequence::Synonym',
+        { 'foreign.synonym_id' => 'self.synonym_id' },
+        { accessor             => 'single' , join_type => 'INNER' }
     );
 
     my $syn_source = $schema->source('Cv::Cvtermsynonym');
