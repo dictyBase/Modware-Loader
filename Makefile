@@ -11,11 +11,13 @@ show-api-json:
 	@echo $(API_JSON)
 default: build test
 #upload_url = $(shell curl --silent --data '$(api_json)' https://api.github.com/repos/dictybase/modware-loader/releases/latest?access_token=$(access_token) | jq '.upload_url' | sed -e 's/{.*}//' | sed -e 's/"//g' | sed -e 's/[[:blank:]]*$$//') 
-build:
-	docker build --rm --build-arg user=$(shell id -nu) --build-arg curruid=$(shell id -u) -t dictybase/modware-loader-test:devel .
+build-image:
+	docker build --rm  --platform linux/amd64  --build-arg user=$(shell id -nu) --build-arg curruid=$(shell id -u) -t dictybase/modware-loader -f docker/release/Dockerfile .
+build-test:
+	docker build --rm --platform linux/amd64  --build-arg user=$(shell id -nu) --build-arg curruid=$(shell id -u) -t dictybase/modware-loader-test:devel .
 build-bleeding:
 	docker build --rm --build-arg user=$(shell id -nu) --build-arg curruid=$(shell id -u) -t dictybase/modware-loader:bleeding .
-test:
+test: build-test
 	docker run --rm -v $(shell pwd):/usr/src/modware -e HARNESS_OPTIONS="j6" dictybase/modware-loader-test:devel
 testpg: 
 	docker run -d --name mlpostgres -e ADMIN_DB=mldb -e ADMIN_USER=mluser -e ADMIN_PASS=mlpass dictybase/postgres:9.4 \

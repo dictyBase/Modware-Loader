@@ -4,12 +4,12 @@ Modware::Loader
 
 # VERSION
 
-version v1.10.4
+version v1.10.5
 
 # DESCRIPTION
 
 [Chado](http://gmod.org/wiki/Introduction_to_Chado) is an open-source modular database
-schema for biological data. This distribution provides [MooseX::App::Cmd](https://metacpan.org/pod/MooseX::App::Cmd) based command
+schema for biological data. This distribution provides [MooseX::App::Cmd](https://metacpan.org/pod/MooseX%3A%3AApp%3A%3ACmd) based command
 line applications to import and export biological data from Chado database.
 
 # NAME
