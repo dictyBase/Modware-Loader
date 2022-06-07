@@ -1,4 +1,4 @@
-FROM perl:5.20
+FROM perl:5.32
 MAINTAINER Siddhartha Basu <siddhartha-basu@northwestern.edu>
 
 ADD oracle/*rpm /rpms/
@@ -17,5 +17,5 @@ ENV ORACLE_HOME /usr/lib/oracle/11.2/client64/
 ENV LD_LIBRARY_PATH /usr/lib/oracle/11.2/client64/lib/
 RUN cpanm -n --quiet DBI DBD::Oracle  DBD::Pg Math::Base36 String::CamelCase Child JSON \
     && rm -fr /rpms
-RUN cpanm -n --quiet git://github.com/dictyBase/Modware-Loader.git@version
+RUN cpanm -n --quiet https://github.com/dictyBase/Modware-Loader.git@version
 CMD ['modware']
